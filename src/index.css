@@ -134,8 +134,8 @@
     @apply transition-opacity duration-300;
   }
   
-  .transition-transform {
-    @apply transition-transform duration-300;
+  .transform-transition {
+    @apply transition duration-300 ease-in-out transform;
   }
   
   .page-transition-enter {
