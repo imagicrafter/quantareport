@@ -5,8 +5,8 @@ import type { Database } from './types';
 
 // Update these values with your inovy-dev project credentials
 // Get them from your Supabase dashboard: Project Settings > API
-const SUPABASE_URL = "YOUR_INOVY_DEV_SUPABASE_URL";
-const SUPABASE_PUBLISHABLE_KEY = "YOUR_INOVY_DEV_ANON_KEY";
+const SUPABASE_URL = "https://vpbvsrworjriccgszned.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwYnZzcndvcmpyaWNjZ3N6bmVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAyNjI4OTQsImV4cCI6MjA1NTgzODg5NH0.iB30dxM4HA_2GSFF3DyWvzAmqV3Qq45aOPk7xsXKp-k";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
