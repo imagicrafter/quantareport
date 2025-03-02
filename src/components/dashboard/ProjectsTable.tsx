@@ -48,6 +48,7 @@ const ProjectsTable = ({ onRefresh }: ProjectsTableProps) => {
         return;
       }
 
+      // Fetch projects with template information
       const { data: projectData, error } = await supabase
         .from('projects')
         .select(`

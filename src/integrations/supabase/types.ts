@@ -205,6 +205,7 @@ export type Database = {
           id: string
           name: string
           status: string
+          template_id: string | null
           user_id: string
         }
         Insert: {
@@ -214,6 +215,7 @@ export type Database = {
           id?: string
           name: string
           status?: string
+          template_id?: string | null
           user_id: string
         }
         Update: {
@@ -223,9 +225,17 @@ export type Database = {
           id?: string
           name?: string
           status?: string
+          template_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_user_id_fkey"
             columns: ["user_id"]
