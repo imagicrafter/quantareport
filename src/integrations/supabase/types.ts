@@ -30,24 +30,6 @@ export type Database = {
         }
         Relationships: []
       }
-      domains: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-        }
-        Relationships: []
-      }
       files: {
         Row: {
           created_at: string | null
@@ -178,15 +160,7 @@ export type Database = {
           subscription_status?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_domain_id_fkey"
-            columns: ["domain_id"]
-            isOneToOne: false
-            referencedRelation: "domains"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       projects: {
         Row: {
@@ -217,13 +191,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "projects_domain_id_fkey"
-            columns: ["domain_id"]
-            isOneToOne: false
-            referencedRelation: "domains"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "projects_user_id_fkey"
             columns: ["user_id"]
@@ -323,13 +290,6 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "templates_domain_id_fkey"
-            columns: ["domain_id"]
-            isOneToOne: false
-            referencedRelation: "domains"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "templates_user_id_fkey"
             columns: ["user_id"]
