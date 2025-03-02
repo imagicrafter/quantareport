@@ -8,6 +8,7 @@ const NavBar = () => {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+  const isDashboardOrTemplates = ['/dashboard', '/templates'].includes(location.pathname);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -48,6 +49,13 @@ const NavBar = () => {
             </nav>
           )}
 
+          {isDashboardOrTemplates && (
+            <nav className="hidden md:flex items-center space-x-8">
+              <NavLink to="/dashboard" label="Dashboard" />
+              <NavLink to="/templates" label="Templates" />
+            </nav>
+          )}
+
           <div className="flex items-center gap-4">
             {isHomePage ? (
               <>
@@ -64,11 +72,13 @@ const NavBar = () => {
               </>
             ) : (
               <>
-                <Link to="/dashboard">
-                  <Button variant="primary" size="md">
-                    Dashboard
-                  </Button>
-                </Link>
+                {!isDashboardOrTemplates && (
+                  <Link to="/dashboard">
+                    <Button variant="primary" size="md">
+                      Dashboard
+                    </Button>
+                  </Link>
+                )}
               </>
             )}
           </div>

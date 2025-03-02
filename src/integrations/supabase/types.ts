@@ -163,6 +163,7 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
+          role: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
@@ -175,6 +176,7 @@ export type Database = {
           full_name?: string | null
           id: string
           phone?: string | null
+          role: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -187,6 +189,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          role?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -292,33 +295,36 @@ export type Database = {
       }
       templates: {
         Row: {
-          content: string
           created_at: string | null
           description: string | null
           domain_id: string | null
           id: string
+          image_module: string | null
           is_public: boolean | null
           name: string
+          report_module: string | null
           user_id: string | null
         }
         Insert: {
-          content: string
           created_at?: string | null
           description?: string | null
           domain_id?: string | null
           id?: string
+          image_module?: string | null
           is_public?: boolean | null
           name: string
+          report_module?: string | null
           user_id?: string | null
         }
         Update: {
-          content?: string
           created_at?: string | null
           description?: string | null
           domain_id?: string | null
           id?: string
+          image_module?: string | null
           is_public?: boolean | null
           name?: string
+          report_module?: string | null
           user_id?: string | null
         }
         Relationships: [
