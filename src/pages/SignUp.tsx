@@ -1,8 +1,10 @@
 
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import NavBar from '../components/layout/NavBar';
 import Button from '../components/ui-elements/Button';
+import { supabase } from '../integrations/supabase/client';
+import { toast } from 'sonner';
 
 const industries = [
   { id: 'engineering', name: 'Engineering' },
@@ -16,6 +18,7 @@ const industries = [
 const SignUp = () => {
   const [searchParams] = useSearchParams();
   const planFromUrl = searchParams.get('plan') || 'free';
+  const navigate = useNavigate();
   
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
@@ -48,16 +51,93 @@ const SignUp = () => {
     }
   };
   
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setIsLoading(true);
     
-    // Simulating registration
-    setTimeout(() => {
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            phone,
+            industry,
+            plan
+          }
+        }
+      });
+      
+      if (signUpError) throw signUpError;
+      
+      toast.success('Account created successfully!');
+      console.log('Signed up successfully:', data);
+      
+      // In a real app, you might want to redirect the user to a verification page
+      // or directly to the dashboard if email verification is not required
+      navigate('/dashboard');
+      
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during sign up');
+      toast.error(err.message || 'Failed to create account');
+      console.error('Sign up error:', err);
+    } finally {
       setIsLoading(false);
-      // For now, just log the registration data
-      console.log('Sign up with:', { email, password, name, phone, industry, plan });
-      // In a real app, you would create the user account and redirect on success
-    }, 1500);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      // The redirect will happen automatically from Supabase
+      console.log('Google sign up initiated:', data);
+      
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during Google sign up');
+      toast.error(err.message || 'Failed to sign up with Google');
+      console.error('Google sign up error:', err);
+      setIsLoading(false);
+    }
+  };
+
+  const handleFacebookSignUp = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        }
+      });
+      
+      if (error) throw error;
+      
+      // The redirect will happen automatically from Supabase
+      console.log('Facebook sign up initiated:', data);
+      
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during Facebook sign up');
+      toast.error(err.message || 'Failed to sign up with Facebook');
+      console.error('Facebook sign up error:', err);
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -222,6 +302,8 @@ const SignUp = () => {
                       type="button"
                       variant="outline"
                       className="w-full"
+                      onClick={handleGoogleSignUp}
+                      isLoading={isLoading}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                       Google
@@ -230,6 +312,8 @@ const SignUp = () => {
                       type="button"
                       variant="outline"
                       className="w-full"
+                      onClick={handleFacebookSignUp}
+                      isLoading={isLoading}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                       Facebook
