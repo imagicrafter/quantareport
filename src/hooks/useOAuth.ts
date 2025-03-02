@@ -37,7 +37,7 @@ export const useOAuth = () => {
       // CRITICAL: Always redirect using window.location.href to the URL from Supabase
       // This ensures we're doing a full page redirect rather than any iframe approach
       if (data?.url) {
-        // Force navigation to the top frame
+        // Force navigation to the top frame and clear the URL to prevent any caching issues
         window.top.location.href = data.url;
       } else {
         throw new Error('No redirect URL returned from Supabase');
