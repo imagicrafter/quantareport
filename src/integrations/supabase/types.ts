@@ -176,7 +176,7 @@ export type Database = {
           full_name?: string | null
           id: string
           phone?: string | null
-          role: string
+          role?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
