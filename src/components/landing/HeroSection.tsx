@@ -17,7 +17,7 @@ const HeroSection = () => {
         <div className="flex flex-col items-center text-center">
           <div className="inline-flex items-center px-3 py-1 mb-6 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium animate-fade-in">
             <span className="w-2 h-2 rounded-full bg-primary mr-2"></span>
-            Introducing Reportify
+            Introducing Inovy
           </div>
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 max-w-4xl animate-slide-up" style={{ animationDelay: '100ms' }}>

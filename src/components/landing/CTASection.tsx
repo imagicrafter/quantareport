@@ -26,7 +26,7 @@ const CTASection = () => {
             </h2>
             
             <p className="text-lg text-white/80 mb-8 max-w-xl mx-auto">
-              Join thousands of professionals who save time and deliver better reports with Reportify.
+              Join thousands of professionals who save time and deliver better reports with Inovy.
             </p>
             
             <div className="flex flex-col sm:flex-row justify-center gap-4">
