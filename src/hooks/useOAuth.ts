@@ -15,6 +15,7 @@ export const useOAuth = () => {
       // Log the origin to help debugging
       console.log('Redirecting with origin:', window.location.origin);
       
+      // This will redirect the browser to Google's authentication page
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -32,7 +33,14 @@ export const useOAuth = () => {
       }
       
       // The redirect will happen automatically from Supabase
+      // Google auth will happen in the top window, not in an iframe
       console.log('Google sign up initiated:', data);
+      
+      // Important: If we have a URL from the response, redirect to it directly
+      // This ensures we're redirecting properly to Google's auth page
+      if (data?.url) {
+        window.location.href = data.url;
+      }
       
     } catch (err: any) {
       console.error('Google sign up error:', err);
@@ -58,6 +66,11 @@ export const useOAuth = () => {
       
       // The redirect will happen automatically from Supabase
       console.log('Facebook sign up initiated:', data);
+      
+      // Important: If we have a URL from the response, redirect to it directly
+      if (data?.url) {
+        window.location.href = data.url;
+      }
       
     } catch (err: any) {
       setError(err.message || 'An error occurred during Facebook sign up');
