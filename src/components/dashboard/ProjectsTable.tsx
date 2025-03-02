@@ -1,69 +1,209 @@
 
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import Button from '../ui-elements/Button';
+import ProjectViewDrawer from './ProjectViewDrawer';
+
+interface Template {
+  id: string;
+  name: string;
+}
 
 interface Project {
   id: string;
   name: string;
   date: string;
   imageCount: number;
+  noteCount: number;
   reportStatus: string;
+  template?: Template | null;
 }
 
 interface ProjectsTableProps {
-  projects: Project[];
+  onRefresh?: () => void; 
 }
 
-const ProjectsTable = ({ projects }: ProjectsTableProps) => {
+const ProjectsTable = ({ onRefresh }: ProjectsTableProps) => {
+  const { toast } = useToast();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (!session.session) {
+        return;
+      }
+
+      const { data: projectData, error } = await supabase
+        .from('projects')
+        .select(`
+          id, 
+          name, 
+          created_at, 
+          status,
+          template_id,
+          templates(id, name)
+        `)
+        .eq('user_id', session.session.user.id);
+
+      if (error) throw error;
+
+      // Get notes count for each project
+      const projectsWithCounts = await Promise.all((projectData || []).map(async (project) => {
+        // Count notes
+        const { count: noteCount, error: noteError } = await supabase
+          .from('notes')
+          .select('id', { count: 'exact', head: true })
+          .eq('project_id', project.id);
+
+        if (noteError) console.error('Error counting notes:', noteError);
+
+        // Count image files
+        const { count: imageCount, error: imageError } = await supabase
+          .from('files')
+          .select('id', { count: 'exact', head: true })
+          .eq('project_id', project.id)
+          .eq('type', 'image');
+
+        if (imageError) console.error('Error counting images:', imageError);
+
+        return {
+          id: project.id,
+          name: project.name,
+          date: project.created_at,
+          reportStatus: project.status,
+          noteCount: noteCount || 0,
+          imageCount: imageCount || 0,
+          template: project.templates
+        };
+      }));
+
+      setProjects(projectsWithCounts);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load projects. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjects();
+  }, [onRefresh]);
+
+  const handleViewProject = (projectId: string) => {
+    setSelectedProject(projectId);
+    setIsViewOpen(true);
+  };
+
+  const handleCloseView = () => {
+    setIsViewOpen(false);
+    // Refresh projects after closing the view drawer
+    fetchProjects();
+  };
+
   return (
-    <div className="glass-card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left p-4 font-medium text-muted-foreground">Name</th>
-              <th className="text-left p-4 font-medium text-muted-foreground">Date Created</th>
-              <th className="text-left p-4 font-medium text-muted-foreground">Images</th>
-              <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
-              <th className="text-right p-4 font-medium text-muted-foreground">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {projects.map((project) => (
-              <tr key={project.id} className="border-b border-border hover:bg-secondary/40 transition-colors">
-                <td className="p-4 whitespace-nowrap">
-                  <div className="font-medium">{project.name}</div>
-                </td>
-                <td className="p-4 whitespace-nowrap text-muted-foreground">
-                  {new Date(project.date).toLocaleDateString()}
-                </td>
-                <td className="p-4 whitespace-nowrap text-muted-foreground">
-                  {project.imageCount}
-                </td>
-                <td className="p-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    project.reportStatus === 'completed' 
-                      ? 'bg-green-100 text-green-800' 
-                      : project.reportStatus === 'processing' 
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {project.reportStatus.charAt(0).toUpperCase() + project.reportStatus.slice(1)}
-                  </span>
-                </td>
-                <td className="p-4 whitespace-nowrap text-right">
-                  <Link to={`/dashboard/projects/${project.id}`}>
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <>
+      <div className="glass-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Date Created</TableHead>
+                <TableHead>Template</TableHead>
+                <TableHead>Images</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    Loading projects...
+                  </TableCell>
+                </TableRow>
+              ) : projects.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    No projects found. Create your first project to get started.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                projects.map((project) => (
+                  <TableRow key={project.id} className="border-b border-border hover:bg-secondary/40 transition-colors">
+                    <TableCell className="whitespace-nowrap">
+                      <div className="font-medium">{project.name}</div>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {new Date(project.date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {project.template?.name || 'None'}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {project.imageCount}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {project.noteCount}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        project.reportStatus === 'completed' 
+                          ? 'bg-green-100 text-green-800' 
+                          : project.reportStatus === 'processing' 
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {project.reportStatus.charAt(0).toUpperCase() + project.reportStatus.slice(1)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleViewProject(project.id)}
+                      >
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-    </div>
+
+      {selectedProject && (
+        <ProjectViewDrawer 
+          open={isViewOpen}
+          onClose={handleCloseView}
+          projectId={selectedProject}
+        />
+      )}
+    </>
   );
 };
 

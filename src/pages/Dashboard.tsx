@@ -1,6 +1,8 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 import Sidebar from '../components/dashboard/Sidebar';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import StatCards from '../components/dashboard/StatCards';
@@ -11,16 +13,53 @@ import CreateProjectModal from '../components/dashboard/CreateProjectModal';
 const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const { toast } = useToast();
   const location = useLocation();
   
-  const projects = [
-    { id: '1', name: 'Site Inspection Report', date: '2023-05-15', imageCount: 12, reportStatus: 'completed' },
-    { id: '2', name: 'Property Damage Assessment', date: '2023-06-22', imageCount: 8, reportStatus: 'draft' },
-    { id: '3', name: 'Construction Progress', date: '2023-07-10', imageCount: 24, reportStatus: 'processing' },
-  ];
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoading(true);
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        
+        if (!session.session) {
+          // Redirect to sign in if not authenticated
+          window.location.href = '/signin';
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('user_id', session.session.user.id);
+
+        if (error) throw error;
+        setProjects(data || []);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load projects. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, [refreshTrigger, toast]);
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+
+  const handleProjectCreated = () => {
+    // Trigger a refresh of projects
+    setRefreshTrigger(prev => prev + 1);
   };
 
   // Get the current path to determine which title to display in header
@@ -51,7 +90,7 @@ const Dashboard = () => {
           <div className="p-4 md:p-6">
             <StatCards projects={projects} />
             <ProjectsHeader setShowCreateProject={setShowCreateProject} />
-            <ProjectsTable projects={projects} />
+            <ProjectsTable onRefresh={() => setRefreshTrigger(prev => prev + 1)} />
           </div>
         ) : (
           <Outlet />
@@ -62,6 +101,7 @@ const Dashboard = () => {
       <CreateProjectModal 
         showCreateProject={showCreateProject}
         setShowCreateProject={setShowCreateProject}
+        onProjectCreated={handleProjectCreated}
       />
     </div>
   );

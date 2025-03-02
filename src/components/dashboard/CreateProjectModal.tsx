@@ -1,13 +1,126 @@
 
 import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Button from '../ui-elements/Button';
 
 interface CreateProjectModalProps {
   showCreateProject: boolean;
   setShowCreateProject: (show: boolean) => void;
+  onProjectCreated?: () => void;
 }
 
-const CreateProjectModal = ({ showCreateProject, setShowCreateProject }: CreateProjectModalProps) => {
+const formSchema = z.object({
+  name: z.string().min(2, 'Project name must be at least 2 characters.'),
+  template_id: z.string().min(1, 'Please select a template.')
+});
+
+const CreateProjectModal = ({ 
+  showCreateProject, 
+  setShowCreateProject,
+  onProjectCreated
+}: CreateProjectModalProps) => {
+  const { toast } = useToast();
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      template_id: ''
+    }
+  });
+
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        
+        if (!session.session) {
+          return;
+        }
+
+        // Get user templates and public templates
+        const { data: userTemplates, error: userError } = await supabase
+          .from('templates')
+          .select('*')
+          .or(`user_id.eq.${session.session.user.id},is_public.eq.true`);
+
+        if (userError) throw userError;
+        setTemplates(userTemplates || []);
+      } catch (error) {
+        console.error('Error fetching templates:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load templates. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    if (showCreateProject) {
+      fetchTemplates();
+    }
+  }, [showCreateProject, toast]);
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (!session.session) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to create a project.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          name: values.name,
+          user_id: session.session.user.id,
+          template_id: values.template_id,
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Project created successfully!',
+      });
+
+      form.reset();
+      setShowCreateProject(false);
+      
+      if (onProjectCreated) {
+        onProjectCreated();
+      }
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create project. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!showCreateProject) return null;
   
   return (
@@ -23,72 +136,72 @@ const CreateProjectModal = ({ showCreateProject, setShowCreateProject }: CreateP
           </button>
         </div>
         
-        <form className="space-y-6">
-          <div className="space-y-2">
-            <label htmlFor="projectName" className="text-sm font-medium">
-              Project Name
-            </label>
-            <input
-              id="projectName"
-              type="text"
-              className="w-full p-2 rounded-md border border-input bg-background"
-              placeholder="Enter project name"
-              required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter project name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="industry" className="text-sm font-medium">
-              Industry
-            </label>
-            <select
-              id="industry"
-              className="w-full p-2 rounded-md border border-input bg-background"
-              required
-            >
-              <option value="" disabled selected>Select industry</option>
-              <option value="engineering">Engineering</option>
-              <option value="insurance">Insurance</option>
-              <option value="construction">Construction</option>
-              <option value="appraisals">Appraisals</option>
-              <option value="small-business">Small Business</option>
-            </select>
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="template" className="text-sm font-medium">
-              Report Template
-            </label>
-            <select
-              id="template"
-              className="w-full p-2 rounded-md border border-input bg-background"
-              required
-            >
-              <option value="" disabled selected>Select template</option>
-              <option value="site-inspection">Site Inspection</option>
-              <option value="damage-assessment">Damage Assessment</option>
-              <option value="progress-report">Progress Report</option>
-              <option value="property-appraisal">Property Appraisal</option>
-            </select>
-          </div>
-          
-          <div className="flex items-center justify-end gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setShowCreateProject(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => setShowCreateProject(false)}
-            >
-              Create Project
-            </Button>
-          </div>
-        </form>
+            
+            <FormField
+              control={form.control}
+              name="template_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Report Template</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select template" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {templates.length === 0 ? (
+                        <SelectItem value="none" disabled>No templates available</SelectItem>
+                      ) : (
+                        templates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name} {template.is_public ? '(Public)' : ''}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <div className="flex items-center justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowCreateProject(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                isLoading={isLoading}
+              >
+                Create Project
+              </Button>
+            </div>
+          </form>
+        </Form>
       </div>
     </div>
   );
