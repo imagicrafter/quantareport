@@ -1,0 +1,435 @@
+
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { PlusCircle, Edit, Trash } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import Button from '../ui-elements/Button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+
+interface ProjectNote {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+}
+
+interface NotesSectionProps {
+  projectId: string;
+}
+
+const formSchema = z.object({
+  title: z.string().min(2, 'Title must be at least 2 characters.'),
+  content: z.string().min(5, 'Content must be at least 5 characters.'),
+});
+
+const NotesSection = ({ projectId }: NotesSectionProps) => {
+  const { toast } = useToast();
+  const [notes, setNotes] = useState<ProjectNote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<ProjectNote | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: '',
+      content: '',
+    },
+  });
+
+  const editForm = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: '',
+      content: '',
+    },
+  });
+
+  const fetchNotes = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setNotes(data);
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load notes. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (projectId) {
+      fetchNotes();
+    }
+  }, [projectId]);
+
+  const handleAddNote = async (values: z.infer<typeof formSchema>) => {
+    try {
+      setSaving(true);
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (!session.session) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to add notes.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('notes')
+        .insert({
+          title: values.title,
+          content: values.content,
+          project_id: projectId,
+          user_id: session.session.user.id
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Note added successfully!',
+      });
+
+      form.reset();
+      setIsAddDialogOpen(false);
+      fetchNotes();
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add note. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditNote = async (values: z.infer<typeof formSchema>) => {
+    if (!selectedNote) return;
+
+    try {
+      setSaving(true);
+      const { error } = await supabase
+        .from('notes')
+        .update({
+          title: values.title,
+          content: values.content,
+        })
+        .eq('id', selectedNote.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Note updated successfully!',
+      });
+
+      editForm.reset();
+      setIsEditDialogOpen(false);
+      fetchNotes();
+    } catch (error) {
+      console.error('Error updating note:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update note. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteNote = async () => {
+    if (!selectedNote) return;
+
+    try {
+      setSaving(true);
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', selectedNote.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Note deleted successfully!',
+      });
+
+      setIsDeleteDialogOpen(false);
+      fetchNotes();
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete note. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">Project Notes</h3>
+        <Button 
+          size="sm" 
+          onClick={() => {
+            form.reset();
+            setIsAddDialogOpen(true);
+          }}
+        >
+          <PlusCircle size={16} className="mr-2" />
+          Add Note
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="py-8 text-center">Loading notes...</div>
+      ) : notes.length === 0 ? (
+        <div className="py-8 text-center text-muted-foreground border rounded-lg">
+          No notes added yet. Add your first note to get started.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {notes.map((note) => (
+            <div key={note.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+              <div>
+                <div className="font-medium">{note.title}</div>
+                <div className="text-sm text-muted-foreground">
+                  {new Date(note.created_at).toLocaleDateString()}
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setSelectedNote(note);
+                    editForm.reset({
+                      title: note.title,
+                      content: note.content,
+                    });
+                    setIsEditDialogOpen(true);
+                  }}
+                >
+                  <Edit size={16} />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setSelectedNote(note);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                >
+                  <Trash size={16} />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add Note Dialog */}
+      <Dialog 
+        open={isAddDialogOpen} 
+        onOpenChange={setIsAddDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Note</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleAddNote)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter note title" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Content</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Enter note content" 
+                        className="min-h-[150px]"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter className="mt-6">
+                <Button 
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsAddDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  isLoading={saving}
+                >
+                  Add Note
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Note Dialog */}
+      <Dialog 
+        open={isEditDialogOpen} 
+        onOpenChange={setIsEditDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Note</DialogTitle>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(handleEditNote)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter note title" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editForm.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Content</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Enter note content" 
+                        className="min-h-[150px]"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter className="mt-6">
+                <Button 
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsEditDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  isLoading={saving}
+                >
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog 
+        open={isDeleteDialogOpen} 
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Note</DialogTitle>
+          </DialogHeader>
+          <div className="py-3">
+            <p>Are you sure you want to delete this note? This action cannot be undone.</p>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button"
+              variant="ghost"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button"
+              variant="primary"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteNote}
+              isLoading={saving}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default NotesSection;
