@@ -15,7 +15,7 @@ export const useOAuth = () => {
       // Log the origin to help debugging
       console.log('Redirecting with origin:', window.location.origin);
       
-      // This will redirect the browser to Google's authentication page
+      // Get the URL for Google OAuth
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -32,14 +32,15 @@ export const useOAuth = () => {
         throw error;
       }
       
-      // The redirect will happen automatically from Supabase
-      // Google auth will happen in the top window, not in an iframe
-      console.log('Google sign up initiated:', data);
+      console.log('Google sign up initiated, URL received:', data?.url);
       
-      // Important: If we have a URL from the response, redirect to it directly
-      // This ensures we're redirecting properly to Google's auth page
+      // CRITICAL: Always redirect using window.location.href to the URL from Supabase
+      // This ensures we're doing a full page redirect rather than any iframe approach
       if (data?.url) {
-        window.location.href = data.url;
+        // Force navigation to the top frame
+        window.top.location.href = data.url;
+      } else {
+        throw new Error('No redirect URL returned from Supabase');
       }
       
     } catch (err: any) {
@@ -64,12 +65,14 @@ export const useOAuth = () => {
       
       if (error) throw error;
       
-      // The redirect will happen automatically from Supabase
       console.log('Facebook sign up initiated:', data);
       
-      // Important: If we have a URL from the response, redirect to it directly
+      // CRITICAL: Always redirect using window.location.href
       if (data?.url) {
-        window.location.href = data.url;
+        // Force navigation to the top frame
+        window.top.location.href = data.url;
+      } else {
+        throw new Error('No redirect URL returned from Supabase');
       }
       
     } catch (err: any) {

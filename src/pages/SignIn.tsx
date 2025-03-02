@@ -55,6 +55,20 @@ const SignIn = () => {
     }
   };
 
+  // Custom Google sign-in handler
+  const handleGoogleButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log('Google sign-in button clicked, initiating OAuth flow');
+    handleGoogleSignIn();
+  };
+
+  // Custom Facebook sign-in handler
+  const handleFacebookButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log('Facebook sign-in button clicked, initiating OAuth flow');
+    handleFacebookSignIn();
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
@@ -133,7 +147,7 @@ const SignIn = () => {
                   type="button"
                   variant="outline"
                   className="w-full"
-                  onClick={handleGoogleSignIn}
+                  onClick={handleGoogleButtonClick}
                   isLoading={isSubmitting}
                 >
                   <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
@@ -149,7 +163,7 @@ const SignIn = () => {
                   type="button"
                   variant="outline"
                   className="w-full"
-                  onClick={handleFacebookSignIn}
+                  onClick={handleFacebookButtonClick}
                   isLoading={isSubmitting}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
