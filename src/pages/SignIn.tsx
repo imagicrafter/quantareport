@@ -5,6 +5,7 @@ import NavBar from '../components/layout/NavBar';
 import Button from '../components/ui-elements/Button';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
+import { useOAuth } from '../hooks/useOAuth';
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -12,6 +13,15 @@ const SignIn = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  const { 
+    handleGoogleSignUp: handleGoogleSignIn, 
+    handleFacebookSignUp: handleFacebookSignIn,
+    isOAuthLoading
+  } = useOAuth();
+  
+  // Combine loading states
+  const isSubmitting = isLoading || isOAuthLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,60 +51,6 @@ const SignIn = () => {
       toast.error(err.message || 'Failed to sign in');
       console.error('Sign in error:', err);
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        }
-      });
-      
-      if (error) throw error;
-      
-      // The redirect will happen automatically from Supabase
-      console.log('Google sign in initiated:', data);
-      
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during Google sign in');
-      toast.error(err.message || 'Failed to sign in with Google');
-      console.error('Google sign in error:', err);
-      setIsLoading(false);
-    }
-  };
-
-  const handleFacebookSignIn = async () => {
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'facebook',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-        }
-      });
-      
-      if (error) throw error;
-      
-      // The redirect will happen automatically from Supabase
-      console.log('Facebook sign in initiated:', data);
-      
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during Facebook sign in');
-      toast.error(err.message || 'Failed to sign in with Facebook');
-      console.error('Facebook sign in error:', err);
       setIsLoading(false);
     }
   };
@@ -156,7 +112,7 @@ const SignIn = () => {
               <Button
                 type="submit"
                 className="w-full"
-                isLoading={isLoading}
+                isLoading={isSubmitting}
               >
                 Sign In
               </Button>
@@ -178,9 +134,13 @@ const SignIn = () => {
                   variant="outline"
                   className="w-full"
                   onClick={handleGoogleSignIn}
-                  isLoading={isLoading}
+                  isLoading={isSubmitting}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 12h8"/>
+                    <path d="M12 8v8"/>
+                  </svg>
                   Google
                 </Button>
                 <Button
@@ -188,7 +148,7 @@ const SignIn = () => {
                   variant="outline"
                   className="w-full"
                   onClick={handleFacebookSignIn}
-                  isLoading={isLoading}
+                  isLoading={isSubmitting}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                   Facebook

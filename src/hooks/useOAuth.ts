@@ -12,6 +12,9 @@ export const useOAuth = () => {
     setError('');
     
     try {
+      // Log the origin to help debugging
+      console.log('Redirecting with origin:', window.location.origin);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -23,15 +26,18 @@ export const useOAuth = () => {
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Google sign up error details:', error);
+        throw error;
+      }
       
       // The redirect will happen automatically from Supabase
       console.log('Google sign up initiated:', data);
       
     } catch (err: any) {
+      console.error('Google sign up error:', err);
       setError(err.message || 'An error occurred during Google sign up');
       toast.error(err.message || 'Failed to sign up with Google');
-      console.error('Google sign up error:', err);
       setIsLoading(false);
     }
   };
