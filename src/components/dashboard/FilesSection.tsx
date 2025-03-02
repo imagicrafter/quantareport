@@ -591,7 +591,8 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
             </Button>
             <Button 
               type="button"
-              variant="destructive"
+              variant="primary"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDeleteFile}
               isLoading={uploading}
             >

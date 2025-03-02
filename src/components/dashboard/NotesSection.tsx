@@ -418,7 +418,8 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
             </Button>
             <Button 
               type="button"
-              variant="destructive"
+              variant="primary"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDeleteNote}
               isLoading={saving}
             >
