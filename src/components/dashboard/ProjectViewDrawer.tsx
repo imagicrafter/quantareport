@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,6 +42,12 @@ const formSchema = z.object({
   template_id: z.string().min(1, 'Please select a template.'),
   status: z.string().min(1, 'Please select a status.')
 });
+
+interface ProjectData {
+  name: string;
+  template_id: string | null;
+  status: string;
+}
 
 const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps) => {
   const { toast } = useToast();

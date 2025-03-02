@@ -10,7 +10,6 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import Button from '../ui-elements/Button';
 import ProjectViewDrawer from './ProjectViewDrawer';
 
@@ -61,7 +60,16 @@ const ProjectsTable = ({ onRefresh }: ProjectsTableProps) => {
         `)
         .eq('user_id', session.session.user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching projects:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load projects. Please try again.',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
 
       // Get notes count for each project
       const projectsWithCounts = await Promise.all((projectData || []).map(async (project) => {

@@ -32,11 +32,13 @@ interface FilesSectionProps {
   projectId: string;
 }
 
+type FileType = 'image' | 'audio' | 'folder';
+
 interface ProjectFile {
   id: string;
   name: string;
   description: string;
-  type: 'image' | 'audio' | 'folder';
+  type: FileType;
   file_path: string;
   created_at: string;
 }
@@ -92,7 +94,14 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setFiles(data || []);
+      
+      // Convert the raw data to ProjectFile type with the correct type casting
+      const typedFiles: ProjectFile[] = (data || []).map(file => ({
+        ...file,
+        type: file.type as FileType, // Cast the string to our union type
+      }));
+      
+      setFiles(typedFiles);
     } catch (error) {
       console.error('Error fetching files:', error);
       toast({
@@ -135,7 +144,7 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
       form.reset({
         title: data.name,
         description: data.description || '',
-        type: data.type,
+        type: data.type as FileType, // Cast to our union type
         folderLink: data.type === 'folder' ? data.file_path : '',
       });
       
