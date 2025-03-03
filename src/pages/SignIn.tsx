@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import NavBar from '../components/layout/NavBar';
@@ -77,7 +76,7 @@ const SignIn = () => {
           <div className="glass-card p-8">
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold mb-2">Welcome back</h1>
-              <p className="text-muted-foreground">Sign in to your QuantaReport account</p>
+              <p className="text-muted-foreground">Sign in to your Invoy account</p>
             </div>
 
             {error && (
