@@ -23,7 +23,7 @@ const Logo: FC<LogoProps> = ({ size = 'md', variant = 'default' }) => {
       </div>
       {variant === 'default' && (
         <span className={`font-semibold ${sizeClass} bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/80`}>
-          Invoy
+          Inovy
         </span>
       )}
     </div>

@@ -19,7 +19,6 @@ const SignIn = () => {
     isOAuthLoading
   } = useOAuth();
   
-  // Combine loading states
   const isSubmitting = isLoading || isOAuthLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,14 +53,12 @@ const SignIn = () => {
     }
   };
 
-  // Custom Google sign-in handler
   const handleGoogleButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log('Google sign-in button clicked, initiating OAuth flow');
     handleGoogleSignIn();
   };
 
-  // Custom Facebook sign-in handler
   const handleFacebookButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log('Facebook sign-in button clicked, initiating OAuth flow');
@@ -76,7 +73,7 @@ const SignIn = () => {
           <div className="glass-card p-8">
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold mb-2">Welcome back</h1>
-              <p className="text-muted-foreground">Sign in to your Invoy account</p>
+              <p className="text-muted-foreground">Sign in to your Inovy account</p>
             </div>
 
             {error && (
