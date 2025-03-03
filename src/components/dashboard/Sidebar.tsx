@@ -2,7 +2,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { X, Plus, FolderPlus, Image, FileText, FileCheck, FileArchive, Settings, LogOut } from 'lucide-react';
 import Logo from '../ui-elements/Logo';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface SidebarProps {

@@ -1,20 +1,20 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { User } from '@supabase/supabase-js';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Badge } from '../components/ui/badge';
-import { Separator } from '../components/ui/separator';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '../components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Switch } from '../components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 interface ProfileData {
   id: string;
@@ -25,6 +25,12 @@ interface ProfileData {
   industry: string | null;
   plan: string;
   domain?: string | null;
+  domain_id?: string;
+  role?: string;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  subscription_status?: string;
+  updated_at?: string;
 }
 
 const Settings = () => {
@@ -72,10 +78,28 @@ const Settings = () => {
         }
         
         if (profileData) {
-          setProfile(profileData);
-          setFullName(profileData.full_name || '');
-          setPhone(profileData.phone || '');
-          setIndustry(profileData.industry || '');
+          // Map the profile data to match our ProfileData interface
+          const mappedProfile: ProfileData = {
+            id: profileData.id,
+            full_name: profileData.full_name || '',
+            avatar_url: profileData.avatar_url,
+            email: profileData.email || '',
+            phone: profileData.phone || '',
+            industry: profileData.industry || '',
+            plan: profileData.subscription_status === 'active' ? 'premium' : 'free',
+            domain: profileData.domain_id ? 'yourdomain.com' : null,
+            domain_id: profileData.domain_id,
+            role: profileData.role,
+            stripe_customer_id: profileData.stripe_customer_id,
+            stripe_subscription_id: profileData.stripe_subscription_id,
+            subscription_status: profileData.subscription_status,
+            updated_at: profileData.updated_at
+          };
+          
+          setProfile(mappedProfile);
+          setFullName(mappedProfile.full_name || '');
+          setPhone(mappedProfile.phone || '');
+          setIndustry(mappedProfile.industry || '');
         }
         
       } catch (error) {
@@ -122,7 +146,14 @@ const Settings = () => {
       toast.success('Profile updated successfully');
       
       // Update local state
-      setProfile(prev => prev ? {...prev, full_name: fullName, phone, industry} : null);
+      if (profile) {
+        setProfile({
+          ...profile,
+          full_name: fullName,
+          phone,
+          industry
+        });
+      }
       
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -276,8 +307,8 @@ const Settings = () => {
                       )}
                     </div>
                     
-                    <Button type="submit" isLoading={saving}>
-                      Save Changes
+                    <Button type="submit" disabled={saving}>
+                      {saving ? 'Saving...' : 'Save Changes'}
                     </Button>
                   </form>
                 </div>
@@ -329,8 +360,8 @@ const Settings = () => {
                     />
                   </div>
                   
-                  <Button type="submit" isLoading={saving}>
-                    Update Password
+                  <Button type="submit" disabled={saving}>
+                    {saving ? 'Updating...' : 'Update Password'}
                   </Button>
                 </form>
               </div>
