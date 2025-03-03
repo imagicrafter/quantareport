@@ -1,7 +1,9 @@
 
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { X, Plus, FolderPlus, Image, FileText, FileCheck, FileArchive, Settings, LogOut } from 'lucide-react';
 import Logo from '../ui-elements/Logo';
+import { supabase } from '../integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -11,6 +13,7 @@ interface SidebarProps {
 
 const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
 
   const menuItems = [
@@ -20,6 +23,19 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
     { name: 'Templates', icon: <FileCheck size={20} />, path: '/dashboard/templates' },
     { name: 'Reports', icon: <FileArchive size={20} />, path: '/dashboard/reports' },
   ];
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast.success('Successfully signed out');
+      navigate('/signin');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Failed to sign out. Please try again.');
+    }
+  };
 
   return (
     <aside 
@@ -77,6 +93,7 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
             <span>Settings</span>
           </Link>
           <button 
+            onClick={handleSignOut}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
           >
             <LogOut size={20} />

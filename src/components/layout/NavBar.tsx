@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Logo from '../ui-elements/Logo';
-import Button from '../ui-elements/Button';
+import { Button } from '../components/ui/button';
 
 const NavBar = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -60,12 +60,12 @@ const NavBar = () => {
             {isHomePage ? (
               <>
                 <Link to="/signin">
-                  <Button variant="ghost" size="md">
+                  <Button variant="ghost" size="sm">
                     Sign In
                   </Button>
                 </Link>
                 <Link to="/signup">
-                  <Button variant="primary" size="md">
+                  <Button variant="default" size="sm">
                     Get Started
                   </Button>
                 </Link>
@@ -74,7 +74,7 @@ const NavBar = () => {
               <>
                 {!isDashboardOrInnerPages && (
                   <Link to="/dashboard">
-                    <Button variant="primary" size="md">
+                    <Button variant="default" size="sm">
                       Dashboard
                     </Button>
                   </Link>

@@ -9,6 +9,7 @@ import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 import Templates from "./pages/Templates";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,9 +39,7 @@ const App = () => (
             <Route path="reports" element={<div className="p-4 md:p-6">
               <h2 className="text-xl font-semibold mb-6">Reports Dashboard</h2>
             </div>} />
-            <Route path="settings" element={<div className="p-4 md:p-6">
-              <h2 className="text-xl font-semibold mb-6">Settings</h2>
-            </div>} />
+            <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="/templates" element={<Navigate to="/dashboard/templates" replace />} />
           <Route path="*" element={<NotFound />} />
