@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +15,11 @@ import { Separator } from '@/components/ui/separator';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+
+import ProfileSection from '@/components/settings/ProfileSection';
+import SecuritySection from '@/components/settings/SecuritySection';
+import NotificationsSection from '@/components/settings/NotificationsSection';
+import BillingSection from '@/components/settings/BillingSection';
 
 interface ProfileData {
   id: string;
@@ -42,19 +48,8 @@ const Settings = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   const [domains, setDomains] = useState<DomainData[]>([]);
-  
-  // Form state
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [selectedDomain, setSelectedDomain] = useState('');
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   
   // Fetch user data on component mount
   useEffect(() => {
@@ -69,7 +64,6 @@ const Settings = () => {
         }
         
         setUser(user);
-        setEmail(user.email || '');
         
         // Fetch profile data from profiles table
         const { data: profileData, error: profileError } = await supabase
@@ -113,16 +107,12 @@ const Settings = () => {
           };
           
           setProfile(mappedProfile);
-          setFullName(mappedProfile.full_name || '');
-          setPhone(mappedProfile.phone || '');
-          setSelectedDomain(mappedProfile.domain_id || '');
           
           // If there's a domain_id, get the domain name
           if (profileData.domain_id && domainsData) {
             const userDomain = domainsData.find(d => d.id === profileData.domain_id);
             if (userDomain) {
               mappedProfile.domain = userDomain.name;
-              setSelectedDomain(userDomain.id);
             }
           }
         }
@@ -148,80 +138,6 @@ const Settings = () => {
       authListener.subscription.unsubscribe();
     };
   }, [navigate]);
-  
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    
-    try {
-      if (!user) throw new Error('User not authenticated');
-      
-      // Update profile in database
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: fullName,
-          phone,
-          domain_id: selectedDomain || null
-        })
-        .eq('id', user.id);
-      
-      if (error) throw error;
-      
-      toast.success('Profile updated successfully');
-      
-      // Update local state
-      if (profile) {
-        // Find the selected domain name
-        const domainName = selectedDomain 
-          ? domains.find(d => d.id === selectedDomain)?.name || null
-          : null;
-          
-        setProfile({
-          ...profile,
-          full_name: fullName,
-          phone,
-          domain_id: selectedDomain,
-          domain: domainName
-        });
-      }
-      
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
-    } finally {
-      setSaving(false);
-    }
-  };
-  
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    
-    try {
-      if (!user) throw new Error('User not authenticated');
-      
-      if (newPassword !== confirmPassword) {
-        toast.error('New passwords do not match');
-        return;
-      }
-      
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      
-      if (error) throw error;
-      
-      toast.success('Password updated successfully');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      
-    } catch (error) {
-      console.error('Error updating password:', error);
-      toast.error('Failed to update password');
-    } finally {
-      setSaving(false);
-    }
-  };
   
   if (loading) {
     return (
@@ -251,250 +167,29 @@ const Settings = () => {
           <TabsTrigger value="billing">Billing</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="profile" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>Update your personal information</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col md:flex-row gap-6">
-                <div className="md:w-1/3 flex flex-col items-center">
-                  <Avatar className="h-24 w-24 mb-4">
-                    <AvatarImage src={profile?.avatar_url || undefined} alt={fullName} />
-                    <AvatarFallback>{fullName.split(' ').map(n => n[0]).join('').toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <Button variant="outline" size="sm">Upload Photo</Button>
-                  <div className="mt-4 w-full">
-                    <Badge variant="outline" className="w-full justify-center py-1.5">
-                      {profile?.plan || 'Free'} Plan
-                    </Badge>
-                  </div>
-                </div>
-                
-                <div className="md:w-2/3">
-                  <form onSubmit={handleProfileUpdate} className="space-y-4">
-                    <div className="grid gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="fullName">Full Name</Label>
-                        <Input 
-                          id="fullName"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          placeholder="Your name"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input 
-                          id="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="Your email"
-                          disabled
-                        />
-                        <p className="text-xs text-muted-foreground">Your email address is managed through authentication settings</p>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Phone</Label>
-                        <Input 
-                          id="phone"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          placeholder="Your phone number"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="domain">Domain</Label>
-                        <Select value={selectedDomain} onValueChange={setSelectedDomain}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a domain" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">None</SelectItem>
-                            {domains.map(domain => (
-                              <SelectItem key={domain.id} value={domain.id}>
-                                {domain.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          Select the domain that best describes your field
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <Button type="submit" disabled={saving}>
-                      {saving ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                  </form>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="security" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-              <CardDescription>Manage your account security</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium mb-4">Change Password</h3>
-                <form onSubmit={handlePasswordChange} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input 
-                      id="currentPassword"
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Your current password"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
-                    <Input 
-                      id="newPassword"
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Your new password"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                    <Input 
-                      id="confirmPassword"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm your new password"
-                    />
-                  </div>
-                  
-                  <Button type="submit" disabled={saving}>
-                    {saving ? 'Updating...' : 'Update Password'}
-                  </Button>
-                </form>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <h3 className="text-lg font-medium mb-4">Two-Factor Authentication</h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Two-Factor Authentication</p>
-                    <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
-                  </div>
-                  <Button variant="outline" disabled>
-                    Coming Soon
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="notifications" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>Manage how you receive notifications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Email Notifications</h3>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Marketing emails</p>
-                      <p className="text-sm text-muted-foreground">Receive emails about new features and improvements</p>
-                    </div>
-                    <Switch 
-                      checked={emailNotifications} 
-                      onCheckedChange={setEmailNotifications} 
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Security alerts</p>
-                      <p className="text-sm text-muted-foreground">Get notified about security events on your account</p>
-                    </div>
-                    <Switch checked={true} disabled />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Project updates</p>
-                      <p className="text-sm text-muted-foreground">Receive notifications when your projects are updated</p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                </div>
-                
-                <Button>
-                  Save Preferences
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="billing" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Subscription & Billing</CardTitle>
-              <CardDescription>Manage your subscription and payment methods</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Current Plan</h3>
-                  <div className="bg-muted p-4 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-semibold text-lg">{profile?.plan || 'Free'} Plan</p>
-                        <p className="text-sm text-muted-foreground">
-                          {profile?.plan === 'free' 
-                            ? 'Basic features with limited usage' 
-                            : 'Full access to all QuantaReport features'}
-                        </p>
-                      </div>
-                      <Badge variant={profile?.plan === 'free' ? 'outline' : 'default'}>
-                        {profile?.plan === 'free' ? 'Free' : 'Active'}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Payment Methods</h3>
-                  <p className="text-muted-foreground mb-4">No payment methods configured</p>
-                  <Button variant="outline">
-                    Add Payment Method
-                  </Button>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Billing History</h3>
-                  <p className="text-muted-foreground">No billing history available</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {profile && (
+          <>
+            <TabsContent value="profile">
+              <ProfileSection 
+                profile={profile} 
+                domains={domains} 
+                setProfile={setProfile} 
+              />
+            </TabsContent>
+            
+            <TabsContent value="security">
+              <SecuritySection user={user} />
+            </TabsContent>
+            
+            <TabsContent value="notifications">
+              <NotificationsSection />
+            </TabsContent>
+            
+            <TabsContent value="billing">
+              <BillingSection profile={profile} />
+            </TabsContent>
+          </>
+        )}
       </Tabs>
     </div>
   );
