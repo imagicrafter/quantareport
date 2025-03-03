@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,15 +21,20 @@ interface ProfileData {
   avatar_url: string | null;
   email: string;
   phone: string | null;
-  industry: string | null;
+  domain: string | null;
   plan: string;
-  domain?: string | null;
-  domain_id?: string;
+  domain_id?: string | null;
   role?: string;
   stripe_customer_id?: string;
   stripe_subscription_id?: string;
   subscription_status?: string;
   updated_at?: string;
+}
+
+interface DomainData {
+  id: string;
+  name: string;
+  description: string | null;
 }
 
 const Settings = () => {
@@ -40,12 +44,13 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
+  const [domains, setDomains] = useState<DomainData[]>([]);
   
   // Form state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [industry, setIndustry] = useState('');
+  const [selectedDomain, setSelectedDomain] = useState('');
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -77,6 +82,18 @@ const Settings = () => {
           throw profileError;
         }
         
+        // Fetch domains for dropdown
+        const { data: domainsData, error: domainsError } = await supabase
+          .from('domains')
+          .select('id, name, description')
+          .neq('name', 'all');
+          
+        if (domainsError) {
+          throw domainsError;
+        }
+        
+        setDomains(domainsData || []);
+        
         if (profileData) {
           // Map the profile data to match our ProfileData interface
           const mappedProfile: ProfileData = {
@@ -85,9 +102,8 @@ const Settings = () => {
             avatar_url: profileData.avatar_url,
             email: profileData.email || '',
             phone: profileData.phone || '',
-            industry: profileData.industry || '',
+            domain: profileData.domain_id ? null : null, // We'll set this after fetching domain info
             plan: profileData.subscription_status === 'active' ? 'premium' : 'free',
-            domain: profileData.domain_id ? 'yourdomain.com' : null,
             domain_id: profileData.domain_id,
             role: profileData.role,
             stripe_customer_id: profileData.stripe_customer_id,
@@ -99,7 +115,16 @@ const Settings = () => {
           setProfile(mappedProfile);
           setFullName(mappedProfile.full_name || '');
           setPhone(mappedProfile.phone || '');
-          setIndustry(mappedProfile.industry || '');
+          setSelectedDomain(mappedProfile.domain_id || '');
+          
+          // If there's a domain_id, get the domain name
+          if (profileData.domain_id && domainsData) {
+            const userDomain = domainsData.find(d => d.id === profileData.domain_id);
+            if (userDomain) {
+              mappedProfile.domain = userDomain.name;
+              setSelectedDomain(userDomain.id);
+            }
+          }
         }
         
       } catch (error) {
@@ -137,7 +162,7 @@ const Settings = () => {
         .update({
           full_name: fullName,
           phone,
-          industry
+          domain_id: selectedDomain || null
         })
         .eq('id', user.id);
       
@@ -147,11 +172,17 @@ const Settings = () => {
       
       // Update local state
       if (profile) {
+        // Find the selected domain name
+        const domainName = selectedDomain 
+          ? domains.find(d => d.id === selectedDomain)?.name || null
+          : null;
+          
         setProfile({
           ...profile,
           full_name: fullName,
           phone,
-          industry
+          domain_id: selectedDomain,
+          domain: domainName
         });
       }
       
@@ -277,34 +308,24 @@ const Settings = () => {
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="industry">Industry</Label>
-                        <Select value={industry} onValueChange={setIndustry}>
+                        <Label htmlFor="domain">Domain</Label>
+                        <Select value={selectedDomain} onValueChange={setSelectedDomain}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select an industry" />
+                            <SelectValue placeholder="Select a domain" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="technology">Technology</SelectItem>
-                            <SelectItem value="healthcare">Healthcare</SelectItem>
-                            <SelectItem value="education">Education</SelectItem>
-                            <SelectItem value="finance">Finance</SelectItem>
-                            <SelectItem value="retail">Retail</SelectItem>
-                            <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
+                            <SelectItem value="">None</SelectItem>
+                            {domains.map(domain => (
+                              <SelectItem key={domain.id} value={domain.id}>
+                                {domain.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Select the domain that best describes your field
+                        </p>
                       </div>
-                      
-                      {profile?.domain && (
-                        <div className="space-y-2">
-                          <Label htmlFor="domain">Connected Domain</Label>
-                          <Input 
-                            id="domain"
-                            value={profile.domain}
-                            disabled
-                            className="bg-muted"
-                          />
-                        </div>
-                      )}
                     </div>
                     
                     <Button type="submit" disabled={saving}>
