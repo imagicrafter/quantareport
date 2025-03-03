@@ -309,10 +309,10 @@ export type Database = {
           description: string | null
           domain_id: string | null
           id: string
-          image_module: string | null
+          image_module: Json | null
           is_public: boolean | null
           name: string
-          report_module: string | null
+          report_module: Json | null
           user_id: string | null
         }
         Insert: {
@@ -320,10 +320,10 @@ export type Database = {
           description?: string | null
           domain_id?: string | null
           id?: string
-          image_module?: string | null
+          image_module?: Json | null
           is_public?: boolean | null
           name: string
-          report_module?: string | null
+          report_module?: Json | null
           user_id?: string | null
         }
         Update: {
@@ -331,10 +331,10 @@ export type Database = {
           description?: string | null
           domain_id?: string | null
           id?: string
-          image_module?: string | null
+          image_module?: Json | null
           is_public?: boolean | null
           name?: string
-          report_module?: string | null
+          report_module?: Json | null
           user_id?: string | null
         }
         Relationships: [

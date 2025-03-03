@@ -26,19 +26,23 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface Template {
   id: string;
   name: string;
   description: string | null;
-  image_module: string | null;
-  report_module: string | null;
+  image_module: any | null;
+  report_module: any | null;
   is_public: boolean | null;
   domain_id: string | null;
   user_id: string | null;
@@ -57,8 +61,32 @@ const formSchema = z.object({
     message: "Template name must be at least 2 characters.",
   }),
   description: z.string().optional().nullable(),
-  image_module: z.string().optional().nullable(),
-  report_module: z.string().optional().nullable(),
+  image_module: z.string().optional().nullable()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        try {
+          JSON.parse(val);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      },
+      { message: "Invalid JSON format" }
+    ),
+  report_module: z.string().optional().nullable()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        try {
+          JSON.parse(val);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      },
+      { message: "Invalid JSON format" }
+    ),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -73,6 +101,10 @@ const Templates = () => {
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<Template | null>(null);
+  const [jsonErrors, setJsonErrors] = useState({
+    image_module: false,
+    report_module: false,
+  });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -83,6 +115,27 @@ const Templates = () => {
       report_module: "",
     },
   });
+
+  // Helper function to format JSON for display
+  const formatJsonForDisplay = (jsonData: any): string => {
+    if (!jsonData) return "";
+    
+    try {
+      // If it's already a string, check if it's valid JSON
+      if (typeof jsonData === 'string') {
+        // Try to parse it to validate and format
+        const parsed = JSON.parse(jsonData);
+        return JSON.stringify(parsed, null, 2);
+      }
+      
+      // If it's an object, stringify it with formatting
+      return JSON.stringify(jsonData, null, 2);
+    } catch (error) {
+      console.error("Error formatting JSON:", error);
+      // Return as is if there's an error
+      return typeof jsonData === 'string' ? jsonData : JSON.stringify(jsonData);
+    }
+  };
 
   // Fetch user profile and templates
   useEffect(() => {
@@ -192,35 +245,70 @@ const Templates = () => {
     form.reset({
       name: template.name,
       description: template.description || "",
-      image_module: template.image_module || "",
-      report_module: template.report_module || "",
+      image_module: formatJsonForDisplay(template.image_module),
+      report_module: formatJsonForDisplay(template.report_module),
     });
     setIsEditing(template.id);
     setIsSheetOpen(true);
   };
 
+  const validateJson = (jsonString: string | null, field: 'image_module' | 'report_module'): boolean => {
+    if (!jsonString) return true;
+    
+    try {
+      JSON.parse(jsonString);
+      setJsonErrors(prev => ({ ...prev, [field]: false }));
+      return true;
+    } catch (e) {
+      setJsonErrors(prev => ({ ...prev, [field]: true }));
+      return false;
+    }
+  };
+
   const onSubmit = async (values: FormValues) => {
     if (!currentTemplate) return;
 
+    // Validate JSON fields
+    const imageModuleValid = validateJson(values.image_module, 'image_module');
+    const reportModuleValid = validateJson(values.report_module, 'report_module');
+
+    if (!imageModuleValid || !reportModuleValid) {
+      toast({
+        title: "Validation Error",
+        description: "One or more JSON fields contain invalid JSON. Please correct and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      // Parse JSON strings to objects before saving
+      const updateData = {
+        name: values.name,
+        description: values.description,
+        image_module: values.image_module ? JSON.parse(values.image_module) : null,
+        report_module: values.report_module ? JSON.parse(values.report_module) : null,
+      };
+
       const { error } = await supabase
         .from("templates")
-        .update({
-          name: values.name,
-          description: values.description,
-          image_module: values.image_module,
-          report_module: values.report_module,
-        })
+        .update(updateData)
         .eq("id", currentTemplate.id);
 
       if (error) throw error;
 
-      // Update local state
+      // Update local state with parsed JSON
       const updatedMyTemplates = myTemplates.map((template) =>
         template.id === currentTemplate.id
-          ? { ...template, ...values }
+          ? { 
+              ...template, 
+              ...values,
+              image_module: updateData.image_module,
+              report_module: updateData.report_module
+            }
           : template
       );
+      
       setMyTemplates(updatedMyTemplates);
 
       toast({
@@ -417,16 +505,32 @@ const Templates = () => {
                     name="image_module"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Image Module Content</FormLabel>
+                        <FormLabel>Image Module Content (JSON)</FormLabel>
                         <FormControl>
-                          <textarea
-                            className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            placeholder="Image module content"
+                          <Textarea
+                            className="font-mono text-sm min-h-[150px]"
+                            placeholder="{}"
                             {...field}
                             value={field.value || ""}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              validateJson(e.target.value, 'image_module');
+                            }}
                           />
                         </FormControl>
+                        <FormDescription>
+                          Enter valid JSON for the image module
+                        </FormDescription>
                         <FormMessage />
+                        {jsonErrors.image_module && (
+                          <Alert variant="destructive" className="mt-2">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Invalid JSON</AlertTitle>
+                            <AlertDescription>
+                              The JSON format is invalid. Please check for missing commas, brackets, or quotes.
+                            </AlertDescription>
+                          </Alert>
+                        )}
                       </FormItem>
                     )}
                   />
@@ -436,16 +540,32 @@ const Templates = () => {
                     name="report_module"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Report Module Content</FormLabel>
+                        <FormLabel>Report Module Content (JSON)</FormLabel>
                         <FormControl>
-                          <textarea
-                            className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            placeholder="Report module content"
+                          <Textarea
+                            className="font-mono text-sm min-h-[150px]"
+                            placeholder="{}"
                             {...field}
                             value={field.value || ""}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              validateJson(e.target.value, 'report_module');
+                            }}
                           />
                         </FormControl>
+                        <FormDescription>
+                          Enter valid JSON for the report module
+                        </FormDescription>
                         <FormMessage />
+                        {jsonErrors.report_module && (
+                          <Alert variant="destructive" className="mt-2">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Invalid JSON</AlertTitle>
+                            <AlertDescription>
+                              The JSON format is invalid. Please check for missing commas, brackets, or quotes.
+                            </AlertDescription>
+                          </Alert>
+                        )}
                       </FormItem>
                     )}
                   />
