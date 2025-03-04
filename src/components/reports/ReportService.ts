@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -120,15 +119,15 @@ export const createReport = async (report: Partial<Report>): Promise<Report> => 
 /**
  * Updates an existing report
  */
-export const updateReport = async (report: Partial<Report> & { id: string }): Promise<Report> => {
+export const updateReport = async (id: string, updates: Partial<Report>): Promise<Report> => {
   try {
     const { data, error } = await supabase
       .from('reports')
       .update({
-        ...report,
+        ...updates,
         last_edited_at: new Date().toISOString()
       })
-      .eq('id', report.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -162,6 +161,63 @@ export const deleteReport = async (id: string): Promise<void> => {
     }
   } catch (error) {
     console.error('Error deleting report:', error);
+    throw error;
+  }
+};
+
+/**
+ * Exports the report to a Word document
+ */
+export const exportToWord = async (report: Report): Promise<void> => {
+  try {
+    // This is a placeholder for the actual export functionality
+    // In a real implementation, this would convert the report to a Word document
+    console.log('Exporting to Word:', report.title);
+    
+    // Create a simple HTML version of the content
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${report.title}</title>
+        </head>
+        <body>
+          ${report.content}
+        </body>
+      </html>
+    `;
+    
+    // Create a Blob containing the HTML content
+    const blob = new Blob([htmlContent], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    
+    // Create a download link and trigger it
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${report.title}.docx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error exporting to Word:', error);
+    throw error;
+  }
+};
+
+/**
+ * Exports the report to Google Docs
+ */
+export const exportToGoogleDocs = async (report: Report): Promise<void> => {
+  try {
+    // This is a placeholder for the actual Google Docs export functionality
+    // In a real implementation, this would interact with the Google Docs API
+    console.log('Exporting to Google Docs:', report.title);
+    
+    // For now, we'll just show a notification that this feature is not implemented
+    alert('Export to Google Docs is not yet implemented. This would require Google Drive API integration.');
+  } catch (error) {
+    console.error('Error exporting to Google Docs:', error);
     throw error;
   }
 };
