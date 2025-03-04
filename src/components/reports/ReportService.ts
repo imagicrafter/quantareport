@@ -1,6 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { Json } from '@/integrations/supabase/types';
+
+export type ReportStatus = 'draft' | 'published' | 'archived';
 
 export interface Report {
   id: string;
@@ -9,113 +11,157 @@ export interface Report {
   project_id: string;
   user_id: string;
   created_at: string;
-  last_edited_at?: string;
-  status: 'draft' | 'published' | 'archived';
+  last_edited_at: string;
+  status: ReportStatus;
   doc_url?: string;
   image_urls?: string[];
+  template_id?: string;
 }
 
+/**
+ * Fetches all reports for the current user
+ */
 export const fetchReports = async (): Promise<Report[]> => {
-  const { data, error } = await supabase
-    .from('reports')
-    .select('*')
-    .order('last_edited_at', { ascending: false })
-    .limit(10);
+  try {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) {
+      throw new Error('No active session');
+    }
 
-  if (error) {
-    toast.error('Failed to fetch reports');
+    const { data, error } = await supabase
+      .from('reports')
+      .select('*')
+      .eq('user_id', session.session.user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    // Convert the database response to our Report type
+    return data.map(item => ({
+      ...item,
+      status: item.status as ReportStatus,
+      image_urls: item.image_urls ? (item.image_urls as any) : []
+    }));
+  } catch (error) {
+    console.error('Error fetching reports:', error);
     throw error;
   }
-
-  return data || [];
 };
 
-export const fetchReportById = async (id: string): Promise<Report | null> => {
-  const { data, error } = await supabase
-    .from('reports')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
+/**
+ * Fetches a single report by ID
+ */
+export const fetchReportById = async (id: string): Promise<Report> => {
+  try {
+    const { data, error } = await supabase
+      .from('reports')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-  if (error) {
-    toast.error('Failed to fetch report');
+    if (error) {
+      throw error;
+    }
+
+    return {
+      ...data,
+      status: data.status as ReportStatus,
+      image_urls: data.image_urls ? (data.image_urls as any) : []
+    };
+  } catch (error) {
+    console.error('Error fetching report:', error);
     throw error;
   }
-
-  return data;
 };
 
+/**
+ * Creates a new report
+ */
 export const createReport = async (report: Partial<Report>): Promise<Report> => {
-  const { data: session } = await supabase.auth.getSession();
-  
-  if (!session.session) {
-    toast.error('You must be logged in to create a report');
-    throw new Error('No active session');
-  }
-
-  const userId = session.session.user.id;
-  
-  const { data, error } = await supabase
-    .from('reports')
-    .insert({
-      ...report,
-      user_id: userId,
+  try {
+    const now = new Date().toISOString();
+    
+    const newReport = {
+      user_id: report.user_id,
+      title: report.title || 'Untitled Report',
+      content: report.content || '',
+      project_id: report.project_id || '',
       status: report.status || 'draft',
-      created_at: new Date().toISOString(),
-      last_edited_at: new Date().toISOString()
-    })
-    .select()
-    .single();
+      doc_url: report.doc_url || '',
+      image_urls: report.image_urls || [],
+      created_at: now,
+      last_edited_at: now,
+      template_id: '',
+    };
 
-  if (error) {
-    toast.error('Failed to create report');
+    const { data, error } = await supabase
+      .from('reports')
+      .insert(newReport)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return {
+      ...data,
+      status: data.status as ReportStatus,
+      image_urls: data.image_urls ? (data.image_urls as any) : []
+    };
+  } catch (error) {
+    console.error('Error creating report:', error);
     throw error;
   }
-
-  toast.success('Report created successfully');
-  return data;
 };
 
-export const updateReport = async (id: string, updates: Partial<Report>): Promise<Report> => {
-  const { data, error } = await supabase
-    .from('reports')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+/**
+ * Updates an existing report
+ */
+export const updateReport = async (report: Partial<Report> & { id: string }): Promise<Report> => {
+  try {
+    const { data, error } = await supabase
+      .from('reports')
+      .update({
+        ...report,
+        last_edited_at: new Date().toISOString()
+      })
+      .eq('id', report.id)
+      .select()
+      .single();
 
-  if (error) {
-    toast.error('Failed to update report');
+    if (error) {
+      throw error;
+    }
+
+    return {
+      ...data,
+      status: data.status as ReportStatus,
+      image_urls: data.image_urls ? (data.image_urls as any) : []
+    };
+  } catch (error) {
+    console.error('Error updating report:', error);
     throw error;
   }
-
-  toast.success('Report saved successfully');
-  return data;
 };
 
+/**
+ * Deletes a report
+ */
 export const deleteReport = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from('reports')
-    .delete()
-    .eq('id', id);
+  try {
+    const { error } = await supabase
+      .from('reports')
+      .delete()
+      .eq('id', id);
 
-  if (error) {
-    toast.error('Failed to delete report');
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error deleting report:', error);
     throw error;
   }
-
-  toast.success('Report deleted successfully');
-};
-
-export const exportToWord = (report: Report): void => {
-  // Placeholder for Word export functionality
-  // In a real implementation, this would use a library like html-to-docx
-  toast.info('Export to Word functionality will be implemented');
-  console.log('Exporting to Word:', report);
-};
-
-export const exportToGoogleDocs = (report: Report): void => {
-  // Placeholder for Google Docs export functionality
-  toast.info('Export to Google Docs functionality will be implemented');
-  console.log('Exporting to Google Docs:', report);
 };

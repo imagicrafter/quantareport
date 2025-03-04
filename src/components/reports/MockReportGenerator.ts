@@ -1,6 +1,6 @@
 
 import { Report } from './ReportService';
-import { v4 as uuidv4 } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
 
 export const generateMockReport = (userId: string): Partial<Report> => {
   const projectName = "Sample Project";
