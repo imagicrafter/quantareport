@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { createReport } from './ReportService';
+import { createReport, ReportStatus } from './ReportService';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -147,7 +147,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         content: `Report for project: ${project.name}`,
         project_id: projectId,
         user_id: userId,
-        status: 'draft',
+        status: 'draft' as ReportStatus, // Explicitly cast to ReportStatus type
         image_urls: imageUrls,
         template_id: project.template_id || ''
       };
