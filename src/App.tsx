@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Index from './pages/Index';
 import Dashboard from './pages/Dashboard';
@@ -23,7 +23,11 @@ function App() {
         <Route path="/signup" element={<SignUp />} />
         
         {/* Dashboard and protected routes */}
-        <Route path="/dashboard" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
+        <Route path="/dashboard" element={<DashboardLayout><Dashboard /></DashboardLayout>}>
+          {/* Default redirect to projects when accessing /dashboard */}
+          <Route index element={<Navigate to="/dashboard/projects" replace />} />
+          <Route path="projects" element={<Dashboard />} />
+        </Route>
         <Route path="/templates" element={<DashboardLayout><Templates /></DashboardLayout>} />
         <Route path="/reports" element={<DashboardLayout><Reports /></DashboardLayout>} />
         <Route path="/reports/editor/:id" element={<DashboardLayout><ReportEditor /></DashboardLayout>} />

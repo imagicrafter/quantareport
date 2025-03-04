@@ -1,9 +1,8 @@
 
 import { useState, useEffect } from 'react';
-import { Outlet, useLocation, Navigate } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import Sidebar from '../components/dashboard/Sidebar';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import StatCards from '../components/dashboard/StatCards';
 import ProjectsHeader from '../components/dashboard/ProjectsHeader';
@@ -11,7 +10,6 @@ import ProjectsTable from '../components/dashboard/ProjectsTable';
 import CreateProjectModal from '../components/dashboard/CreateProjectModal';
 
 const Dashboard = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,10 +51,6 @@ const Dashboard = () => {
     fetchProjects();
   }, [refreshTrigger, toast]);
   
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
   const handleProjectCreated = () => {
     // Trigger a refresh of projects
     setRefreshTrigger(prev => prev + 1);
@@ -66,36 +60,20 @@ const Dashboard = () => {
   const currentPath = location.pathname.split('/').pop() || 'projects';
   const pageTitle = currentPath.charAt(0).toUpperCase() + currentPath.slice(1);
 
-  // If the path is exactly /dashboard, redirect to /dashboard/projects
-  if (location.pathname === '/dashboard') {
-    return <Navigate to="/dashboard/projects" replace />;
-  }
-
   return (
-    <div className="min-h-screen flex bg-secondary/30">
-      {/* Sidebar */}
-      <Sidebar 
-        sidebarOpen={sidebarOpen} 
-        toggleSidebar={toggleSidebar} 
-        setShowCreateProject={setShowCreateProject} 
-      />
+    <div className="min-h-screen">
+      {/* Header */}
+      <DashboardHeader title={pageTitle} toggleSidebar={() => {}} />
 
-      {/* Main content */}
-      <main className="flex-1 min-w-0">
-        {/* Header */}
-        <DashboardHeader toggleSidebar={toggleSidebar} title={pageTitle} />
-
-        {/* Render child routes */}
-        {location.pathname === '/dashboard/projects' ? (
-          <div className="p-4 md:p-6">
-            <StatCards projects={projects} />
-            <ProjectsHeader setShowCreateProject={setShowCreateProject} />
-            <ProjectsTable onRefresh={() => setRefreshTrigger(prev => prev + 1)} />
-          </div>
-        ) : (
-          <Outlet />
-        )}
-      </main>
+      {/* Main Content - if we're on the projects page specifically */}
+      <div className="p-4 md:p-6">
+        <StatCards projects={projects} />
+        <ProjectsHeader setShowCreateProject={setShowCreateProject} />
+        <ProjectsTable onRefresh={() => setRefreshTrigger(prev => prev + 1)} />
+        
+        {/* Render child routes if present (for future nested routes) */}
+        <Outlet />
+      </div>
       
       {/* Create Project Modal */}
       <CreateProjectModal 

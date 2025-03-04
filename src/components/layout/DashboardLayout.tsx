@@ -22,9 +22,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         setShowCreateProject={setShowCreateProject} 
       />
       <main className="flex-1 overflow-auto">
-        <div className="p-4">
-          {children}
-        </div>
+        {children}
       </main>
     </div>
   );
