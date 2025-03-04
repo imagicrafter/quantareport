@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Template, Profile } from "@/types/template.types";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import TemplateTable from "@/components/templates/TemplateTable";
 import TemplateSummaryCards from "@/components/templates/TemplateSummaryCards";
 import TemplateEditForm from "@/components/templates/TemplateEditForm";
@@ -146,63 +147,65 @@ const Templates = () => {
   };
 
   return (
-    <div className="px-4 py-4">
-      <h1 className="text-2xl font-bold mb-6">Templates</h1>
+    <div className="min-h-screen">
+      <DashboardHeader title="Templates" toggleSidebar={() => {}} />
+      
+      <div className="px-4 py-4">
+        {isLoading ? (
+          <div className="flex justify-center items-center h-40">
+            <p>Loading templates...</p>
+          </div>
+        ) : (
+          <>
+            <TemplateSummaryCards 
+              domainTemplates={domainTemplates} 
+              myTemplates={myTemplates} 
+            />
 
-      {isLoading ? (
-        <div className="flex justify-center items-center h-40">
-          <p>Loading templates...</p>
-        </div>
-      ) : (
-        <>
-          <TemplateSummaryCards 
-            domainTemplates={domainTemplates} 
-            myTemplates={myTemplates} 
-          />
+            <Tabs defaultValue="domain" className="w-full mb-10">
+              <TabsList className="mb-4">
+                <TabsTrigger value="domain">Domain Templates</TabsTrigger>
+                <TabsTrigger value="personal">My Templates</TabsTrigger>
+              </TabsList>
 
-          <Tabs defaultValue="domain" className="w-full mb-10">
-            <TabsList className="mb-4">
-              <TabsTrigger value="domain">Domain Templates</TabsTrigger>
-              <TabsTrigger value="personal">My Templates</TabsTrigger>
-            </TabsList>
+              <TabsContent value="domain">
+                <TemplateTable 
+                  templates={domainTemplates}
+                  emptyMessage="No domain templates available"
+                  onAction={handleCopyTemplate}
+                  actionLabel="Add"
+                />
+              </TabsContent>
 
-            <TabsContent value="domain">
-              <TemplateTable 
-                templates={domainTemplates}
-                emptyMessage="No domain templates available"
-                onAction={handleCopyTemplate}
-                actionLabel="Add"
-              />
-            </TabsContent>
+              <TabsContent value="personal">
+                <TemplateTable 
+                  templates={myTemplates}
+                  emptyMessage="No personal templates yet"
+                  onAction={handleEditTemplate}
+                  actionLabel="Edit"
+                />
+              </TabsContent>
+            </Tabs>
 
-            <TabsContent value="personal">
-              <TemplateTable 
-                templates={myTemplates}
-                emptyMessage="No personal templates yet"
-                onAction={handleEditTemplate}
-                actionLabel="Edit"
-              />
-            </TabsContent>
-          </Tabs>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+              <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Edit Template</SheetTitle>
+                  <SheetDescription>
+                    Modify your template details below
+                  </SheetDescription>
+                </SheetHeader>
 
-          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-            <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle>Edit Template</SheetTitle>
-                <SheetDescription>
-                  Modify your template details below
-                </SheetDescription>
-              </SheetHeader>
-
-              <TemplateEditForm 
-                currentTemplate={currentTemplate}
-                onSuccess={handleTemplateUpdate}
-                onCancel={handleCancelEdit}
-              />
-            </SheetContent>
-          </Sheet>
-        </>
-      )}
+                <TemplateEditForm 
+                  currentTemplate={currentTemplate}
+                  onSuccess={handleTemplateUpdate}
+                  onCancel={handleCancelEdit}
+                />
+              </SheetContent>
+            </Sheet>
+          </>
+        )}
+      </div>
     </div>
   );
 };

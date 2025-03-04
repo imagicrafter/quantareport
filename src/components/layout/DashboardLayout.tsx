@@ -1,12 +1,9 @@
 
 import React, { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import Sidebar from '../dashboard/Sidebar';
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
-
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+const DashboardLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showCreateProject, setShowCreateProject] = useState(false);
 
@@ -22,7 +19,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         setShowCreateProject={setShowCreateProject} 
       />
       <main className="flex-1 overflow-auto">
-        {children}
+        <Outlet context={[showCreateProject, setShowCreateProject]} />
       </main>
     </div>
   );

@@ -72,7 +72,7 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
                 key={item.name}
                 to={item.path}
                 className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
-                  currentPath === item.path ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                  currentPath.includes(item.path) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
                 }`}
               >
                 {item.icon}
