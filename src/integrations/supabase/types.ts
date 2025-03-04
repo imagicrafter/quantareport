@@ -251,6 +251,8 @@ export type Database = {
           created_at: string | null
           doc_url: string | null
           id: string
+          image_urls: Json | null
+          last_edited_at: string | null
           project_id: string
           status: string
           template_id: string
@@ -262,6 +264,8 @@ export type Database = {
           created_at?: string | null
           doc_url?: string | null
           id?: string
+          image_urls?: Json | null
+          last_edited_at?: string | null
           project_id: string
           status?: string
           template_id: string
@@ -273,6 +277,8 @@ export type Database = {
           created_at?: string | null
           doc_url?: string | null
           id?: string
+          image_urls?: Json | null
+          last_edited_at?: string | null
           project_id?: string
           status?: string
           template_id?: string
