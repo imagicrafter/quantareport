@@ -64,21 +64,21 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       // Create a set of project IDs that already have reports
       const projectsWithReports = new Set(reports.map(report => report.project_id));
 
-      // Get image and note counts for each project
+      // Get image and note counts for each project directly from the database
       const projectDetails = await Promise.all(projects.map(async (project) => {
-        // Get image count
+        // Get image count using the specified query
         const { count: imageCount, error: imageError } = await supabase
           .from('files')
           .select('id', { count: 'exact', head: true })
           .eq('project_id', project.id)
           .eq('user_id', session.session.user.id)
-          .in('type', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+          .eq('type', 'image');
 
         if (imageError) {
           console.error('Error fetching image count:', imageError);
         }
 
-        // Get notes count
+        // Get notes count using the specified query
         const { count: notesCount, error: notesError } = await supabase
           .from('notes')
           .select('id', { count: 'exact', head: true })
@@ -215,8 +215,8 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-1 pt-0">
-                    <p>{project.image_count} Images</p>
-                    <p>{project.notes_count} Notes</p>
+                    <p>{project.image_count} {project.image_count === 1 ? 'Image' : 'Images'}</p>
+                    <p>{project.notes_count} {project.notes_count === 1 ? 'Note' : 'Notes'}</p>
                   </CardContent>
                   <CardFooter>
                     <Button 
