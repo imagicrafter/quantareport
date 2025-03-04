@@ -31,7 +31,8 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
   useEffect(() => {
     // Load TinyMCE script
     const script = document.createElement('script');
-    script.src = 'https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js';
+    script.src = '../../utils/tinymce/js/tinymce/tinymce.d.ts';
+    //script.src = 'https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js';
     script.referrerPolicy = 'origin';
     script.onload = () => initializeEditor();
     document.head.appendChild(script);
