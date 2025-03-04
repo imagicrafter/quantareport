@@ -24,7 +24,7 @@ const ReportEditorPage = () => {
         <div className="container mx-auto py-4">
           <Button
             variant="ghost"
-            onClick={() => navigate('/reports')}
+            onClick={() => navigate('/dashboard/reports')}
             className="mb-2"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />

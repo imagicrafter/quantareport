@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -92,7 +93,7 @@ export const createReport = async (report: Partial<Report>): Promise<Report> => 
       image_urls: report.image_urls || [],
       created_at: now,
       last_edited_at: now,
-      template_id: '',
+      template_id: report.template_id || '',
     };
 
     const { data, error } = await supabase

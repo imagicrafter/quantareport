@@ -3,16 +3,16 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
-import { fetchReports, createReport } from '@/components/reports/ReportService';
-import { generateMockReport } from '@/components/reports/MockReportGenerator';
+import { fetchReports } from '@/components/reports/ReportService';
 import ReportsTable from '@/components/reports/ReportsTable';
 import { Report } from '@/components/reports/ReportService';
-import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import CreateReportModal from '@/components/reports/CreateReportModal';
 
 const Reports = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,23 +31,14 @@ const Reports = () => {
     }
   };
 
-  const handleCreateNewReport = async () => {
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      
-      if (!session.session) {
-        console.error('No active session');
-        return;
-      }
-      
-      const userId = session.session.user.id;
-      const mockReport = generateMockReport(userId);
-      
-      const newReport = await createReport(mockReport);
-      navigate(`/dashboard/reports/editor/${newReport.id}`);
-    } catch (error) {
-      console.error('Error creating report:', error);
-    }
+  const handleCreateNewReport = () => {
+    setShowCreateModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false);
+    // Refresh reports list after modal is closed
+    loadReports();
   };
 
   return (
@@ -64,6 +55,11 @@ const Reports = () => {
         </div>
         
         <ReportsTable reports={reports} isLoading={isLoading} />
+        
+        <CreateReportModal 
+          isOpen={showCreateModal} 
+          onClose={handleCloseModal} 
+        />
       </div>
     </div>
   );

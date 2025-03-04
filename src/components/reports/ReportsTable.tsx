@@ -89,7 +89,7 @@ const ReportsTable = ({ reports, isLoading }: ReportsTableProps) => {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => navigate(`/reports/editor/${report.id}`)}
+                      onClick={() => navigate(`/dashboard/reports/editor/${report.id}`)}
                     >
                       <Eye className="h-4 w-4 mr-1" /> View
                     </Button>

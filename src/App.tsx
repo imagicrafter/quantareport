@@ -10,6 +10,8 @@ import NotFound from './pages/NotFound';
 import Templates from './pages/Templates';
 import Reports from './pages/Reports';
 import ReportEditor from './pages/ReportEditor';
+import Images from './pages/Images';
+import Notes from './pages/Notes';
 import './App.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
@@ -30,6 +32,8 @@ function App() {
           <Route path="templates" element={<Templates />} />
           <Route path="reports" element={<Reports />} />
           <Route path="reports/editor/:id" element={<ReportEditor />} />
+          <Route path="images" element={<Images />} />
+          <Route path="notes" element={<Notes />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         
