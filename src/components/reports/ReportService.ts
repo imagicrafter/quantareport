@@ -55,6 +55,7 @@ export const fetchReports = async (): Promise<Report[]> => {
  */
 export const fetchReportById = async (id: string): Promise<Report> => {
   try {
+    console.log(`Fetching report with ID ${id} from Supabase...`);
     const { data, error } = await supabase
       .from('reports')
       .select('*')
@@ -62,9 +63,17 @@ export const fetchReportById = async (id: string): Promise<Report> => {
       .single();
 
     if (error) {
+      console.error(`Error in fetchReportById for ID ${id}:`, error);
       throw error;
     }
 
+    if (!data) {
+      console.error(`No report found with ID ${id}`);
+      throw new Error(`Report with ID ${id} not found`);
+    }
+
+    console.log(`Report data retrieved:`, data);
+    
     return {
       ...data,
       status: data.status as ReportStatus,
@@ -93,9 +102,10 @@ export const createReport = async (report: Partial<Report>): Promise<Report> => 
       image_urls: report.image_urls || [],
       created_at: now,
       last_edited_at: now,
-      template_id: report.template_id || '',
+      template_id: report.template_id || null,
     };
 
+    console.log('Creating new report with data:', newReport);
     const { data, error } = await supabase
       .from('reports')
       .insert(newReport)
@@ -103,9 +113,11 @@ export const createReport = async (report: Partial<Report>): Promise<Report> => 
       .single();
 
     if (error) {
+      console.error('Error in createReport:', error);
       throw error;
     }
 
+    console.log('Report created successfully:', data);
     return {
       ...data,
       status: data.status as ReportStatus,

@@ -29,7 +29,7 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
   const editorRef = useRef<any>(null);
   const autoSaveTimerRef = useRef<number | null>(null);
   const contentLoadAttempts = useRef(0);
-  const maxLoadAttempts = 3;
+  const maxLoadAttempts = 5; // Increased from 3 to 5 for more retries
 
   useEffect(() => {
     // Load TinyMCE script
@@ -105,6 +105,10 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
         'searchreplace', 'visualblocks', 'code', 'fullscreen', 'insertdatetime',
         'media', 'table', 'code', 'help', 'wordcount', 'autosave'
       ],
+      autosave_ask_before_unload: false, // Don't ask user when leaving page
+      autosave_interval: '30s', // Auto save every 30 seconds
+      autosave_prefix: 'tinymce-autosave-{path}{query}-{id}-', // Customize autosave prefix
+      autosave_restore_when_empty: true, // Restore when editor is empty
       toolbar: 'undo redo | formatselect | ' +
         'bold italic backcolor | alignleft aligncenter ' +
         'alignright alignjustify | bullist numlist outdent indent | ' +
