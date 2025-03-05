@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { generateMockReport } from './MockReportGenerator';
 
 interface ProjectDetails {
   id: string;
@@ -16,6 +17,7 @@ interface ProjectDetails {
   image_count: number;
   notes_count: number;
   has_report: boolean;
+  template_id: string | null;
 }
 
 interface CreateReportModalProps {
@@ -83,7 +85,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       // Get all projects for the user
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
-        .select('id, name, description')
+        .select('id, name, description, template_id')
         .eq('user_id', session.session.user.id);
 
       if (projectsError) throw projectsError;
@@ -180,7 +182,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         content: `Report for project: ${project.name}`,
         project_id: projectId,
         user_id: userId,
-        status: 'draft' as ReportStatus, // Explicitly cast to ReportStatus type
+        status: 'draft' as ReportStatus,
         image_urls: imageUrls,
         template_id: project.template_id || null
       };
@@ -188,6 +190,22 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       console.log('Creating report with data:', reportData);
       const newReport = await createReport(reportData);
       console.log('Report created:', newReport);
+      
+      // Generate mock content and update the report
+      const mockContent = generateMockReport(project.name, imageUrls);
+      
+      // Update the report with the mock content
+      const { error: updateError } = await supabase
+        .from('reports')
+        .update({ content: mockContent })
+        .eq('id', newReport.id);
+        
+      if (updateError) {
+        console.error('Error updating report content:', updateError);
+        throw updateError;
+      }
+      
+      console.log('Report content updated with mock data');
       
       // Store the new report ID and initial content to poll for updates
       setReportCreated({
@@ -199,7 +217,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       // Send webhook notification with more comprehensive payload
       try {
-        // Fixed webhook URL - using GET instead of POST as per error message
+        // Fixed webhook URL for POST
         const webhookUrl = 'https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d';
         
         const webhookPayload = {
@@ -209,46 +227,47 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           project_name: project.name,
           timestamp: new Date().toISOString(),
           image_count: imageUrls.length,
+          image_urls: imageUrls,
+          template_id: project.template_id,
           action: 'generate_report'
         };
         
         console.log('Sending webhook payload:', webhookPayload);
         console.log('Webhook URL:', webhookUrl);
         
-        // Try both GET and POST to determine which one works
-        const getUrl = new URL(webhookUrl);
-        // Add all payload fields as query parameters
-        Object.entries(webhookPayload).forEach(([key, value]) => {
-          getUrl.searchParams.append(key, String(value));
-        });
-        
-        // First try GET request
-        const getResponse = await fetch(getUrl.toString(), {
-          method: 'GET',
+        // Send POST request
+        const postResponse = await fetch(webhookUrl, {
+          method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'Accept': 'application/json'
-          }
+          },
+          body: JSON.stringify(webhookPayload)
         });
         
-        if (getResponse.ok) {
-          console.log('Webhook GET request succeeded:', await getResponse.text());
+        if (postResponse.ok) {
+          console.log('Webhook POST request succeeded:', await postResponse.text());
         } else {
-          console.log('Webhook GET request failed, trying POST...');
+          console.error('Webhook POST response error:', await postResponse.text());
           
-          // If GET fails, try POST request
-          const postResponse = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(webhookPayload)
+          // As a fallback, try GET request
+          const getUrl = new URL(webhookUrl);
+          // Add all payload fields as query parameters
+          Object.entries(webhookPayload).forEach(([key, value]) => {
+            getUrl.searchParams.append(key, String(value));
           });
           
-          if (postResponse.ok) {
-            console.log('Webhook POST request succeeded:', await postResponse.text());
+          const getResponse = await fetch(getUrl.toString(), {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (getResponse.ok) {
+            console.log('Webhook GET request succeeded:', await getResponse.text());
           } else {
-            console.error('Webhook POST response error:', await postResponse.text());
+            console.error('Webhook GET response error:', await getResponse.text());
           }
         }
       } catch (webhookError) {
@@ -256,7 +275,15 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         // Continue even if webhook fails
       }
       
-      // Don't navigate yet - wait for the polling to detect content update
+      // Check if the report content has been updated
+      const updatedReport = await fetchReportById(newReport.id);
+      if (updatedReport.content && updatedReport.content !== newReport.content) {
+        console.log('Report content has been updated, navigating to editor...');
+        setReportCreated(null);
+        onClose();
+        navigate(`/dashboard/reports/editor/${newReport.id}`);
+      }
+      
     } catch (error) {
       console.error('Error creating report:', error);
       toast.error('Failed to create report. Please try again.');
