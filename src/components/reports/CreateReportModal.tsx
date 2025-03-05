@@ -7,7 +7,7 @@ import { createReport, ReportStatus } from './ReportService';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 interface ProjectDetails {
   id: string;
@@ -27,6 +27,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   const [projects, setProjects] = useState<ProjectDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [creatingReport, setCreatingReport] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,10 +39,12 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   const fetchProjects = async () => {
     try {
       setLoading(true);
+      setError(null);
       const { data: session } = await supabase.auth.getSession();
       
       if (!session.session) {
         console.error('No active session');
+        setError('Authentication required. Please sign in.');
         return;
       }
 
@@ -71,7 +74,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           .from('files')
           .select('id', { count: 'exact', head: true })
           .eq('project_id', project.id)
-          .eq('user_id', session.session.user.id)
           .eq('type', 'image');
 
         if (imageError) {
@@ -82,8 +84,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         const { count: notesCount, error: notesError } = await supabase
           .from('notes')
           .select('id', { count: 'exact', head: true })
-          .eq('project_id', project.id)
-          .eq('user_id', session.session.user.id);
+          .eq('project_id', project.id);
 
         if (notesError) {
           console.error('Error fetching notes count:', notesError);
@@ -97,12 +98,11 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         };
       }));
 
-      // Filter to only show projects without reports
-      const filteredProjects = projectDetails.filter(project => !project.has_report);
-      setProjects(filteredProjects);
+      // No longer filtering out projects with reports
+      setProjects(projectDetails);
     } catch (error) {
       console.error('Error fetching projects:', error);
-      toast.error('Failed to load projects. Please try again.');
+      setError('Failed to load projects. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -115,6 +115,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       if (!session.session) {
         console.error('No active session');
+        toast.error('Authentication required. Please sign in.');
         return;
       }
       
@@ -135,7 +136,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         .select('file_path')
         .eq('project_id', projectId)
         .eq('user_id', userId)
-        .in('type', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+        .eq('type', 'image');
         
       if (imagesError) throw imagesError;
       
@@ -152,21 +153,35 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         template_id: project.template_id || ''
       };
       
+      console.log('Creating report with data:', reportData);
       const newReport = await createReport(reportData);
+      console.log('Report created:', newReport);
       
-      // Send webhook notification
+      // Send webhook notification with more comprehensive payload
       try {
-        await fetch('https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d', {
+        const webhookPayload = {
+          project_id: projectId,
+          report_id: newReport.id,
+          user_id: userId,
+          project_name: project.name,
+          timestamp: new Date().toISOString(),
+          image_count: imageUrls.length
+        };
+        
+        console.log('Sending webhook payload:', webhookPayload);
+        const webhookResponse = await fetch('https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            project_id: projectId,
-            report_id: newReport.id,
-            timestamp: new Date().toISOString()
-          })
+          body: JSON.stringify(webhookPayload)
         });
+        
+        if (!webhookResponse.ok) {
+          console.error('Webhook response error:', await webhookResponse.text());
+        } else {
+          console.log('Webhook sent successfully:', await webhookResponse.text());
+        }
       } catch (webhookError) {
         console.error('Error sending webhook:', webhookError);
         // Continue even if webhook fails
@@ -189,7 +204,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         <DialogHeader>
           <DialogTitle>Create a New Report</DialogTitle>
           <DialogDescription>
-            Select a project to create a new report. Only projects without existing reports are shown.
+            Select a project to create a new report.
           </DialogDescription>
         </DialogHeader>
         
@@ -204,6 +219,11 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
                 </Card>
               ))}
             </div>
+          ) : error ? (
+            <div className="flex items-center p-4 border rounded-md bg-destructive/10 text-destructive">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              <span>{error}</span>
+            </div>
           ) : projects.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {projects.map((project) => (
@@ -212,6 +232,9 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
                     <CardTitle>{project.name}</CardTitle>
                     <CardDescription className="line-clamp-2">
                       {project.description || 'No description'}
+                      {project.has_report && (
+                        <span className="ml-2 text-amber-600 font-medium">(Has existing report)</span>
+                      )}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-1 pt-0">
@@ -229,7 +252,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Creating...
                         </>
-                      ) : 'Create Report'}
+                      ) : project.has_report ? 'Create New Report' : 'Create Report'}
                     </Button>
                   </CardFooter>
                 </Card>
