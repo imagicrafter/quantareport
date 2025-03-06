@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -134,6 +133,8 @@ export const createReport = async (report: Partial<Report>): Promise<Report> => 
  */
 export const updateReport = async (id: string, updates: Partial<Report>): Promise<Report> => {
   try {
+    console.log(`Updating report ${id} with:`, updates);
+    
     const { data, error } = await supabase
       .from('reports')
       .update({
@@ -145,9 +146,11 @@ export const updateReport = async (id: string, updates: Partial<Report>): Promis
       .single();
 
     if (error) {
+      console.error('Error in updateReport:', error);
       throw error;
     }
 
+    console.log('Report updated successfully:', data);
     return {
       ...data,
       status: data.status as ReportStatus,

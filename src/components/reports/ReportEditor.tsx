@@ -1,14 +1,23 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Report, updateReport, fetchReportById, exportToWord, exportToGoogleDocs } from './ReportService';
-import { Save, FileDown, FileText, AlertCircle } from 'lucide-react';
+import { Save, FileDown, FileText, AlertCircle, Archive } from 'lucide-react';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate } from 'react-router-dom';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-// Define TinyMCE global
 declare global {
   interface Window {
     tinymce: any;
@@ -26,13 +35,14 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [editorInitialized, setEditorInitialized] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const editorRef = useRef<any>(null);
   const autoSaveTimerRef = useRef<number | null>(null);
   const contentLoadAttempts = useRef(0);
-  const maxLoadAttempts = 5; // Increased from 3 to 5 for more retries
+  const maxLoadAttempts = 5;
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Load TinyMCE script
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/tinymce@6.8.3/tinymce.min.js';
     script.referrerPolicy = 'origin';
@@ -44,7 +54,6 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
     };
     document.head.appendChild(script);
 
-    // Fetch report data
     const loadReport = async () => {
       try {
         console.log('Fetching report with ID:', reportId);
@@ -69,7 +78,6 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
     loadReport();
 
     return () => {
-      // Clean up TinyMCE and auto-save timer
       if (editorRef.current) {
         console.log('Removing TinyMCE editor');
         editorRef.current.remove();
@@ -82,7 +90,6 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
   }, [reportId]);
 
   useEffect(() => {
-    // Initialize editor once report data is loaded and TinyMCE is available
     if (!isLoading && report && window.tinymce && !editorInitialized) {
       console.log('Initializing editor with report:', report.title);
       initializeEditor();
@@ -105,10 +112,10 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
         'searchreplace', 'visualblocks', 'code', 'fullscreen', 'insertdatetime',
         'media', 'table', 'code', 'help', 'wordcount', 'autosave'
       ],
-      autosave_ask_before_unload: false, // Don't ask user when leaving page
-      autosave_interval: '30s', // Auto save every 30 seconds
-      autosave_prefix: 'tinymce-autosave-{path}{query}-{id}-', // Customize autosave prefix
-      autosave_restore_when_empty: true, // Restore when editor is empty
+      autosave_ask_before_unload: false,
+      autosave_interval: '30s',
+      autosave_prefix: 'tinymce-autosave-{path}{query}-{id}-',
+      autosave_restore_when_empty: true,
       toolbar: 'undo redo | formatselect | ' +
         'bold italic backcolor | alignleft aligncenter ' +
         'alignright alignjustify | bullist numlist outdent indent | ' +
@@ -128,13 +135,11 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
             console.log('No report content to set');
           }
           
-          // Set up auto-save every 60 seconds
           autoSaveTimerRef.current = window.setInterval(() => {
             handleSave(true);
           }, 60000);
         });
         
-        // Add content change handler
         editor.on('change', () => {
           console.log('Content changed in editor');
         });
@@ -161,7 +166,6 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
       if (!isAutoSave) {
         toast.success('Report saved successfully');
       } else {
-        // Show a more subtle notification for auto-save
         toast('Report auto-saved', {
           duration: 2000,
           icon: <Save className="h-4 w-4" />
@@ -185,7 +189,28 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
     }
   };
 
-  // Function to retry loading content if it fails
+  const handleArchive = async () => {
+    if (!report) return;
+    
+    try {
+      setIsSaving(true);
+      
+      await updateReport(reportId, {
+        status: 'archived'
+      });
+      
+      toast.success('Report archived successfully');
+      setShowArchiveDialog(false);
+      
+      navigate('/dashboard/reports');
+    } catch (error) {
+      console.error('Error archiving report:', error);
+      toast.error('Failed to archive report');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const retryLoadContent = async () => {
     if (contentLoadAttempts.current >= maxLoadAttempts) {
       setLoadError(`Failed to load report content after ${maxLoadAttempts} attempts`);
@@ -202,7 +227,6 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
         setTitle(reportData.title);
         setLoadError(null);
         
-        // If editor is already initialized, set content
         if (editorRef.current) {
           editorRef.current.setContent(reportData.content || '');
         }
@@ -272,6 +296,14 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
             {isSaving ? 'Saving...' : 'Save'}
           </Button>
           
+          <Button
+            variant="outline"
+            onClick={() => setShowArchiveDialog(true)}
+          >
+            <Archive className="h-4 w-4 mr-2" />
+            Archive
+          </Button>
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -298,6 +330,22 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
       <div className="border rounded-md p-1">
         <textarea id="report-editor" />
       </div>
+
+      <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Report</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive this report? Archived reports will be 
+              available for 14 days. After confirming, you'll be returned to the reports page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchive}>Archive Report</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

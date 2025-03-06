@@ -113,6 +113,35 @@ export type Database = {
           },
         ]
       }
+      image_descriptions: {
+        Row: {
+          created_at: string
+          file_id: string | null
+          id: string
+          image_description: Json | null
+        }
+        Insert: {
+          created_at?: string
+          file_id?: string | null
+          id?: string
+          image_description?: Json | null
+        }
+        Update: {
+          created_at?: string
+          file_id?: string | null
+          id?: string
+          image_description?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_descriptions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           content: string
