@@ -274,6 +274,41 @@ export type Database = {
           },
         ]
       }
+      report_progress: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          progress: number
+          report_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string
+          progress?: number
+          report_id?: string | null
+          status: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          progress?: number
+          report_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_progress_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           content: string | null
