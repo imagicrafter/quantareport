@@ -48,11 +48,11 @@ const CreateProjectModal = ({
           return;
         }
 
-        // Get user templates and public templates
+        // Get only user's templates (not all public templates)
         const { data: userTemplates, error: userError } = await supabase
           .from('templates')
           .select('*')
-          .or(`user_id.eq.${session.session.user.id},is_public.eq.true`);
+          .eq('user_id', session.session.user.id);
 
         if (userError) throw userError;
         setTemplates(userTemplates || []);
@@ -173,7 +173,7 @@ const CreateProjectModal = ({
                       ) : (
                         templates.map((template) => (
                           <SelectItem key={template.id} value={template.id}>
-                            {template.name} {template.is_public ? '(Public)' : ''}
+                            {template.name}
                           </SelectItem>
                         ))
                       )}
