@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +7,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { generateMockReport } from './MockReportGenerator';
 
 interface ProjectDetails {
   id: string;
@@ -177,9 +175,24 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       // Create the report
       const imageUrls = images ? images.map(img => img.file_path) : [];
       
+      // Generate a basic initial content for the report
+      const currentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      const initialContent = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <h1 style="text-align: center; color: #2563eb; margin-bottom: 20px;">${project.name} - Project Report</h1>
+          <p style="text-align: center; font-style: italic; margin-bottom: 30px;">Generated on ${currentDate}</p>
+          <p>This is an automatically generated report for the ${project.name} project.</p>
+        </div>
+      `;
+      
       const reportData = {
         title: `${project.name} Report`,
-        content: `Report for project: ${project.name}`,
+        content: initialContent,
         project_id: projectId,
         user_id: userId,
         status: 'draft' as ReportStatus,
@@ -191,29 +204,13 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       const newReport = await createReport(reportData);
       console.log('Report created:', newReport);
       
-      // Generate mock content and update the report
-      const mockContent = generateMockReport(project.name, imageUrls);
-      
-      // Update the report with the mock content
-      const { error: updateError } = await supabase
-        .from('reports')
-        .update({ content: mockContent })
-        .eq('id', newReport.id);
-        
-      if (updateError) {
-        console.error('Error updating report content:', updateError);
-        throw updateError;
-      }
-      
-      console.log('Report content updated with mock data');
-      
       // Store the new report ID and initial content to poll for updates
       setReportCreated({
         id: newReport.id,
         content: newReport.content
       });
       
-      toast.success('Report created. Generating content...');
+      toast.success('Report created successfully');
       
       // Send webhook notification with more comprehensive payload
       try {
@@ -275,14 +272,9 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         // Continue even if webhook fails
       }
       
-      // Check if the report content has been updated
-      const updatedReport = await fetchReportById(newReport.id);
-      if (updatedReport.content && updatedReport.content !== newReport.content) {
-        console.log('Report content has been updated, navigating to editor...');
-        setReportCreated(null);
-        onClose();
-        navigate(`/dashboard/reports/editor/${newReport.id}`);
-      }
+      // Navigate to the editor after creation
+      onClose();
+      navigate(`/dashboard/reports/editor/${newReport.id}`);
       
     } catch (error) {
       console.error('Error creating report:', error);
