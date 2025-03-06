@@ -9,8 +9,11 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("Edge function received request:", req.method, req.url);
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
+    console.log("Handling CORS preflight request");
     return new Response(null, {
       headers: corsHeaders,
       status: 204,
@@ -23,7 +26,10 @@ serve(async (req) => {
     const pathParts = url.pathname.split('/');
     const reportId = pathParts[pathParts.length - 1];
     
+    console.log(`Processing request for report ID: ${reportId}`);
+    
     if (!reportId) {
+      console.error("No report ID provided");
       return new Response(
         JSON.stringify({ error: "Report ID is required" }),
         { 
@@ -36,12 +42,26 @@ serve(async (req) => {
     // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing Supabase environment variables");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500 
+        }
+      );
+    }
+    
+    console.log("Creating Supabase client");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Check if this is a GET or POST request
     let progressData: any;
     
     if (req.method === "GET") {
+      console.log("Processing GET request");
       // For GET requests, extract data from query parameters
       const params = url.searchParams;
       progressData = {
@@ -49,17 +69,36 @@ serve(async (req) => {
         message: params.get("message") || "Processing report...",
         progress: parseInt(params.get("progress") || "0", 10)
       };
+      console.log("GET request progress data:", progressData);
     } else if (req.method === "POST") {
+      console.log("Processing POST request");
       // For POST requests, extract data from request body
-      const body = await req.json();
+      const body = await req.json().catch(err => {
+        console.error("Error parsing request body:", err);
+        return {};
+      });
+      
+      if (!body || Object.keys(body).length === 0) {
+        console.error("Empty or invalid request body");
+        return new Response(
+          JSON.stringify({ error: "Invalid request body" }),
+          { 
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400 
+          }
+        );
+      }
+      
       progressData = {
         status: body.status || "generating",
         message: body.message || "Processing report...",
         progress: body.progress || 0
       };
+      console.log("POST request progress data:", progressData);
       
       // If the status is 'completed', update the report content if provided
       if (progressData.status === "completed" && body.content) {
+        console.log("Updating report content for completed status");
         // Update the report content
         const { error: updateError } = await supabase
           .from("reports")
@@ -74,6 +113,7 @@ serve(async (req) => {
         }
       }
     } else {
+      console.error("Unsupported method:", req.method);
       return new Response(
         JSON.stringify({ error: "Method not allowed" }),
         { 
@@ -92,6 +132,8 @@ serve(async (req) => {
       appStatus = "error";
     }
     
+    console.log("Inserting progress update with app status:", appStatus);
+    
     // Insert the progress update into the database
     const { data, error } = await supabase
       .from("report_progress")
@@ -106,7 +148,7 @@ serve(async (req) => {
     if (error) {
       console.error("Error inserting progress update:", error);
       return new Response(
-        JSON.stringify({ error: "Failed to save progress update" }),
+        JSON.stringify({ error: "Failed to save progress update", details: error.message }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500 
@@ -114,6 +156,7 @@ serve(async (req) => {
       );
     }
     
+    console.log("Progress update saved successfully");
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -128,7 +171,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error processing progress update:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", details: error.message }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500 
