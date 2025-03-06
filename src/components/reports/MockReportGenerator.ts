@@ -108,3 +108,4 @@ export const generateMockReport = (projectName: string, imageUrls: string[] = []
     </div>
   `;
 };
+
