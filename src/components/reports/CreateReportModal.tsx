@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertCircle } from 'lucide-react';
+import ReportGenerationProgress from './ReportGenerationProgress';
 
 interface ProjectDetails {
   id: string;
@@ -16,6 +18,14 @@ interface ProjectDetails {
   notes_count: number;
   has_report: boolean;
   template_id: string | null;
+}
+
+interface ProgressUpdate {
+  report_id: string;
+  status: 'idle' | 'generating' | 'completed' | 'error';
+  message: string;
+  progress: number;
+  created_at: string;
 }
 
 interface CreateReportModalProps {
@@ -29,6 +39,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   const [creatingReport, setCreatingReport] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reportCreated, setReportCreated] = useState<{id: string, content: string} | null>(null);
+  const [progressUpdate, setProgressUpdate] = useState<ProgressUpdate | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,35 +49,69 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   }, [isOpen]);
 
   useEffect(() => {
-    // Poll for report content if a report has been created
-    let interval: number | null = null;
+    // Subscribe to real-time progress updates if a report has been created
+    let subscription: any = null;
     
     if (reportCreated?.id) {
-      interval = window.setInterval(async () => {
-        try {
-          console.log(`Checking if report ${reportCreated.id} content has been updated...`);
-          const report = await fetchReportById(reportCreated.id);
-          
-          // If content has been updated and is different from initial content
-          if (report.content && report.content !== reportCreated.content) {
-            console.log('Report content has been updated, navigating to editor...');
-            clearInterval(interval!);
-            setReportCreated(null);
-            onClose();
-            navigate(`/dashboard/reports/editor/${report.id}`);
+      // Subscribe to progress_updates table for this report
+      subscription = supabase
+        .channel('report-progress')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'report_progress',
+            filter: `report_id=eq.${reportCreated.id}`
+          },
+          (payload) => {
+            const update = payload.new as ProgressUpdate;
+            setProgressUpdate(update);
+            
+            // If status is completed, check for report content update
+            if (update.status === 'completed') {
+              checkReportContent();
+            }
           }
-        } catch (error) {
-          console.error('Error checking report content:', error);
-        }
-      }, 2000); // Check every 2 seconds
+        )
+        .subscribe();
+        
+      // Also poll for content updates as a fallback
+      const contentCheckInterval = window.setInterval(() => {
+        checkReportContent();
+      }, 5000); // Check every 5 seconds
+      
+      return () => {
+        supabase.removeChannel(subscription);
+        clearInterval(contentCheckInterval);
+      };
     }
     
     return () => {
-      if (interval) {
-        clearInterval(interval);
+      if (subscription) {
+        supabase.removeChannel(subscription);
       }
     };
-  }, [reportCreated, navigate, onClose]);
+  }, [reportCreated]);
+  
+  const checkReportContent = async () => {
+    if (!reportCreated?.id) return;
+    
+    try {
+      console.log(`Checking if report ${reportCreated.id} content has been updated...`);
+      const report = await fetchReportById(reportCreated.id);
+      
+      // If content has been updated and is different from initial content
+      if (report.content && report.content !== reportCreated.content) {
+        console.log('Report content has been updated, navigating to editor...');
+        setReportCreated(null);
+        onClose();
+        navigate(`/dashboard/reports/editor/${report.id}`);
+      }
+    } catch (error) {
+      console.error('Error checking report content:', error);
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -210,12 +255,26 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         content: newReport.content
       });
       
-      toast.success('Report created successfully');
+      // Create initial progress update
+      await supabase
+        .from('report_progress')
+        .insert({
+          report_id: newReport.id,
+          status: 'generating',
+          message: 'Starting report generation...',
+          progress: 5
+        });
+      
+      toast.success('Report created. Generating content...');
       
       // Send webhook notification with more comprehensive payload
       try {
         // Fixed webhook URL for POST
         const webhookUrl = 'https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d';
+        
+        // Get the application base URL for callback
+        const appBaseUrl = window.location.origin;
+        const callbackUrl = `${appBaseUrl}/api/report-progress/${newReport.id}`;
         
         const webhookPayload = {
           project_id: projectId,
@@ -226,7 +285,8 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           image_count: imageUrls.length,
           image_urls: imageUrls,
           template_id: project.template_id,
-          action: 'generate_report'
+          action: 'generate_report',
+          callback_url: callbackUrl
         };
         
         console.log('Sending webhook payload:', webhookPayload);
@@ -271,11 +331,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         console.error('Error sending webhook:', webhookError);
         // Continue even if webhook fails
       }
-      
-      // Navigate to the editor after creation
-      onClose();
-      navigate(`/dashboard/reports/editor/${newReport.id}`);
-      
     } catch (error) {
       console.error('Error creating report:', error);
       toast.error('Failed to create report. Please try again.');
@@ -294,6 +349,17 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         </DialogHeader>
         
         <div className="mt-4">
+          {reportCreated && progressUpdate && (
+            <div className="mb-6 p-4 border rounded-md">
+              <h3 className="text-md font-semibold mb-3">Report Generation Status</h3>
+              <ReportGenerationProgress
+                status={progressUpdate.status}
+                progress={progressUpdate.progress}
+                message={progressUpdate.message}
+              />
+            </div>
+          )}
+          
           <h3 className="text-lg font-semibold mb-4">Recent Projects</h3>
           
           {loading ? (

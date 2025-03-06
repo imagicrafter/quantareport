@@ -384,7 +384,23 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      project_images: {
+        Row: {
+          file_path: string | null
+          image_description: Json | null
+          name: string | null
+          project_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       binary_quantize:
