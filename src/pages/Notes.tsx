@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import NotesSection from '@/components/dashboard/NotesSection';
 
 interface ProjectWithNotesCount {
   id: string;
@@ -16,6 +18,8 @@ interface ProjectWithNotesCount {
 const Notes = () => {
   const [projects, setProjects] = useState<ProjectWithNotesCount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -102,6 +106,17 @@ const Notes = () => {
     }
   };
 
+  const handleProjectClick = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setIsNotesModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsNotesModalOpen(false);
+    // Refresh the projects list to update the note counts and last updated times
+    fetchProjectsWithNotes();
+  };
+
   return (
     <div className="min-h-screen">
       <DashboardHeader title="Notes" toggleSidebar={() => {}} />
@@ -125,7 +140,11 @@ const Notes = () => {
           ) : projects.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {projects.map((project) => (
-                <Card key={project.id} className="hover:shadow-md transition-shadow">
+                <Card 
+                  key={project.id} 
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleProjectClick(project.id)}
+                >
                   <CardHeader>
                     <CardTitle>{project.name}</CardTitle>
                     <CardDescription className="line-clamp-2">
@@ -148,6 +167,22 @@ const Notes = () => {
           )}
         </div>
       </div>
+
+      {/* Notes Modal */}
+      <Dialog open={isNotesModalOpen} onOpenChange={setIsNotesModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {selectedProjectId && (
+            <>
+              <div className="mb-4">
+                <h2 className="text-xl font-bold">
+                  {projects.find(p => p.id === selectedProjectId)?.name} - Notes
+                </h2>
+              </div>
+              <NotesSection projectId={selectedProjectId} />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
