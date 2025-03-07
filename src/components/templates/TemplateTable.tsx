@@ -18,6 +18,14 @@ interface TemplateTableProps {
 }
 
 const TemplateTable = ({ templates, emptyMessage, onAction, actionLabel }: TemplateTableProps) => {
+  const getTemplateType = (template: Template) => {
+    const types = [];
+    if (template.image_module) types.push("Image");
+    if (template.report_module) types.push("Report");
+    if (template.layout_module) types.push("Layout");
+    return types.length > 0 ? types.join(", ") : "—";
+  };
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -46,9 +54,7 @@ const TemplateTable = ({ templates, emptyMessage, onAction, actionLabel }: Templ
                   {template.name}
                 </TableCell>
                 <TableCell>{template.description || "—"}</TableCell>
-                <TableCell>
-                  {template.image_module ? "Image" : "Report"}
-                </TableCell>
+                <TableCell>{getTemplateType(template)}</TableCell>
                 <TableCell>
                   <Button
                     size="sm"

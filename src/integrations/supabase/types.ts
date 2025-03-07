@@ -381,6 +381,7 @@ export type Database = {
           id: string
           image_module: Json | null
           is_public: boolean | null
+          layout_module: Json | null
           name: string
           report_module: Json | null
           user_id: string | null
@@ -392,6 +393,7 @@ export type Database = {
           id?: string
           image_module?: Json | null
           is_public?: boolean | null
+          layout_module?: Json | null
           name: string
           report_module?: Json | null
           user_id?: string | null
@@ -403,6 +405,7 @@ export type Database = {
           id?: string
           image_module?: Json | null
           is_public?: boolean | null
+          layout_module?: Json | null
           name?: string
           report_module?: Json | null
           user_id?: string | null
