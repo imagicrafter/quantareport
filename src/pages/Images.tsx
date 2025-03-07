@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import FilesSection from '@/components/dashboard/FilesSection';
 
 interface ProjectWithImageCount {
   id: string;
@@ -16,6 +18,8 @@ interface ProjectWithImageCount {
 const Images = () => {
   const [projects, setProjects] = useState<ProjectWithImageCount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -32,7 +36,7 @@ const Images = () => {
         return;
       }
 
-      // Get all projects with image counts
+      // Get all projects
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -53,7 +57,7 @@ const Images = () => {
             .select('id', { count: 'exact', head: true })
             .eq('project_id', project.id)
             .eq('user_id', session.session.user.id)
-            .in('type', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+            .eq('type', 'image');
 
           if (countError) {
             console.error('Error fetching image count:', countError);
@@ -70,7 +74,7 @@ const Images = () => {
             .select('created_at')
             .eq('project_id', project.id)
             .eq('user_id', session.session.user.id)
-            .in('type', ['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+            .eq('type', 'image')
             .order('created_at', { ascending: false })
             .limit(1);
 
@@ -104,6 +108,17 @@ const Images = () => {
     }
   };
 
+  const handleProjectClick = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setIsFilesModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsFilesModalOpen(false);
+    // Refresh the projects list to update the image counts and last updated times
+    fetchProjectsWithImages();
+  };
+
   return (
     <div className="min-h-screen">
       <DashboardHeader title="Images" toggleSidebar={() => {}} />
@@ -127,7 +142,11 @@ const Images = () => {
           ) : projects.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {projects.map((project) => (
-                <Card key={project.id} className="hover:shadow-md transition-shadow">
+                <Card 
+                  key={project.id} 
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleProjectClick(project.id)}
+                >
                   <CardHeader>
                     <CardTitle>{project.name}</CardTitle>
                     <CardDescription className="line-clamp-2">
@@ -150,6 +169,22 @@ const Images = () => {
           )}
         </div>
       </div>
+
+      {/* Files Modal */}
+      <Dialog open={isFilesModalOpen} onOpenChange={setIsFilesModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {selectedProjectId && (
+            <>
+              <div className="mb-4">
+                <h2 className="text-xl font-bold">
+                  {projects.find(p => p.id === selectedProjectId)?.name} - Files
+                </h2>
+              </div>
+              <FilesSection projectId={selectedProjectId} />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

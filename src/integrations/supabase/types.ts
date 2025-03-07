@@ -70,6 +70,7 @@ export type Database = {
           id: string
           metadata: Json | null
           name: string
+          position: number | null
           project_id: string
           type: string
           user_id: string
@@ -81,6 +82,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           name: string
+          position?: number | null
           project_id: string
           type: string
           user_id: string
@@ -92,6 +94,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           name?: string
+          position?: number | null
           project_id?: string
           type?: string
           user_id?: string

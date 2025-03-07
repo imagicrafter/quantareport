@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { DropResult } from 'react-beautiful-dnd';
 import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Button from '../ui-elements/Button';
@@ -9,6 +10,7 @@ import EditFileDialog from './files/EditFileDialog';
 import DeleteFileDialog from './files/DeleteFileDialog';
 import { ProjectFile } from './files/FileItem';
 import { fetchFiles, addFile, updateFile, deleteFile, FileFormValues } from './files/FileService';
+import { reorderFiles } from '@/utils/fileUtils';
 
 interface FilesSectionProps {
   projectId: string;
@@ -28,7 +30,9 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
     try {
       setLoading(true);
       const data = await fetchFiles(projectId);
-      setFiles(data);
+      // Sort files by position
+      const sortedFiles = [...data].sort((a, b) => (a.position || 0) - (b.position || 0));
+      setFiles(sortedFiles);
     } catch (error) {
       console.error('Error fetching files:', error);
       toast({
@@ -123,6 +127,34 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
     }
   };
 
+  const handleReorderFiles = async (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    
+    if (sourceIndex === destinationIndex) return;
+    
+    try {
+      const reorderedFiles = await reorderFiles(files, sourceIndex, destinationIndex);
+      setFiles(reorderedFiles);
+      
+      toast({
+        title: 'Success',
+        description: 'File order updated successfully!',
+      });
+    } catch (error) {
+      console.error('Error reordering files:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to reorder files. Please try again.',
+        variant: 'destructive',
+      });
+      // Reload files to ensure UI is in sync with database
+      loadFiles();
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -147,6 +179,7 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
           setSelectedFile(file);
           setIsDeleteDialogOpen(true);
         }}
+        onReorderFiles={handleReorderFiles}
       />
 
       <AddFileDialog 
