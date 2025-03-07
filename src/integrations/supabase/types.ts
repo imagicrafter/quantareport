@@ -147,6 +147,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          position: number | null
           project_id: string
           title: string
           user_id: string
@@ -155,6 +156,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
+          position?: number | null
           project_id: string
           title: string
           user_id: string
@@ -163,6 +165,7 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
+          position?: number | null
           project_id?: string
           title?: string
           user_id?: string

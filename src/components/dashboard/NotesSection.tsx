@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { PlusCircle, Edit, Trash } from 'lucide-react';
+import { PlusCircle, Edit, Trash, GripVertical } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Button from '../ui-elements/Button';
@@ -24,13 +24,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-
-interface ProjectNote {
-  id: string;
-  title: string;
-  content: string;
-  created_at: string;
-}
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { Note, reorderNotes } from '@/utils/noteUtils';
 
 interface NotesSectionProps {
   projectId: string;
@@ -43,12 +38,12 @@ const formSchema = z.object({
 
 const NotesSection = ({ projectId }: NotesSectionProps) => {
   const { toast } = useToast();
-  const [notes, setNotes] = useState<ProjectNote[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedNote, setSelectedNote] = useState<ProjectNote | null>(null);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [saving, setSaving] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -74,7 +69,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         .from('notes')
         .select('*')
         .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
+        .order('position', { ascending: true });
 
       if (error) throw error;
       setNotes(data);
@@ -110,13 +105,19 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         return;
       }
 
+      // Calculate next position
+      const nextPosition = notes.length > 0 
+        ? Math.max(...notes.map(note => note.position || 0)) + 1 
+        : 1;
+
       const { error } = await supabase
         .from('notes')
         .insert({
           title: values.title,
           content: values.content,
           project_id: projectId,
-          user_id: session.session.user.id
+          user_id: session.session.user.id,
+          position: nextPosition
         });
 
       if (error) throw error;
@@ -207,6 +208,33 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     }
   };
 
+  const handleOnDragEnd = async (result: any) => {
+    // Dropped outside the list
+    if (!result.destination) return;
+    
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    
+    // If the position hasn't changed
+    if (sourceIndex === destinationIndex) return;
+    
+    try {
+      const updatedNotes = await reorderNotes(notes, sourceIndex, destinationIndex);
+      setNotes(updatedNotes);
+      
+      toast({
+        description: "Note order updated",
+      });
+    } catch (error) {
+      console.error('Error reordering notes:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update note order',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -230,44 +258,71 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
           No notes added yet. Add your first note to get started.
         </div>
       ) : (
-        <div className="space-y-2">
-          {notes.map((note) => (
-            <div key={note.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-              <div>
-                <div className="font-medium">{note.title}</div>
-                <div className="text-sm text-muted-foreground">
-                  {new Date(note.created_at).toLocaleDateString()}
-                </div>
+        <DragDropContext onDragEnd={handleOnDragEnd}>
+          <Droppable droppableId="notes-list">
+            {(provided) => (
+              <div 
+                className="space-y-2" 
+                {...provided.droppableProps} 
+                ref={provided.innerRef}
+              >
+                {notes.map((note, index) => (
+                  <Draggable key={note.id} draggableId={note.id} index={index}>
+                    {(provided) => (
+                      <div 
+                        ref={provided.innerRef} 
+                        {...provided.draggableProps} 
+                        className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg"
+                      >
+                        <div className="flex items-center w-full">
+                          <div 
+                            {...provided.dragHandleProps} 
+                            className="px-2 cursor-grab"
+                          >
+                            <GripVertical size={16} className="text-muted-foreground" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium">{note.title}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(note.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="flex space-x-2 ml-4">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedNote(note);
+                                editForm.reset({
+                                  title: note.title,
+                                  content: note.content,
+                                });
+                                setIsEditDialogOpen(true);
+                              }}
+                            >
+                              <Edit size={16} />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedNote(note);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash size={16} />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
               </div>
-              <div className="flex space-x-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => {
-                    setSelectedNote(note);
-                    editForm.reset({
-                      title: note.title,
-                      content: note.content,
-                    });
-                    setIsEditDialogOpen(true);
-                  }}
-                >
-                  <Edit size={16} />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => {
-                    setSelectedNote(note);
-                    setIsDeleteDialogOpen(true);
-                  }}
-                >
-                  <Trash size={16} />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+            )}
+          </Droppable>
+        </DragDropContext>
       )}
 
       {/* Add Note Dialog */}
