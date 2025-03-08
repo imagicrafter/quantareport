@@ -267,10 +267,13 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       toast.success('Report created. Generating content...');
       
-      // Send webhook notification with more comprehensive payload
+      // Send webhook notifications with more comprehensive payload
       try {
-        // Fixed webhook URL for POST
-        const webhookUrl = 'https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d';
+        // Define webhook URLs - now we have two webhooks to send to
+        const webhookUrls = [
+          'https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d',
+          'https://n8n-01.imagicrafterai.com/webhook/58f03c25-d09d-4094-bd62-2a3d35514b6d'
+        ];
         
         // Get the application base URL for callback
         const appBaseUrl = window.location.origin;
@@ -289,46 +292,61 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           callback_url: callbackUrl
         };
         
-        console.log('Sending webhook payload:', webhookPayload);
-        console.log('Webhook URL:', webhookUrl);
+        console.log('Webhook payload:', webhookPayload);
         
-        // Send POST request
-        const postResponse = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(webhookPayload)
+        // Send POST requests to both webhooks
+        const webhookPromises = webhookUrls.map(async (webhookUrl) => {
+          console.log(`Sending webhook to: ${webhookUrl}`);
+          
+          try {
+            // Send POST request
+            const postResponse = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
+              body: JSON.stringify(webhookPayload)
+            });
+            
+            if (postResponse.ok) {
+              console.log(`Webhook POST request to ${webhookUrl} succeeded:`, await postResponse.text());
+              return true;
+            } else {
+              console.error(`Webhook POST response error for ${webhookUrl}:`, await postResponse.text());
+              
+              // As a fallback, try GET request
+              const getUrl = new URL(webhookUrl);
+              // Add all payload fields as query parameters
+              Object.entries(webhookPayload).forEach(([key, value]) => {
+                getUrl.searchParams.append(key, String(value));
+              });
+              
+              const getResponse = await fetch(getUrl.toString(), {
+                method: 'GET',
+                headers: {
+                  'Accept': 'application/json'
+                }
+              });
+              
+              if (getResponse.ok) {
+                console.log(`Webhook GET request to ${webhookUrl} succeeded:`, await getResponse.text());
+                return true;
+              } else {
+                console.error(`Webhook GET response error for ${webhookUrl}:`, await getResponse.text());
+                return false;
+              }
+            }
+          } catch (error) {
+            console.error(`Error sending webhook to ${webhookUrl}:`, error);
+            return false;
+          }
         });
         
-        if (postResponse.ok) {
-          console.log('Webhook POST request succeeded:', await postResponse.text());
-        } else {
-          console.error('Webhook POST response error:', await postResponse.text());
-          
-          // As a fallback, try GET request
-          const getUrl = new URL(webhookUrl);
-          // Add all payload fields as query parameters
-          Object.entries(webhookPayload).forEach(([key, value]) => {
-            getUrl.searchParams.append(key, String(value));
-          });
-          
-          const getResponse = await fetch(getUrl.toString(), {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json'
-            }
-          });
-          
-          if (getResponse.ok) {
-            console.log('Webhook GET request succeeded:', await getResponse.text());
-          } else {
-            console.error('Webhook GET response error:', await getResponse.text());
-          }
-        }
+        // Wait for all webhook requests to complete
+        await Promise.all(webhookPromises);
       } catch (webhookError) {
-        console.error('Error sending webhook:', webhookError);
+        console.error('Error sending webhooks:', webhookError);
         // Continue even if webhook fails
       }
     } catch (error) {
