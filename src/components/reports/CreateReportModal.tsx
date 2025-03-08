@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -68,9 +67,9 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
             const update = payload.new as ProgressUpdate;
             setProgressUpdate(update);
             
-            // If status is completed, check for report content update
-            if (update.status === 'completed') {
-              checkReportContent();
+            // If status is completed or progress is 100%, navigate to report editor
+            if (update.status === 'completed' || update.progress >= 100) {
+              navigateToReport();
             }
           }
         )
@@ -94,6 +93,26 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
     };
   }, [reportCreated]);
   
+  const navigateToReport = async () => {
+    if (!reportCreated?.id) return;
+    
+    try {
+      console.log(`Report ${reportCreated.id} completed, navigating to editor...`);
+      const report = await fetchReportById(reportCreated.id);
+      
+      // Reset state before navigation
+      setReportCreated(null);
+      setProgressUpdate(null);
+      onClose();
+      
+      // Navigate to the report editor
+      navigate(`/dashboard/reports/editor/${report.id}`);
+    } catch (error) {
+      console.error('Error navigating to report:', error);
+      toast.error('Something went wrong. Please try again.');
+    }
+  };
+  
   const checkReportContent = async () => {
     if (!reportCreated?.id) return;
     
@@ -104,9 +123,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       // If content has been updated and is different from initial content
       if (report.content && report.content !== reportCreated.content) {
         console.log('Report content has been updated, navigating to editor...');
-        setReportCreated(null);
-        onClose();
-        navigate(`/dashboard/reports/editor/${report.id}`);
+        navigateToReport();
       }
     } catch (error) {
       console.error('Error checking report content:', error);
@@ -413,18 +430,13 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
                   <CardFooter>
                     <Button 
                       onClick={() => handleCreateReport(project.id)}
-                      disabled={creatingReport === project.id || reportCreated !== null}
+                      disabled={creatingReport !== null || reportCreated !== null}
                       className="w-full"
                     >
                       {creatingReport === project.id ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Creating Report...
-                        </>
-                      ) : reportCreated !== null ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generating Content...
                         </>
                       ) : project.has_report ? (
                         'Create New Report'
