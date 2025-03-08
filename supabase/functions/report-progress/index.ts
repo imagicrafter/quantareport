@@ -24,12 +24,27 @@ serve(async (req) => {
     // Get the report ID from the URL path
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/');
-    const reportId = pathParts[pathParts.length - 1];
+    let reportId = pathParts[pathParts.length - 1];
     
-    console.log(`Processing request for report ID: ${reportId}`);
+    console.log(`Found report ID in URL path: ${reportId}`);
     
-    if (!reportId) {
-      console.error("No report ID provided");
+    // If the request is POST, also check for report_id in the body
+    let requestBody = {};
+    if (req.method === "POST") {
+      requestBody = await req.json().catch(err => {
+        console.error("Error parsing request body:", err);
+        return {};
+      });
+      
+      // If report_id is in the body and not in the URL path, use the one from the body
+      if (requestBody.report_id && (reportId === "report-progress" || !reportId)) {
+        reportId = requestBody.report_id;
+        console.log(`Using report ID from request body: ${reportId}`);
+      }
+    }
+    
+    if (!reportId || reportId === "report-progress") {
+      console.error("No report ID provided in URL path or request body");
       return new Response(
         JSON.stringify({ error: "Report ID is required" }),
         { 
@@ -38,6 +53,8 @@ serve(async (req) => {
         }
       );
     }
+    
+    console.log(`Processing request for report ID: ${reportId}`);
     
     // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -79,11 +96,8 @@ serve(async (req) => {
       console.log("GET request progress data:", progressData);
     } else if (req.method === "POST") {
       console.log("Processing POST request");
-      // For POST requests, extract data from request body
-      const body = await req.json().catch(err => {
-        console.error("Error parsing request body:", err);
-        return {};
-      });
+      // We've already parsed the body earlier to extract potential report_id
+      const body = requestBody;
       
       if (!body || Object.keys(body).length === 0) {
         console.error("Empty or invalid request body");
