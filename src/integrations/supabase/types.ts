@@ -143,6 +143,20 @@ export type Database = {
             referencedRelation: "files"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "image_descriptions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_descriptions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "project_images"
+            referencedColumns: ["files_id"]
+          },
         ]
       }
       notes: {
@@ -428,9 +442,36 @@ export type Database = {
       }
     }
     Views: {
+      files_not_processed: {
+        Row: {
+          file_path: string | null
+          id: string | null
+          name: string | null
+          project_id: string | null
+          type: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_images: {
         Row: {
           file_path: string | null
+          files_id: string | null
           image_description: Json | null
           name: string | null
           project_id: string | null

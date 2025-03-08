@@ -64,10 +64,17 @@ serve(async (req) => {
       console.log("Processing GET request");
       // For GET requests, extract data from query parameters
       const params = url.searchParams;
+      let progress = params.get("progress") || "0";
+      
+      // Strip percentage sign if present and convert to integer
+      if (typeof progress === "string") {
+        progress = progress.replace(/%/g, "");
+      }
+      
       progressData = {
         status: params.get("status") || "generating",
         message: params.get("message") || "Processing report...",
-        progress: parseInt(params.get("progress") || "0", 10)
+        progress: parseInt(progress, 10)
       };
       console.log("GET request progress data:", progressData);
     } else if (req.method === "POST") {
@@ -89,10 +96,19 @@ serve(async (req) => {
         );
       }
       
+      // Handle progress as string or number
+      let progress = body.progress || 0;
+      
+      // Strip percentage sign if present and convert to integer
+      if (typeof progress === "string") {
+        progress = progress.replace(/%/g, "");
+        progress = parseInt(progress, 10);
+      }
+      
       progressData = {
         status: body.status || "generating",
         message: body.message || "Processing report...",
-        progress: body.progress || 0
+        progress: progress
       };
       console.log("POST request progress data:", progressData);
       
