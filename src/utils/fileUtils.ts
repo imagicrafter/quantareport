@@ -1,15 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-
-export interface File {
-  id: string;
-  name: string;
-  description: string | null;
-  file_path: string;
-  type: string;
-  created_at: string;
-  position: number;
-}
+import { FileType, ProjectFile } from '@/components/dashboard/files/FileItem';
 
 /**
  * Updates the position of a file in the database
@@ -37,10 +28,10 @@ export const updateFilePosition = async (fileId: string, newPosition: number): P
  * @returns A promise that resolves to the reordered files array
  */
 export const reorderFiles = async (
-  files: File[],
+  files: ProjectFile[],
   sourceIndex: number,
   destinationIndex: number
-): Promise<File[]> => {
+): Promise<ProjectFile[]> => {
   if (sourceIndex === destinationIndex) return files;
 
   const reorderedFiles = Array.from(files);

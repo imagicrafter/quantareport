@@ -1,4 +1,3 @@
-
 import { DraggableProvidedDragHandleProps } from 'react-beautiful-dnd';
 import { Edit, Folder, GripVertical, Image, Music, Trash } from 'lucide-react';
 import Button from '../../ui-elements/Button';
