@@ -82,6 +82,7 @@ serve(async (req) => {
       // For GET requests, extract data from query parameters
       const params = url.searchParams;
       let progress = params.get("progress") || "0";
+      let job = params.get("job") || null;
       
       // Strip percentage sign if present and convert to integer
       if (typeof progress === "string") {
@@ -91,7 +92,8 @@ serve(async (req) => {
       progressData = {
         status: params.get("status") || "generating",
         message: params.get("message") || "Processing report...",
-        progress: parseInt(progress, 10)
+        progress: parseInt(progress, 10),
+        job: job
       };
       console.log("GET request progress data:", progressData);
     } else if (req.method === "POST") {
@@ -122,7 +124,8 @@ serve(async (req) => {
       progressData = {
         status: body.status || "generating",
         message: body.message || "Processing report...",
-        progress: progress
+        progress: progress,
+        job: body.job || null
       };
       console.log("POST request progress data:", progressData);
       
@@ -164,15 +167,24 @@ serve(async (req) => {
     
     console.log("Inserting progress update with app status:", appStatus);
     
+    // Prepare the data to insert, including job field if present
+    const insertData = {
+      report_id: reportId,
+      status: appStatus,
+      message: progressData.message,
+      progress: progressData.progress
+    };
+    
+    // Add job field only if it's provided and not null
+    if (progressData.job) {
+      console.log(`Using job UUID: ${progressData.job}`);
+      Object.assign(insertData, { job: progressData.job });
+    }
+    
     // Insert the progress update into the database
     const { data, error } = await supabase
       .from("report_progress")
-      .insert({
-        report_id: reportId,
-        status: appStatus,
-        message: progressData.message,
-        progress: progressData.progress
-      })
+      .insert(insertData)
       .select();
       
     if (error) {
