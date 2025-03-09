@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertCircle } from 'lucide-react';
 import ReportGenerationProgress from './ReportGenerationProgress';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ProjectDetails {
   id: string;
@@ -272,6 +274,9 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         content: newReport.content
       });
       
+      // Generate a job UUID for tracking this report generation
+      const jobUuid = uuidv4();
+      
       // Create initial progress update
       await supabase
         .from('report_progress')
@@ -279,7 +284,8 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           report_id: newReport.id,
           status: 'generating',
           message: 'Starting report generation...',
-          progress: 5
+          progress: 5,
+          job: jobUuid
         });
       
       toast.success('Report created. Generating content...');
@@ -306,7 +312,8 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           image_urls: imageUrls,
           template_id: project.template_id,
           action: 'generate_report',
-          callback_url: callbackUrl
+          callback_url: callbackUrl,
+          job: jobUuid
         };
         
         console.log('Webhook payload:', webhookPayload);
