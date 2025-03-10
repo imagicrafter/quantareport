@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,7 +104,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       // Set up real-time subscription
       subscription = supabase
-        .channel('report-progress-' + reportCreated.id)
+        .channel(`report-progress-${reportCreated.id}-${Date.now()}`) // Make channel name unique
         .on(
           'postgres_changes',
           {
@@ -160,10 +161,43 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
             setProgressUpdate(data[0] as ProgressUpdate);
             setShowErrorDialog(true);
           }
+          
+          // Also check if progress is 99% or higher without completion
+          const { data: highProgressData, error: highProgressError } = await supabase
+            .from('report_progress')
+            .select('*')
+            .eq('report_id', reportCreated.id)
+            .gte('progress', 99)
+            .neq('status', 'completed')
+            .order('created_at', { ascending: false })
+            .limit(1);
+            
+          if (!highProgressError && highProgressData && highProgressData.length > 0) {
+            const update = highProgressData[0] as ProgressUpdate;
+            console.log('Found high progress without completion:', update);
+            
+            // If it's been more than 10 seconds since the high progress update
+            const updateTime = new Date(update.created_at).getTime();
+            const currentTime = new Date().getTime();
+            const elapsedSeconds = (currentTime - updateTime) / 1000;
+            
+            if (elapsedSeconds > 10) {
+              console.log('High progress stuck for more than 10 seconds, treating as error');
+              
+              // Update progress report
+              const updatedUpdate = {
+                ...update,
+                status: 'error' as const,
+                message: update.message + ' (Timed out at high progress)'
+              };
+              setProgressUpdate(updatedUpdate);
+              setShowErrorDialog(true);
+            }
+          }
         } catch (err) {
           console.error('Error in manual error check:', err);
         }
-      }, 10000); // Check every 10 seconds
+      }, 5000); // Check every 5 seconds
     };
     
     if (reportCreated?.id) {
@@ -183,6 +217,14 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       }
     };
   }, [reportCreated]);
+  
+  // Effect to handle progress updates that indicate error
+  useEffect(() => {
+    if (progressUpdate && progressUpdate.status === 'error') {
+      console.log('Progress update indicates error, showing error dialog:', progressUpdate);
+      setShowErrorDialog(true);
+    }
+  }, [progressUpdate]);
   
   const navigateToReport = async () => {
     if (!reportCreated?.id) return;
@@ -448,7 +490,10 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   };
 
   const handleReprocessReport = async () => {
-    if (!reportCreated?.id) return;
+    if (!reportCreated?.id) {
+      console.error('No report ID available for reprocessing');
+      return;
+    }
     
     try {
       console.log('Reprocessing report...');
@@ -458,17 +503,25 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       const report = await fetchReportById(reportCreated.id);
       console.log('Retrieved report for reprocessing:', report);
       
-      // Clean up state
-      setReportCreated(null);
+      // Update the report status to archived so we don't create duplicates
+      await supabase
+        .from('reports')
+        .update({ status: 'archived' })
+        .eq('id', reportCreated.id);
+      
+      // Clean up state before starting a new report
+      const projectId = report.project_id;
       setProgressUpdate(null);
+      setReportCreated(null);
       
       // Restart the report creation process
-      await handleCreateReport(report.project_id);
+      await handleCreateReport(projectId);
       
       toast.success('Report generation restarted');
     } catch (error) {
       console.error('Error reprocessing report:', error);
       toast.error('Failed to reprocess report. Please try again.');
+      setShowErrorDialog(false); // Close dialog on error to allow user to try again
     }
   };
 
