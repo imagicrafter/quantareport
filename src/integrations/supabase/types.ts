@@ -300,7 +300,7 @@ export type Database = {
           id: string
           job: string
           message: string
-          progress: number
+          progress: number | null
           report_id: string | null
           status: string
         }
@@ -309,7 +309,7 @@ export type Database = {
           id?: string
           job: string
           message?: string
-          progress?: number
+          progress?: number | null
           report_id?: string | null
           status: string
         }
@@ -318,7 +318,7 @@ export type Database = {
           id?: string
           job?: string
           message?: string
-          progress?: number
+          progress?: number | null
           report_id?: string | null
           status?: string
         }

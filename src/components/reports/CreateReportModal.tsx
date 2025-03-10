@@ -10,6 +10,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, AlertCircle } from 'lucide-react';
 import ReportGenerationProgress from './ReportGenerationProgress';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface ProjectDetails {
   id: string;
@@ -41,6 +51,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   const [error, setError] = useState<string | null>(null);
   const [reportCreated, setReportCreated] = useState<{id: string, content: string} | null>(null);
   const [progressUpdate, setProgressUpdate] = useState<ProgressUpdate | null>(null);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -69,9 +80,14 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
             const update = payload.new as ProgressUpdate;
             setProgressUpdate(update);
             
-            // If status is completed or progress is 100%, navigate to report editor
+            // If status is completed, navigate to report editor
             if (update.status === 'completed' || update.progress >= 100) {
               navigateToReport();
+            }
+            
+            // If status is error, show error dialog
+            if (update.status === 'error') {
+              setShowErrorDialog(true);
             }
           }
         )
@@ -380,91 +396,132 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
     }
   };
 
+  const handleReprocessReport = async () => {
+    if (!reportCreated?.id) return;
+    
+    try {
+      setShowErrorDialog(false);
+      
+      // Get the report and project details
+      const report = await fetchReportById(reportCreated.id);
+      
+      // Create a new report with the same project
+      await handleCreateReport(report.project_id);
+      
+      toast.success('Report generation restarted');
+    } catch (error) {
+      console.error('Error reprocessing report:', error);
+      toast.error('Failed to reprocess report. Please try again.');
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create a New Report</DialogTitle>
-          <DialogDescription>
-            Select a project to create a new report.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="mt-4">
-          {reportCreated && progressUpdate && (
-            <div className="mb-6 p-4 border rounded-md">
-              <h3 className="text-md font-semibold mb-3">Report Generation Status</h3>
-              <ReportGenerationProgress
-                status={progressUpdate.status}
-                progress={progressUpdate.progress}
-                message={progressUpdate.message}
-              />
-            </div>
-          )}
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create a New Report</DialogTitle>
+            <DialogDescription>
+              Select a project to create a new report.
+            </DialogDescription>
+          </DialogHeader>
           
-          <h3 className="text-lg font-semibold mb-4">Recent Projects</h3>
-          
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <Card key={i} className="h-40 animate-pulse">
-                  <CardHeader className="bg-gray-200 h-full rounded-md"></CardHeader>
-                </Card>
-              ))}
-            </div>
-          ) : error ? (
-            <div className="flex items-center p-4 border rounded-md bg-destructive/10 text-destructive">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              <span>{error}</span>
-            </div>
-          ) : projects.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {projects.map((project) => (
-                <Card key={project.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <CardTitle>{project.name}</CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      {project.description || 'No description'}
-                      {project.has_report && (
-                        <span className="ml-2 text-amber-600 font-medium">(Has existing report)</span>
-                      )}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-1 pt-0">
-                    <p>{project.image_count} {project.image_count === 1 ? 'Image' : 'Images'}</p>
-                    <p>{project.notes_count} {project.notes_count === 1 ? 'Note' : 'Notes'}</p>
-                  </CardContent>
-                  <CardFooter>
-                    <Button 
-                      onClick={() => handleCreateReport(project.id)}
-                      disabled={creatingReport !== null || reportCreated !== null}
-                      className="w-full"
-                    >
-                      {creatingReport === project.id ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating Report...
-                        </>
-                      ) : project.has_report ? (
-                        'Create New Report'
-                      ) : (
-                        'Create Report'
-                      )}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center p-8 border rounded-md">
-              <p className="text-muted-foreground">
-                No projects available. Create a project first to generate a report.
-              </p>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="mt-4">
+            {reportCreated && progressUpdate && (
+              <div className="mb-6 p-4 border rounded-md">
+                <h3 className="text-md font-semibold mb-3">Report Generation Status</h3>
+                <ReportGenerationProgress
+                  status={progressUpdate.status}
+                  progress={progressUpdate.progress}
+                  message={progressUpdate.message}
+                />
+              </div>
+            )}
+            
+            <h3 className="text-lg font-semibold mb-4">Recent Projects</h3>
+            
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <Card key={i} className="h-40 animate-pulse">
+                    <CardHeader className="bg-gray-200 h-full rounded-md"></CardHeader>
+                  </Card>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="flex items-center p-4 border rounded-md bg-destructive/10 text-destructive">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                <span>{error}</span>
+              </div>
+            ) : projects.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {projects.map((project) => (
+                  <Card key={project.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                      <CardTitle>{project.name}</CardTitle>
+                      <CardDescription className="line-clamp-2">
+                        {project.description || 'No description'}
+                        {project.has_report && (
+                          <span className="ml-2 text-amber-600 font-medium">(Has existing report)</span>
+                        )}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-1 pt-0">
+                      <p>{project.image_count} {project.image_count === 1 ? 'Image' : 'Images'}</p>
+                      <p>{project.notes_count} {project.notes_count === 1 ? 'Note' : 'Notes'}</p>
+                    </CardContent>
+                    <CardFooter>
+                      <Button 
+                        onClick={() => handleCreateReport(project.id)}
+                        disabled={creatingReport !== null || reportCreated !== null}
+                        className="w-full"
+                      >
+                        {creatingReport === project.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating Report...
+                          </>
+                        ) : project.has_report ? (
+                          'Create New Report'
+                        ) : (
+                          'Create Report'
+                        )}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center p-8 border rounded-md">
+                <p className="text-muted-foreground">
+                  No projects available. Create a project first to generate a report.
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error Dialog */}
+      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Error Generating Report</AlertDialogTitle>
+            <AlertDialogDescription>
+              There was an error while generating your report. You can continue to the report editor to view the partial results or try to generate the report again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={navigateToReport}>
+              Continue to Report Editor
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleReprocessReport}>
+              Reprocess Report
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
