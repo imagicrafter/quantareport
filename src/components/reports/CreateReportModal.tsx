@@ -61,12 +61,49 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
 
   useEffect(() => {
     let subscription: any = null;
+    let contentCheckInterval: number | null = null;
+    let errorCheckInterval: number | null = null;
     
-    if (reportCreated?.id) {
+    const setupSubscription = async () => {
+      if (!reportCreated?.id) return;
+      
       console.log(`Setting up subscription for report progress updates on report ${reportCreated.id}`);
       
+      // Get initial status to handle cases where events might have been missed
+      try {
+        const { data: initialStatus, error: initialStatusError } = await supabase
+          .from('report_progress')
+          .select('*')
+          .eq('report_id', reportCreated.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (!initialStatusError && initialStatus && initialStatus.length > 0) {
+          console.log('Initial status found:', initialStatus[0]);
+          const update = initialStatus[0] as ProgressUpdate;
+          setProgressUpdate(update);
+          
+          // If there's already an error status, show error dialog immediately
+          if (update.status === 'error') {
+            console.log('Error status found in initial check, showing error dialog');
+            setShowErrorDialog(true);
+            return;
+          }
+          
+          // If report is already complete, navigate to it
+          if (update.status === 'completed' || update.progress >= 100) {
+            console.log('Report already completed, navigating to editor...');
+            navigateToReport();
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error checking initial status:', err);
+      }
+      
+      // Set up real-time subscription
       subscription = supabase
-        .channel('report-progress')
+        .channel('report-progress-' + reportCreated.id)
         .on(
           'postgres_changes',
           {
@@ -91,15 +128,18 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Subscription status:', status);
+        });
         
       console.log('Subscription set up successfully');
       
-      const contentCheckInterval = window.setInterval(() => {
+      // Set up polling intervals as backup
+      contentCheckInterval = window.setInterval(() => {
         checkReportContent();
       }, 5000); // Check every 5 seconds
       
-      const errorCheckInterval = window.setInterval(async () => {
+      errorCheckInterval = window.setInterval(async () => {
         try {
           console.log('Performing manual error check...');
           const { data, error } = await supabase
@@ -124,18 +164,22 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           console.error('Error in manual error check:', err);
         }
       }, 10000); // Check every 10 seconds
-      
-      return () => {
-        console.log('Cleaning up subscriptions and intervals');
-        supabase.removeChannel(subscription);
-        clearInterval(contentCheckInterval);
-        clearInterval(errorCheckInterval);
-      };
+    };
+    
+    if (reportCreated?.id) {
+      setupSubscription();
     }
     
     return () => {
+      console.log('Cleaning up subscriptions and intervals');
       if (subscription) {
         supabase.removeChannel(subscription);
+      }
+      if (contentCheckInterval) {
+        window.clearInterval(contentCheckInterval);
+      }
+      if (errorCheckInterval) {
+        window.clearInterval(errorCheckInterval);
       }
     };
   }, [reportCreated]);
@@ -305,8 +349,10 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       });
       
       const jobUuid = uuidv4();
+      console.log(`Generated job UUID: ${jobUuid}`);
       
-      await supabase
+      // Create initial progress record
+      const { error: progressError } = await supabase
         .from('report_progress')
         .insert({
           report_id: newReport.id,
@@ -315,6 +361,10 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           progress: 5,
           job: jobUuid
         });
+        
+      if (progressError) {
+        console.error('Error creating initial progress record:', progressError);
+      }
       
       toast.success('Report created. Generating content...');
       
@@ -342,6 +392,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       console.log('Webhook payload:', webhookPayload);
       
+      // Send webhook requests
       const webhookPromises = webhookUrls.map(async (webhookUrl) => {
         console.log(`Sending webhook to: ${webhookUrl}`);
         
@@ -361,6 +412,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           } else {
             console.error(`Webhook POST response error for ${webhookUrl}:`, await postResponse.text());
             
+            // Fallback to GET request
             const getUrl = new URL(webhookUrl);
             Object.entries(webhookPayload).forEach(([key, value]) => {
               getUrl.searchParams.append(key, String(value));
@@ -399,13 +451,18 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
     if (!reportCreated?.id) return;
     
     try {
+      console.log('Reprocessing report...');
       setShowErrorDialog(false);
       
+      // Get the project ID from the report
       const report = await fetchReportById(reportCreated.id);
+      console.log('Retrieved report for reprocessing:', report);
       
+      // Clean up state
       setReportCreated(null);
       setProgressUpdate(null);
       
+      // Restart the report creation process
       await handleCreateReport(report.project_id);
       
       toast.success('Report generation restarted');
