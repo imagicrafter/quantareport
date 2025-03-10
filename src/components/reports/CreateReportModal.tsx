@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -134,12 +135,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         )
         .subscribe((status) => {
           console.log(`Channel ${channelName} subscription status:`, status);
-          
-          // Inspect channel configuration after subscription
-          setTimeout(() => {
-            console.log('Channel configuration after subscription:');
-            inspectChannels();
-          }, 1000);
         });
         
       console.log('Subscription set up successfully');
@@ -227,42 +222,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       }
     };
   }, [reportCreated]);
-  
-  const inspectChannels = () => {
-    try {
-      if (!reportCreated?.id) {
-        console.log('No report created yet, no channels to inspect');
-        return;
-      }
-      
-      // Get all active channels
-      const channels = supabase.getChannels();
-      
-      console.log('Active Supabase channels:', channels);
-      
-      // Find channels related to the current report
-      const reportChannels = channels.filter(channel => 
-        channel.topic.includes(`report-progress-${reportCreated.id}`)
-      );
-      
-      console.log(`Found ${reportChannels.length} channels for report ${reportCreated.id}:`, reportChannels);
-      
-      // Log detailed information about each channel
-      reportChannels.forEach((channel, index) => {
-        console.log(`Channel ${index + 1} details:`, {
-          topic: channel.topic,
-          state: channel.state,
-          joinedOnce: channel.joinedOnce,
-          bindings: channel.bindings
-        });
-      });
-      
-      return reportChannels;
-    } catch (error) {
-      console.error('Error inspecting channels:', error);
-      return [];
-    }
-  };
 
   useEffect(() => {
     if (progressUpdate && progressUpdate.status === 'error') {
@@ -574,9 +533,39 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   };
 
   const debugCheckChannels = () => {
-    console.log('Manually checking channel configuration:');
-    const channels = inspectChannels();
-    toast.info(`Found ${channels?.length || 0} active channels for this report`);
+    try {
+      if (!reportCreated?.id) {
+        console.log('No report created yet, no channels to inspect');
+        return;
+      }
+      
+      // Get all active channels
+      const channels = supabase.getChannels();
+      
+      console.log('Active Supabase channels:', channels);
+      
+      // Find channels related to the current report
+      const reportChannels = channels.filter(channel => 
+        channel.topic.includes(`report-progress-${reportCreated.id}`)
+      );
+      
+      console.log(`Found ${reportChannels.length} channels for report ${reportCreated.id}:`, reportChannels);
+      
+      // Log detailed information about each channel
+      reportChannels.forEach((channel, index) => {
+        console.log(`Channel ${index + 1} details:`, {
+          topic: channel.topic,
+          state: channel.state,
+          joinedOnce: channel.joinedOnce
+        });
+      });
+      
+      toast.info(`Found ${reportChannels.length} active channels for this report`);
+      return reportChannels;
+    } catch (error) {
+      console.error('Error inspecting channels:', error);
+      return [];
+    }
   };
 
   return (
