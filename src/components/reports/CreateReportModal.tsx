@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -461,8 +460,11 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         'https://n8n-01.imagicrafterai.com/webhook/58f03c25-d09d-4094-bd62-2a3d35514b6d'
       ];
       
-      const appBaseUrl = window.location.origin;
-      const callbackUrl = `${appBaseUrl}/api/report-progress/${newReport.id}`;
+      // Use the Supabase edge function URL directly instead of a frontend route
+      const supabaseProjectUrl = 'https://vtaufnxworztolfdwlll.supabase.co';
+      const callbackUrl = `${supabaseProjectUrl}/functions/v1/report-progress/${newReport.id}`;
+      
+      console.log(`Using Supabase edge function callback URL: ${callbackUrl}`);
       
       const webhookPayload = {
         project_id: projectId,
