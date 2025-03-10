@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,11 +60,11 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   }, [isOpen]);
 
   useEffect(() => {
-    // Subscribe to real-time progress updates if a report has been created
     let subscription: any = null;
     
     if (reportCreated?.id) {
-      // Subscribe to progress_updates table for this report
+      console.log(`Setting up subscription for report progress updates on report ${reportCreated.id}`);
+      
       subscription = supabase
         .channel('report-progress')
         .on(
@@ -78,29 +77,59 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           },
           (payload) => {
             const update = payload.new as ProgressUpdate;
+            console.log('Received progress update:', update);
             setProgressUpdate(update);
             
-            // If status is completed, navigate to report editor
             if (update.status === 'completed' || update.progress >= 100) {
+              console.log('Report completed, navigating to editor...');
               navigateToReport();
             }
             
-            // If status is error, show error dialog
             if (update.status === 'error') {
+              console.log('Report generation error detected, showing error dialog');
               setShowErrorDialog(true);
             }
           }
         )
         .subscribe();
         
-      // Also poll for content updates as a fallback
+      console.log('Subscription set up successfully');
+      
       const contentCheckInterval = window.setInterval(() => {
         checkReportContent();
       }, 5000); // Check every 5 seconds
       
+      const errorCheckInterval = window.setInterval(async () => {
+        try {
+          console.log('Performing manual error check...');
+          const { data, error } = await supabase
+            .from('report_progress')
+            .select('*')
+            .eq('report_id', reportCreated.id)
+            .eq('status', 'error')
+            .order('created_at', { ascending: false })
+            .limit(1);
+            
+          if (error) {
+            console.error('Error checking for error status:', error);
+            return;
+          }
+          
+          if (data && data.length > 0) {
+            console.log('Found error status in manual check:', data[0]);
+            setProgressUpdate(data[0] as ProgressUpdate);
+            setShowErrorDialog(true);
+          }
+        } catch (err) {
+          console.error('Error in manual error check:', err);
+        }
+      }, 10000); // Check every 10 seconds
+      
       return () => {
+        console.log('Cleaning up subscriptions and intervals');
         supabase.removeChannel(subscription);
         clearInterval(contentCheckInterval);
+        clearInterval(errorCheckInterval);
       };
     }
     
@@ -118,12 +147,10 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       console.log(`Report ${reportCreated.id} completed, navigating to editor...`);
       const report = await fetchReportById(reportCreated.id);
       
-      // Reset state before navigation
       setReportCreated(null);
       setProgressUpdate(null);
       onClose();
       
-      // Navigate to the report editor
       navigate(`/dashboard/reports/editor/${report.id}`);
     } catch (error) {
       console.error('Error navigating to report:', error);
@@ -138,7 +165,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       console.log(`Checking if report ${reportCreated.id} content has been updated...`);
       const report = await fetchReportById(reportCreated.id);
       
-      // If content has been updated and is different from initial content
       if (report.content && report.content !== reportCreated.content) {
         console.log('Report content has been updated, navigating to editor...');
         navigateToReport();
@@ -160,7 +186,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         return;
       }
 
-      // Get all projects for the user
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
         .select('id, name, description, template_id')
@@ -168,7 +193,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
 
       if (projectsError) throw projectsError;
 
-      // Get all reports for the user
       const { data: reports, error: reportsError } = await supabase
         .from('reports')
         .select('project_id')
@@ -176,12 +200,9 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
 
       if (reportsError) throw reportsError;
 
-      // Create a set of project IDs that already have reports
       const projectsWithReports = new Set(reports.map(report => report.project_id));
 
-      // Get image and note counts for each project directly from the database
       const projectDetails = await Promise.all(projects.map(async (project) => {
-        // Get image count
         const { count: imageCount, error: imageError } = await supabase
           .from('files')
           .select('id', { count: 'exact', head: true })
@@ -192,7 +213,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           console.error('Error fetching image count:', imageError);
         }
 
-        // Get notes count
         const { count: notesCount, error: notesError } = await supabase
           .from('notes')
           .select('id', { count: 'exact', head: true })
@@ -210,7 +230,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         };
       }));
 
-      // No longer filtering out projects with reports
       setProjects(projectDetails);
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -233,7 +252,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       const userId = session.session.user.id;
       
-      // Get project details for report
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .select('*')
@@ -242,7 +260,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         
       if (projectError) throw projectError;
       
-      // Get images for the project
       const { data: images, error: imagesError } = await supabase
         .from('files')
         .select('file_path')
@@ -252,10 +269,8 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         
       if (imagesError) throw imagesError;
       
-      // Create the report
       const imageUrls = images ? images.map(img => img.file_path) : [];
       
-      // Generate a basic initial content for the report
       const currentDate = new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -284,16 +299,13 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       const newReport = await createReport(reportData);
       console.log('Report created:', newReport);
       
-      // Store the new report ID and initial content to poll for updates
       setReportCreated({
         id: newReport.id,
         content: newReport.content
       });
       
-      // Generate a job UUID for tracking this report generation
       const jobUuid = uuidv4();
       
-      // Create initial progress update
       await supabase
         .from('report_progress')
         .insert({
@@ -306,89 +318,76 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       toast.success('Report created. Generating content...');
       
-      // Send webhook notifications with more comprehensive payload
-      try {
-        // Define webhook URLs - now we have two webhooks to send to
-        const webhookUrls = [
-          'https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d',
-          'https://n8n-01.imagicrafterai.com/webhook/58f03c25-d09d-4094-bd62-2a3d35514b6d'
-        ];
+      const webhookUrls = [
+        'https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d',
+        'https://n8n-01.imagicrafterai.com/webhook/58f03c25-d09d-4094-bd62-2a3d35514b6d'
+      ];
+      
+      const appBaseUrl = window.location.origin;
+      const callbackUrl = `${appBaseUrl}/api/report-progress/${newReport.id}`;
+      
+      const webhookPayload = {
+        project_id: projectId,
+        report_id: newReport.id,
+        user_id: userId,
+        project_name: project.name,
+        timestamp: new Date().toISOString(),
+        image_count: imageUrls.length,
+        image_urls: imageUrls,
+        template_id: project.template_id,
+        action: 'generate_report',
+        callback_url: callbackUrl,
+        job: jobUuid
+      };
+      
+      console.log('Webhook payload:', webhookPayload);
+      
+      const webhookPromises = webhookUrls.map(async (webhookUrl) => {
+        console.log(`Sending webhook to: ${webhookUrl}`);
         
-        // Get the application base URL for callback
-        const appBaseUrl = window.location.origin;
-        const callbackUrl = `${appBaseUrl}/api/report-progress/${newReport.id}`;
-        
-        const webhookPayload = {
-          project_id: projectId,
-          report_id: newReport.id,
-          user_id: userId,
-          project_name: project.name,
-          timestamp: new Date().toISOString(),
-          image_count: imageUrls.length,
-          image_urls: imageUrls,
-          template_id: project.template_id,
-          action: 'generate_report',
-          callback_url: callbackUrl,
-          job: jobUuid
-        };
-        
-        console.log('Webhook payload:', webhookPayload);
-        
-        // Send POST requests to both webhooks
-        const webhookPromises = webhookUrls.map(async (webhookUrl) => {
-          console.log(`Sending webhook to: ${webhookUrl}`);
+        try {
+          const postResponse = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(webhookPayload)
+          });
           
-          try {
-            // Send POST request
-            const postResponse = await fetch(webhookUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-              },
-              body: JSON.stringify(webhookPayload)
+          if (postResponse.ok) {
+            console.log(`Webhook POST request to ${webhookUrl} succeeded:`, await postResponse.text());
+            return true;
+          } else {
+            console.error(`Webhook POST response error for ${webhookUrl}:`, await postResponse.text());
+            
+            const getUrl = new URL(webhookUrl);
+            Object.entries(webhookPayload).forEach(([key, value]) => {
+              getUrl.searchParams.append(key, String(value));
             });
             
-            if (postResponse.ok) {
-              console.log(`Webhook POST request to ${webhookUrl} succeeded:`, await postResponse.text());
+            const getResponse = await fetch(getUrl.toString(), {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json'
+              }
+            });
+            
+            if (getResponse.ok) {
+              console.log(`Webhook GET request to ${webhookUrl} succeeded:`, await getResponse.text());
               return true;
             } else {
-              console.error(`Webhook POST response error for ${webhookUrl}:`, await postResponse.text());
-              
-              // As a fallback, try GET request
-              const getUrl = new URL(webhookUrl);
-              // Add all payload fields as query parameters
-              Object.entries(webhookPayload).forEach(([key, value]) => {
-                getUrl.searchParams.append(key, String(value));
-              });
-              
-              const getResponse = await fetch(getUrl.toString(), {
-                method: 'GET',
-                headers: {
-                  'Accept': 'application/json'
-                }
-              });
-              
-              if (getResponse.ok) {
-                console.log(`Webhook GET request to ${webhookUrl} succeeded:`, await getResponse.text());
-                return true;
-              } else {
-                console.error(`Webhook GET response error for ${webhookUrl}:`, await getResponse.text());
-                return false;
-              }
+              console.error(`Webhook GET response error for ${webhookUrl}:`, await getResponse.text());
+              return false;
             }
-          } catch (error) {
-            console.error(`Error sending webhook to ${webhookUrl}:`, error);
-            return false;
           }
-        });
-        
-        // Wait for all webhook requests to complete
-        await Promise.all(webhookPromises);
-      } catch (webhookError) {
-        console.error('Error sending webhooks:', webhookError);
-        // Continue even if webhook fails
-      }
+        } catch (error) {
+          console.error(`Error sending webhook to ${webhookUrl}:`, error);
+          return false;
+        }
+      });
+      
+      await Promise.all(webhookPromises);
     } catch (error) {
       console.error('Error creating report:', error);
       toast.error('Failed to create report. Please try again.');
@@ -402,10 +401,11 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
     try {
       setShowErrorDialog(false);
       
-      // Get the report and project details
       const report = await fetchReportById(reportCreated.id);
       
-      // Create a new report with the same project
+      setReportCreated(null);
+      setProgressUpdate(null);
+      
       await handleCreateReport(report.project_id);
       
       toast.success('Report generation restarted');
@@ -502,13 +502,17 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Error Dialog */}
       <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Error Generating Report</AlertDialogTitle>
             <AlertDialogDescription>
               There was an error while generating your report. You can continue to the report editor to view the partial results or try to generate the report again.
+              {progressUpdate?.message && (
+                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
+                  Error details: {progressUpdate.message}
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
