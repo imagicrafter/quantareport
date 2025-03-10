@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -250,7 +251,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       // Log detailed information about each channel
       reportChannels.forEach((channel, index) => {
         console.log(`Channel ${index + 1} details:`, {
-          id: channel.id,
           topic: channel.topic,
           state: channel.state,
           joinedOnce: channel.joinedOnce,
