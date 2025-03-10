@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -102,9 +101,13 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         console.error('Error checking initial status:', err);
       }
       
+      // Create a unique channel name with timestamp to avoid conflicts
+      const channelName = `report-progress-${reportCreated.id}-${Date.now()}`;
+      console.log(`Creating channel with name: ${channelName}`);
+      
       // Set up real-time subscription
       subscription = supabase
-        .channel(`report-progress-${reportCreated.id}-${Date.now()}`) // Make channel name unique
+        .channel(channelName)
         .on(
           'postgres_changes',
           {
@@ -130,7 +133,13 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           }
         )
         .subscribe((status) => {
-          console.log('Subscription status:', status);
+          console.log(`Channel ${channelName} subscription status:`, status);
+          
+          // Inspect channel configuration after subscription
+          setTimeout(() => {
+            console.log('Channel configuration after subscription:');
+            inspectChannels();
+          }, 1000);
         });
         
       console.log('Subscription set up successfully');
@@ -207,6 +216,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
     return () => {
       console.log('Cleaning up subscriptions and intervals');
       if (subscription) {
+        console.log('Removing channel:', subscription.topic);
         supabase.removeChannel(subscription);
       }
       if (contentCheckInterval) {
@@ -218,7 +228,43 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
     };
   }, [reportCreated]);
   
-  // Effect to handle progress updates that indicate error
+  const inspectChannels = () => {
+    try {
+      if (!reportCreated?.id) {
+        console.log('No report created yet, no channels to inspect');
+        return;
+      }
+      
+      // Get all active channels
+      const channels = supabase.getChannels();
+      
+      console.log('Active Supabase channels:', channels);
+      
+      // Find channels related to the current report
+      const reportChannels = channels.filter(channel => 
+        channel.topic.includes(`report-progress-${reportCreated.id}`)
+      );
+      
+      console.log(`Found ${reportChannels.length} channels for report ${reportCreated.id}:`, reportChannels);
+      
+      // Log detailed information about each channel
+      reportChannels.forEach((channel, index) => {
+        console.log(`Channel ${index + 1} details:`, {
+          id: channel.id,
+          topic: channel.topic,
+          state: channel.state,
+          joinedOnce: channel.joinedOnce,
+          bindings: channel.bindings
+        });
+      });
+      
+      return reportChannels;
+    } catch (error) {
+      console.error('Error inspecting channels:', error);
+      return [];
+    }
+  };
+
   useEffect(() => {
     if (progressUpdate && progressUpdate.status === 'error') {
       console.log('Progress update indicates error, showing error dialog:', progressUpdate);
@@ -525,6 +571,12 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
     }
   };
 
+  const debugCheckChannels = () => {
+    console.log('Manually checking channel configuration:');
+    const channels = inspectChannels();
+    toast.info(`Found ${channels?.length || 0} active channels for this report`);
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -545,6 +597,16 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
                   progress={progressUpdate.progress}
                   message={progressUpdate.message}
                 />
+                <div className="mt-3 text-right">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={debugCheckChannels}
+                    className="text-xs"
+                  >
+                    Check Channel Config
+                  </Button>
+                </div>
               </div>
             )}
             
