@@ -10,16 +10,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, AlertCircle } from 'lucide-react';
 import ReportGenerationProgress from './ReportGenerationProgress';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 interface ProjectDetails {
   id: string;
@@ -51,7 +41,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   const [error, setError] = useState<string | null>(null);
   const [reportCreated, setReportCreated] = useState<{id: string, content: string} | null>(null);
   const [progressUpdate, setProgressUpdate] = useState<ProgressUpdate | null>(null);
-  const [showErrorDialog, setShowErrorDialog] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -63,7 +52,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   useEffect(() => {
     let subscription: any = null;
     let contentCheckInterval: number | null = null;
-    let errorCheckInterval: number | null = null;
     
     const setupSubscription = async () => {
       if (!reportCreated?.id) return;
@@ -83,13 +71,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           console.log('Initial status found:', initialStatus[0]);
           const update = initialStatus[0] as ProgressUpdate;
           setProgressUpdate(update);
-          
-          // If there's already an error status, show error dialog immediately
-          if (update.status === 'error') {
-            console.log('Error status found in initial check, showing error dialog');
-            setShowErrorDialog(true);
-            return;
-          }
           
           // If report is already complete, navigate to it
           if (update.status === 'completed' || update.progress >= 100) {
@@ -126,11 +107,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
               console.log('Report completed, navigating to editor...');
               navigateToReport();
             }
-            
-            if (update.status === 'error') {
-              console.log('Report generation error detected, showing error dialog');
-              setShowErrorDialog(true);
-            }
           }
         )
         .subscribe((status) => {
@@ -139,68 +115,9 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         
       console.log('Subscription set up successfully');
       
-      // Set up polling intervals as backup
+      // Set up polling interval as backup
       contentCheckInterval = window.setInterval(() => {
         checkReportContent();
-      }, 5000); // Check every 5 seconds
-      
-      errorCheckInterval = window.setInterval(async () => {
-        try {
-          console.log('Performing manual error check...');
-          const { data, error } = await supabase
-            .from('report_progress')
-            .select('*')
-            .eq('report_id', reportCreated.id)
-            .eq('status', 'error')
-            .order('created_at', { ascending: false })
-            .limit(1);
-            
-          if (error) {
-            console.error('Error checking for error status:', error);
-            return;
-          }
-          
-          if (data && data.length > 0) {
-            console.log('Found error status in manual check:', data[0]);
-            setProgressUpdate(data[0] as ProgressUpdate);
-            setShowErrorDialog(true);
-          }
-          
-          // Also check if progress is 99% or higher without completion
-          const { data: highProgressData, error: highProgressError } = await supabase
-            .from('report_progress')
-            .select('*')
-            .eq('report_id', reportCreated.id)
-            .gte('progress', 99)
-            .neq('status', 'completed')
-            .order('created_at', { ascending: false })
-            .limit(1);
-            
-          if (!highProgressError && highProgressData && highProgressData.length > 0) {
-            const update = highProgressData[0] as ProgressUpdate;
-            console.log('Found high progress without completion:', update);
-            
-            // If it's been more than 10 seconds since the high progress update
-            const updateTime = new Date(update.created_at).getTime();
-            const currentTime = new Date().getTime();
-            const elapsedSeconds = (currentTime - updateTime) / 1000;
-            
-            if (elapsedSeconds > 10) {
-              console.log('High progress stuck for more than 10 seconds, treating as error');
-              
-              // Update progress report
-              const updatedUpdate = {
-                ...update,
-                status: 'error' as const,
-                message: update.message + ' (Timed out at high progress)'
-              };
-              setProgressUpdate(updatedUpdate);
-              setShowErrorDialog(true);
-            }
-          }
-        } catch (err) {
-          console.error('Error in manual error check:', err);
-        }
       }, 5000); // Check every 5 seconds
     };
     
@@ -217,18 +134,8 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       if (contentCheckInterval) {
         window.clearInterval(contentCheckInterval);
       }
-      if (errorCheckInterval) {
-        window.clearInterval(errorCheckInterval);
-      }
     };
   }, [reportCreated]);
-
-  useEffect(() => {
-    if (progressUpdate && progressUpdate.status === 'error') {
-      console.log('Progress update indicates error, showing error dialog:', progressUpdate);
-      setShowErrorDialog(true);
-    }
-  }, [progressUpdate]);
   
   const navigateToReport = async () => {
     if (!reportCreated?.id) return;
@@ -507,78 +414,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
     }
   };
 
-  const handleReprocessReport = async () => {
-    if (!reportCreated?.id) {
-      console.error('No report ID available for reprocessing');
-      return;
-    }
-    
-    try {
-      console.log('Reprocessing report...');
-      setShowErrorDialog(false);
-      
-      // Get the project ID from the report
-      const report = await fetchReportById(reportCreated.id);
-      console.log('Retrieved report for reprocessing:', report);
-      
-      // Update the report status to archived so we don't create duplicates
-      await supabase
-        .from('reports')
-        .update({ status: 'archived' })
-        .eq('id', reportCreated.id);
-      
-      // Clean up state before starting a new report
-      const projectId = report.project_id;
-      setProgressUpdate(null);
-      setReportCreated(null);
-      
-      // Restart the report creation process
-      await handleCreateReport(projectId);
-      
-      toast.success('Report generation restarted');
-    } catch (error) {
-      console.error('Error reprocessing report:', error);
-      toast.error('Failed to reprocess report. Please try again.');
-      setShowErrorDialog(false); // Close dialog on error to allow user to try again
-    }
-  };
-
-  const debugCheckChannels = () => {
-    try {
-      if (!reportCreated?.id) {
-        console.log('No report created yet, no channels to inspect');
-        return;
-      }
-      
-      // Get all active channels
-      const channels = supabase.getChannels();
-      
-      console.log('Active Supabase channels:', channels);
-      
-      // Find channels related to the current report
-      const reportChannels = channels.filter(channel => 
-        channel.topic.includes(`report-progress-${reportCreated.id}`)
-      );
-      
-      console.log(`Found ${reportChannels.length} channels for report ${reportCreated.id}:`, reportChannels);
-      
-      // Log detailed information about each channel
-      reportChannels.forEach((channel, index) => {
-        console.log(`Channel ${index + 1} details:`, {
-          topic: channel.topic,
-          state: channel.state,
-          joinedOnce: channel.joinedOnce
-        });
-      });
-      
-      toast.info(`Found ${reportChannels.length} active channels for this report`);
-      return reportChannels;
-    } catch (error) {
-      console.error('Error inspecting channels:', error);
-      return [];
-    }
-  };
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -599,16 +434,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
                   progress={progressUpdate.progress}
                   message={progressUpdate.message}
                 />
-                <div className="mt-3 text-right">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={debugCheckChannels}
-                    className="text-xs"
-                  >
-                    Check Channel Config
-                  </Button>
-                </div>
               </div>
             )}
             
@@ -675,30 +500,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           </div>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Error Generating Report</AlertDialogTitle>
-            <AlertDialogDescription>
-              There was an error while generating your report. You can continue to the report editor to view the partial results or try to generate the report again.
-              {progressUpdate?.message && (
-                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
-                  Error details: {progressUpdate.message}
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={navigateToReport}>
-              Continue to Report Editor
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleReprocessReport}>
-              Reprocess Report
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };

@@ -471,6 +471,13 @@ export type Database = {
           },
         ]
       }
+      job_report_error_count: {
+        Row: {
+          count: number | null
+          job: string | null
+        }
+        Relationships: []
+      }
       project_images: {
         Row: {
           file_path: string | null
