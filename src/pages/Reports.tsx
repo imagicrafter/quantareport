@@ -19,11 +19,22 @@ const Reports = () => {
 
   useEffect(() => {
     loadReports();
+
+    // Set up a periodic refresh to catch status changes
+    const refreshInterval = setInterval(() => {
+      loadReports(false); // Silent refresh without loading indicator
+    }, 10000); // Refresh every 10 seconds
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, []);
 
-  const loadReports = async () => {
+  const loadReports = async (showLoading = true) => {
     try {
-      setIsLoading(true);
+      if (showLoading) {
+        setIsLoading(true);
+      }
       const reportData = await fetchReports();
       // Filter out archived reports for main view
       const activeReports = reportData.filter(report => report.status !== 'archived');
@@ -31,7 +42,9 @@ const Reports = () => {
     } catch (error) {
       console.error('Error fetching reports:', error);
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   };
 

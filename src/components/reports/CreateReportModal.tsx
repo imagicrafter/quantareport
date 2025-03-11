@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { createReport, ReportStatus, fetchReportById } from './ReportService';
+import { createReport, ReportStatus, fetchReportById, updateReport } from './ReportService';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -237,6 +237,11 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       console.log(`Report ${reportCreated.id} completed, navigating to editor...`);
       const report = await fetchReportById(reportCreated.id);
       
+      // Update report status from 'processing' to 'draft' when complete
+      if (report.status === 'processing') {
+        await updateReport(report.id, { status: 'draft' });
+      }
+      
       setReportCreated(null);
       setProgressUpdate(null);
       onClose();
@@ -375,12 +380,18 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         </div>
       `;
       
+      // Generate report title - add testing tag if requested via project name
+      const isTestReport = project.name.toLowerCase().includes('test');
+      const reportTitle = isTestReport 
+        ? `##TESTING## ${project.name} Report` 
+        : `${project.name} Report`;
+      
       const reportData = {
-        title: `${project.name} Report`,
+        title: reportTitle,
         content: initialContent,
         project_id: projectId,
         user_id: userId,
-        status: 'draft' as ReportStatus,
+        status: 'processing' as ReportStatus, // Start with 'processing' status
         image_urls: imageUrls,
         template_id: project.template_id || null
       };
@@ -414,10 +425,15 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       toast.success('Report created. Generating content...');
       
-      const webhookUrls = [
-        'https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d',
-        'https://n8n-01.imagicrafterai.com/webhook/58f03c25-d09d-4094-bd62-2a3d35514b6d'
-      ];
+      // Determine which webhook URL to use based on report title
+      const isTestingTitle = newReport.title.includes('##TESTING##');
+      
+      // Select the appropriate webhook URL based on title
+      const webhookUrl = isTestingTitle
+        ? 'https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d'
+        : 'https://n8n-01.imagicrafterai.com/webhook/58f03c25-d09d-4094-bd62-2a3d35514b6d';
+      
+      console.log(`Using ${isTestingTitle ? 'TESTING' : 'PRODUCTION'} webhook URL: ${webhookUrl}`);
       
       // Use the Supabase edge function URL directly instead of a frontend route
       const supabaseProjectUrl = 'https://vtaufnxworztolfdwlll.supabase.co';
@@ -436,59 +452,54 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         template_id: project.template_id,
         action: 'generate_report',
         callback_url: callbackUrl,
-        job: jobUuid
+        job: jobUuid,
+        is_test: isTestingTitle
       };
       
       console.log('Webhook payload:', webhookPayload);
       
-      // Send webhook requests
-      const webhookPromises = webhookUrls.map(async (webhookUrl) => {
+      // Send webhook request (only one webhook now based on report type)
+      try {
         console.log(`Sending webhook to: ${webhookUrl}`);
         
-        try {
-          const postResponse = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(webhookPayload)
+        const postResponse = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(webhookPayload)
+        });
+        
+        if (postResponse.ok) {
+          console.log(`Webhook POST request to ${webhookUrl} succeeded:`, await postResponse.text());
+        } else {
+          console.error(`Webhook POST response error for ${webhookUrl}:`, await postResponse.text());
+          
+          // Fallback to GET request
+          const getUrl = new URL(webhookUrl);
+          Object.entries(webhookPayload).forEach(([key, value]) => {
+            getUrl.searchParams.append(key, String(value));
           });
           
-          if (postResponse.ok) {
-            console.log(`Webhook POST request to ${webhookUrl} succeeded:`, await postResponse.text());
-            return true;
-          } else {
-            console.error(`Webhook POST response error for ${webhookUrl}:`, await postResponse.text());
-            
-            // Fallback to GET request
-            const getUrl = new URL(webhookUrl);
-            Object.entries(webhookPayload).forEach(([key, value]) => {
-              getUrl.searchParams.append(key, String(value));
-            });
-            
-            const getResponse = await fetch(getUrl.toString(), {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json'
-              }
-            });
-            
-            if (getResponse.ok) {
-              console.log(`Webhook GET request to ${webhookUrl} succeeded:`, await getResponse.text());
-              return true;
-            } else {
-              console.error(`Webhook GET response error for ${webhookUrl}:`, await getResponse.text());
-              return false;
+          const getResponse = await fetch(getUrl.toString(), {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json'
             }
+          });
+          
+          if (getResponse.ok) {
+            console.log(`Webhook GET request to ${webhookUrl} succeeded:`, await getResponse.text());
+          } else {
+            console.error(`Webhook GET response error for ${webhookUrl}:`, await getResponse.text());
+            throw new Error(`Failed to send webhook request to ${webhookUrl}`);
           }
-        } catch (error) {
-          console.error(`Error sending webhook to ${webhookUrl}:`, error);
-          return false;
         }
-      });
-      
-      await Promise.all(webhookPromises);
+      } catch (error) {
+        console.error(`Error sending webhook to ${webhookUrl}:`, error);
+        toast.error('Failed to start report generation. Please try again.');
+      }
     } catch (error) {
       console.error('Error creating report:', error);
       toast.error('Failed to create report. Please try again.');
