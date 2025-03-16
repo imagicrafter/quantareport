@@ -19,9 +19,10 @@ export interface SignupCode {
  */
 export const validateSignupCode = async (code: string, email: string): Promise<boolean> => {
   try {
+    // Using a more explicit approach to avoid TypeScript errors
     const { data, error } = await supabase
       .from('signup_codes')
-      .select('*')
+      .select()
       .eq('code', code)
       .eq('email', email)
       .eq('used', false)
@@ -92,7 +93,7 @@ export const generateSignupCode = async (email: string, createdBy: string): Prom
       return null;
     }
 
-    return data;
+    return data as SignupCode;
   } catch (error) {
     console.error('Error generating signup code:', error);
     return null;
@@ -107,7 +108,7 @@ export const getSignupCodes = async (): Promise<SignupCode[]> => {
   try {
     const { data, error } = await supabase
       .from('signup_codes')
-      .select('*')
+      .select()
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -115,7 +116,7 @@ export const getSignupCodes = async (): Promise<SignupCode[]> => {
       return [];
     }
 
-    return data || [];
+    return data as SignupCode[];
   } catch (error) {
     console.error('Error fetching signup codes:', error);
     return [];
