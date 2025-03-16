@@ -12,6 +12,7 @@ import Reports from './pages/Reports';
 import ReportEditor from './pages/ReportEditor';
 import Images from './pages/Images';
 import Notes from './pages/Notes';
+import Admin from './pages/Admin';
 import './App.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
@@ -23,6 +24,7 @@ function App() {
         <Route path="/" element={<Index />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/admin" element={<Admin />} />
         
         {/* Dashboard and protected routes */}
         <Route path="/dashboard" element={<DashboardLayout />}>

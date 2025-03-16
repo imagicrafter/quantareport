@@ -7,6 +7,8 @@ interface SignUpStep1FormProps {
   setEmail: Dispatch<SetStateAction<string>>;
   password: string;
   setPassword: Dispatch<SetStateAction<string>>;
+  signUpCode: string;
+  setSignUpCode: Dispatch<SetStateAction<string>>;
   handleNextStep: (e: FormEvent) => void;
   error: string;
   isLoading: boolean;
@@ -19,6 +21,8 @@ const SignUpStep1Form = ({
   setEmail,
   password,
   setPassword,
+  signUpCode,
+  setSignUpCode,
   handleNextStep,
   error,
   isLoading,
@@ -42,6 +46,24 @@ const SignUpStep1Form = ({
       </div>
       
       <div className="space-y-2">
+        <label htmlFor="signUpCode" className="text-sm font-medium">
+          Sign-up Code
+        </label>
+        <input
+          id="signUpCode"
+          type="text"
+          value={signUpCode}
+          onChange={(e) => setSignUpCode(e.target.value)}
+          className="w-full p-2 rounded-md border border-input bg-background"
+          required
+          placeholder="Enter your sign-up code"
+        />
+        <p className="text-xs text-muted-foreground">
+          A sign-up code is required to register
+        </p>
+      </div>
+      
+      <div className="space-y-2">
         <label htmlFor="password" className="text-sm font-medium">
           Password
         </label>
@@ -57,6 +79,12 @@ const SignUpStep1Form = ({
           Password must be at least 8 characters
         </p>
       </div>
+
+      {error && (
+        <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+          {error}
+        </div>
+      )}
 
       <Button
         type="submit"
