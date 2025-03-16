@@ -19,9 +19,9 @@ export interface SignupCode {
  */
 export const validateSignupCode = async (code: string, email: string): Promise<boolean> => {
   try {
-    // Using a more explicit approach to avoid TypeScript errors
+    // Use the any type to work around type constraints
     const { data, error } = await supabase
-      .from('signup_codes')
+      .from('signup_codes' as any)
       .select()
       .eq('code', code)
       .eq('email', email)
@@ -48,7 +48,7 @@ export const validateSignupCode = async (code: string, email: string): Promise<b
 export const markSignupCodeAsUsed = async (code: string, email: string): Promise<void> => {
   try {
     const { error } = await supabase
-      .from('signup_codes')
+      .from('signup_codes' as any)
       .update({ 
         used: true,
         used_at: new Date().toISOString()
@@ -76,7 +76,7 @@ export const generateSignupCode = async (email: string, createdBy: string): Prom
     const code = Math.random().toString(36).substring(2, 10).toUpperCase();
     
     const { data, error } = await supabase
-      .from('signup_codes')
+      .from('signup_codes' as any)
       .insert([
         {
           code,
@@ -93,7 +93,7 @@ export const generateSignupCode = async (email: string, createdBy: string): Prom
       return null;
     }
 
-    return data as SignupCode;
+    return data as unknown as SignupCode;
   } catch (error) {
     console.error('Error generating signup code:', error);
     return null;
@@ -107,7 +107,7 @@ export const generateSignupCode = async (email: string, createdBy: string): Prom
 export const getSignupCodes = async (): Promise<SignupCode[]> => {
   try {
     const { data, error } = await supabase
-      .from('signup_codes')
+      .from('signup_codes' as any)
       .select()
       .order('created_at', { ascending: false });
 
@@ -116,7 +116,7 @@ export const getSignupCodes = async (): Promise<SignupCode[]> => {
       return [];
     }
 
-    return data as SignupCode[];
+    return data as unknown as SignupCode[];
   } catch (error) {
     console.error('Error fetching signup codes:', error);
     return [];

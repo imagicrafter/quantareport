@@ -396,6 +396,36 @@ export type Database = {
           },
         ]
       }
+      signup_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          email: string
+          id: string
+          used: boolean
+          used_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          email: string
+          id?: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          email?: string
+          id?: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       templates: {
         Row: {
           created_at: string | null
