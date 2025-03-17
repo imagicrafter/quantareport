@@ -77,6 +77,16 @@ const SignupCodeManager = () => {
     return new Date(dateString).toLocaleString();
   };
 
+  const getStatusBadge = (status: string, used: boolean) => {
+    if (status === 'active' || used) {
+      return <Badge variant="secondary">Active</Badge>;
+    } else if (status === 'pending') {
+      return <Badge variant="default">Pending</Badge>;
+    } else {
+      return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
@@ -137,9 +147,7 @@ const SignupCodeManager = () => {
                     <TableCell>{formatDate(code.created_at)}</TableCell>
                     <TableCell>{code.created_by}</TableCell>
                     <TableCell>
-                      <Badge variant={code.used ? "secondary" : "default"}>
-                        {code.used ? "Used" : "Active"}
-                      </Badge>
+                      {getStatusBadge(code.status, code.used)}
                     </TableCell>
                     <TableCell>
                       {code.used_at ? formatDate(code.used_at) : '—'}

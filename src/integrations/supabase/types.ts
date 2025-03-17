@@ -403,6 +403,7 @@ export type Database = {
           created_by: string
           email: string
           id: string
+          status: string
           used: boolean
           used_at: string | null
         }
@@ -412,6 +413,7 @@ export type Database = {
           created_by: string
           email: string
           id?: string
+          status?: string
           used?: boolean
           used_at?: string | null
         }
@@ -421,6 +423,7 @@ export type Database = {
           created_by?: string
           email?: string
           id?: string
+          status?: string
           used?: boolean
           used_at?: string | null
         }

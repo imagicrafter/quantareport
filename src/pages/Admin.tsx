@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import SignupCodeManager from '@/components/admin/SignupCodeManager';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import { toast } from 'sonner';
 
 const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -18,20 +19,27 @@ const Admin = () => {
         const { data: session } = await supabase.auth.getSession();
         
         if (!session.session) {
+          toast.error('You must be signed in to access this page');
           navigate('/signin');
           return;
         }
 
-        const userEmail = session.session.user.email;
+        // Check if the user has the admin role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.session.user.id)
+          .single();
         
-        // Check if the user has the admin email
-        if (userEmail === 'justin@martins.net') {
+        if (profile && profile.role === 'admin') {
           setIsAdmin(true);
         } else {
+          toast.error('You do not have permission to access this page');
           navigate('/dashboard');
         }
       } catch (error) {
         console.error('Error checking admin access:', error);
+        toast.error('An error occurred while checking permissions');
         navigate('/dashboard');
       } finally {
         setIsLoading(false);

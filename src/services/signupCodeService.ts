@@ -9,6 +9,7 @@ export interface SignupCode {
   created_by: string;
   used: boolean;
   used_at: string | null;
+  status: string;
 }
 
 /**
@@ -51,7 +52,8 @@ export const markSignupCodeAsUsed = async (code: string, email: string): Promise
       .from('signup_codes' as any)
       .update({ 
         used: true,
-        used_at: new Date().toISOString()
+        used_at: new Date().toISOString(),
+        status: 'active'
       })
       .eq('code', code)
       .eq('email', email);
@@ -82,7 +84,8 @@ export const generateSignupCode = async (email: string, createdBy: string): Prom
           code,
           email,
           created_by: createdBy,
-          used: false
+          used: false,
+          status: 'pending'
         }
       ])
       .select()

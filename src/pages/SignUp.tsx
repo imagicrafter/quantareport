@@ -92,7 +92,7 @@ const SignUp = () => {
       
       if (signUpError) throw signUpError;
       
-      // Mark the signup code as used
+      // Mark the signup code as used and update status to active
       await markSignupCodeAsUsed(signUpCode, email);
       
       toast.success('Account created successfully!');
