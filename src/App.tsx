@@ -24,7 +24,6 @@ function App() {
         <Route path="/" element={<Index />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route path="/admin" element={<Admin />} />
         
         {/* Dashboard and protected routes */}
         <Route path="/dashboard" element={<DashboardLayout />}>
@@ -37,6 +36,7 @@ function App() {
           <Route path="images" element={<Images />} />
           <Route path="notes" element={<Notes />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="admin" element={<Admin />} />
         </Route>
         
         {/* 404 route */}

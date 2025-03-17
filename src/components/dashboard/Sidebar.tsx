@@ -106,9 +106,9 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
         <div className="border-t border-sidebar-border p-4 space-y-2">
           {isAdmin && (
             <Link
-              to="/admin"
+              to="/dashboard/admin"
               className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
-                currentPath === '/admin' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+                currentPath.includes('/dashboard/admin') ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
               }`}
             >
               <Shield size={20} />
