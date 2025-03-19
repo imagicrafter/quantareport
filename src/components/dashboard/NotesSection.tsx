@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,6 +38,11 @@ const formSchema = z.object({
   content: z.string().min(5, 'Content must be at least 5 characters.'),
 });
 
+const editFormSchema = z.object({
+  title: z.string().min(2, 'Title must be at least 2 characters.'),
+  content: z.string().optional(),
+});
+
 const NotesSection = ({ projectId }: NotesSectionProps) => {
   const { toast } = useToast();
   const [notes, setNotes] = useState<Note[]>([]);
@@ -58,8 +62,8 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     },
   });
 
-  const editForm = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const editForm = useForm<z.infer<typeof editFormSchema>>({
+    resolver: zodResolver(editFormSchema),
     defaultValues: {
       title: '',
       content: '',
@@ -114,7 +118,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         return;
       }
 
-      // Calculate next position
       const nextPosition = notes.length > 0 
         ? Math.max(...notes.map(note => note.position || 0)) + 1 
         : 1;
@@ -151,7 +154,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     }
   };
 
-  const handleEditNote = async (values: z.infer<typeof formSchema>) => {
+  const handleEditNote = async (values: z.infer<typeof editFormSchema>) => {
     if (!selectedNote) return;
 
     try {
@@ -160,7 +163,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         .from('notes')
         .update({
           title: values.title,
-          content: values.content,
+          content: values.content || '',
         })
         .eq('id', selectedNote.id);
 
@@ -218,13 +221,11 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   };
 
   const handleOnDragEnd = async (result: any) => {
-    // Dropped outside the list
     if (!result.destination) return;
     
     const sourceIndex = result.source.index;
     const destinationIndex = result.destination.index;
     
-    // If the position hasn't changed
     if (sourceIndex === destinationIndex) return;
     
     try {
@@ -335,7 +336,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         </DragDropContext>
       )}
 
-      {/* Add Note Dialog */}
       <Dialog 
         open={isAddDialogOpen} 
         onOpenChange={setIsAddDialogOpen}
@@ -398,7 +398,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Note Dialog */}
       <Dialog 
         open={isEditDialogOpen} 
         onOpenChange={setIsEditDialogOpen}
@@ -428,7 +427,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                 name="content"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Content</FormLabel>
+                    <FormLabel>Content (Optional)</FormLabel>
                     <FormControl>
                       <Textarea 
                         placeholder="Enter note content" 
@@ -479,7 +478,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog 
         open={isDeleteDialogOpen} 
         onOpenChange={setIsDeleteDialogOpen}
