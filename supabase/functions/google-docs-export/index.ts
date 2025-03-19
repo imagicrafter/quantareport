@@ -40,7 +40,9 @@ Deno.serve(async (req) => {
       );
     }
     
+    // Additional logging to debug the report_id
     console.log('Processing export for report:', report_id);
+    console.log('Report ID type:', typeof report_id);
     
     // Set the redirect URI
     oauth2Client.redirectUri = redirect_uri;

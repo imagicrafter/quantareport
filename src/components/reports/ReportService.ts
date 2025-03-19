@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 import { initiateGoogleDocsExport } from '@/utils/googleDocsExport';
@@ -55,6 +56,11 @@ export const fetchReports = async (): Promise<Report[]> => {
  */
 export const fetchReportById = async (id: string): Promise<Report> => {
   try {
+    if (!id || typeof id !== 'string') {
+      console.error(`Invalid report ID: ${id}, type: ${typeof id}`);
+      throw new Error(`Invalid report ID: ${id}`);
+    }
+
     console.log(`Fetching report with ID ${id} from Supabase...`);
     const { data, error } = await supabase
       .from('reports')
@@ -227,6 +233,12 @@ export const exportToWord = async (report: Report): Promise<void> => {
  */
 export const exportToGoogleDocs = async (reportId: string): Promise<void> => {
   try {
+    // Validate reportId is a string
+    if (!reportId || typeof reportId !== 'string') {
+      console.error('Invalid report ID:', reportId, typeof reportId);
+      throw new Error('Invalid report ID provided for Google Docs export');
+    }
+    
     console.log('Exporting to Google Docs, report ID:', reportId);
     await initiateGoogleDocsExport(reportId);
   } catch (error) {

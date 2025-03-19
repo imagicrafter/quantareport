@@ -7,6 +7,10 @@ const REDIRECT_URI = `${window.location.origin}/dashboard/reports`;
 
 // Store the report ID in localStorage before redirecting for OAuth
 export const storeReportForExport = (reportId: string) => {
+  if (typeof reportId !== 'string') {
+    console.error('Invalid report ID passed to storeReportForExport:', reportId);
+    return;
+  }
   localStorage.setItem('pendingGoogleDocsExport', reportId);
 };
 
@@ -34,7 +38,7 @@ export const checkPendingExport = async () => {
       
       if (error) throw error;
       
-      if (data.documentUrl) {
+      if (data?.documentUrl) {
         toast.success('Document exported to Google Docs successfully!');
         // Open the document in a new tab
         window.open(data.documentUrl, '_blank');
@@ -74,7 +78,7 @@ export const initiateGoogleDocsExport = async (reportId: string) => {
     
     if (error) throw error;
     
-    if (data.url) {
+    if (data?.url) {
       // Redirect the user to Google's OAuth page
       window.location.href = data.url;
     } else {
