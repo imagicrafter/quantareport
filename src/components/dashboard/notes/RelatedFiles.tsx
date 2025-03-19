@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { File, X, Music, Folder, FileText } from 'lucide-react';
 import { NoteFileRelationship, removeFileFromNote } from '@/utils/noteFileRelationshipUtils';
 import { toast } from 'sonner';
@@ -11,10 +11,17 @@ interface RelatedFilesProps {
 }
 
 const RelatedFiles = ({ noteId, relationships, onRelationshipsChanged }: RelatedFilesProps) => {
+  const [removingFileId, setRemovingFileId] = useState<string | null>(null);
+
   const handleRemoveFile = async (relationshipId: string) => {
-    const success = await removeFileFromNote(relationshipId);
-    if (success) {
-      onRelationshipsChanged();
+    try {
+      setRemovingFileId(relationshipId);
+      const success = await removeFileFromNote(relationshipId);
+      if (success) {
+        onRelationshipsChanged();
+      }
+    } finally {
+      setRemovingFileId(null);
     }
   };
 
@@ -71,11 +78,21 @@ const RelatedFiles = ({ noteId, relationships, onRelationshipsChanged }: Related
               </div>
             </div>
             <button
-              onClick={() => handleRemoveFile(rel.id)}
+              onClick={(e) => {
+                // Stop event propagation to prevent the modal from closing
+                e.stopPropagation();
+                e.preventDefault();
+                handleRemoveFile(rel.id);
+              }}
               className="p-1 text-muted-foreground hover:text-destructive rounded-full hover:bg-secondary"
               title="Remove file"
+              disabled={removingFileId === rel.id}
             >
-              <X size={16} />
+              {removingFileId === rel.id ? (
+                <span className="h-4 w-4 block rounded-full border-2 border-t-transparent border-muted-foreground animate-spin" />
+              ) : (
+                <X size={16} />
+              )}
             </button>
           </div>
         ))}
