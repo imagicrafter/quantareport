@@ -159,6 +159,56 @@ export type Database = {
           },
         ]
       }
+      note_file_relationships: {
+        Row: {
+          created_at: string
+          file_id: string
+          id: string
+          note_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_id: string
+          id?: string
+          note_id: string
+        }
+        Update: {
+          created_at?: string
+          file_id?: string
+          id?: string
+          note_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "project_images"
+            referencedColumns: ["files_id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           content: string

@@ -26,6 +26,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { Note, reorderNotes } from '@/utils/noteUtils';
+import { NoteFileRelationship, fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
+import FilePicker from './notes/FilePicker';
+import RelatedFiles from './notes/RelatedFiles';
 
 interface NotesSectionProps {
   projectId: string;
@@ -45,6 +48,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [saving, setSaving] = useState(false);
+  const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationship[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -90,6 +94,11 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       fetchNotes();
     }
   }, [projectId]);
+
+  const fetchFileRelationships = async (noteId: string) => {
+    const files = await fetchRelatedFiles(noteId);
+    setRelatedFiles(files);
+  };
 
   const handleAddNote = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -297,6 +306,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                                   title: note.title,
                                   content: note.content,
                                 });
+                                fetchFileRelationships(note.id);
                                 setIsEditDialogOpen(true);
                               }}
                             >
@@ -430,6 +440,24 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                   </FormItem>
                 )}
               />
+              
+              {selectedNote && (
+                <div className="space-y-4 pt-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold">Related Files</h4>
+                    <FilePicker 
+                      projectId={projectId} 
+                      noteId={selectedNote.id}
+                      onFileAdded={() => fetchFileRelationships(selectedNote.id)}
+                    />
+                  </div>
+                  <RelatedFiles 
+                    noteId={selectedNote.id} 
+                    relationships={relatedFiles}
+                    onRelationshipsChanged={() => fetchFileRelationships(selectedNote.id)}
+                  />
+                </div>
+              )}
               
               <DialogFooter className="mt-6">
                 <Button 
