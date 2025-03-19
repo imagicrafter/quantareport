@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
+import { initiateGoogleDocsExport } from '@/utils/googleDocsExport';
 
 export type ReportStatus = 'draft' | 'published' | 'archived' | 'processing';
 
@@ -227,12 +227,8 @@ export const exportToWord = async (report: Report): Promise<void> => {
  */
 export const exportToGoogleDocs = async (report: Report): Promise<void> => {
   try {
-    // This is a placeholder for the actual Google Docs export functionality
-    // In a real implementation, this would interact with the Google Docs API
     console.log('Exporting to Google Docs:', report.title);
-    
-    // For now, we'll just show a notification that this feature is not implemented
-    alert('Export to Google Docs is not yet implemented. This would require Google Drive API integration.');
+    await initiateGoogleDocsExport(report.id);
   } catch (error) {
     console.error('Error exporting to Google Docs:', error);
     throw error;

@@ -1,101 +1,68 @@
 
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Archive } from 'lucide-react';
-import { fetchReports } from '@/components/reports/ReportService';
 import ReportsTable from '@/components/reports/ReportsTable';
-import { Report } from '@/components/reports/ReportService';
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import { useState } from 'react';
 import CreateReportModal from '@/components/reports/CreateReportModal';
 import ArchivedReportsModal from '@/components/reports/ArchivedReportsModal';
+import { checkPendingExport } from '@/utils/googleDocsExport';
 
 const Reports = () => {
-  const [reports, setReports] = useState<Report[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showArchiveModal, setShowArchiveModal] = useState(false);
-  const navigate = useNavigate();
-
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false);
+  
+  // Check for pending Google Docs export after OAuth redirect
   useEffect(() => {
-    loadReports();
-
-    // Set up a periodic refresh to catch status changes
-    const refreshInterval = setInterval(() => {
-      loadReports(false); // Silent refresh without loading indicator
-    }, 10000); // Refresh every 10 seconds
-    
-    return () => {
-      clearInterval(refreshInterval);
-    };
+    checkPendingExport();
   }, []);
 
-  const loadReports = async (showLoading = true) => {
-    try {
-      if (showLoading) {
-        setIsLoading(true);
-      }
-      const reportData = await fetchReports();
-      // Filter out archived reports for main view
-      const activeReports = reportData.filter(report => report.status !== 'archived');
-      setReports(activeReports);
-    } catch (error) {
-      console.error('Error fetching reports:', error);
-    } finally {
-      if (showLoading) {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  const handleCreateNewReport = () => {
-    setShowCreateModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowCreateModal(false);
-    // Refresh reports list after modal is closed
-    loadReports();
-  };
-
   return (
-    <div className="min-h-screen relative">
-      <DashboardHeader title="Reports" toggleSidebar={() => {}} />
-      
-      <div className="container mx-auto py-8 space-y-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Reports</h1>
-          <Button onClick={handleCreateNewReport}>
-            <PlusCircle className="h-4 w-4 mr-2" />
-            New Report
-          </Button>
-        </div>
-        
-        <ReportsTable reports={reports} isLoading={isLoading} />
-        
-        <CreateReportModal 
-          isOpen={showCreateModal} 
-          onClose={handleCloseModal} 
-        />
-        
-        <ArchivedReportsModal
-          isOpen={showArchiveModal}
-          onClose={() => setShowArchiveModal(false)}
-          onReportStatusChange={loadReports}
-        />
-      </div>
-      
-      {/* Archive cabinet button at bottom right */}
-      <div className="fixed bottom-6 right-6">
-        <Button 
-          onClick={() => setShowArchiveModal(true)}
-          className="rounded-full h-14 w-14 shadow-lg"
-          variant="outline"
-          title="Archived Reports"
-        >
-          <Archive className="h-6 w-6" />
+    <div className="container mx-auto py-8">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">Reports</h1>
+        <Button onClick={() => setIsCreateModalOpen(true)}>
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Create Report
         </Button>
       </div>
+      
+      <Tabs defaultValue="all">
+        <TabsList className="mb-4">
+          <TabsTrigger value="all">All Reports</TabsTrigger>
+          <TabsTrigger value="draft">Drafts</TabsTrigger>
+          <TabsTrigger value="published">Published</TabsTrigger>
+          <TabsTrigger 
+            value="archived" 
+            onClick={() => setIsArchivedModalOpen(true)}
+          >
+            Archived
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="all">
+          <ReportsTable filter="all" />
+        </TabsContent>
+        
+        <TabsContent value="draft">
+          <ReportsTable filter="draft" />
+        </TabsContent>
+        
+        <TabsContent value="published">
+          <ReportsTable filter="published" />
+        </TabsContent>
+      </Tabs>
+      
+      <CreateReportModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
+      
+      <ArchivedReportsModal
+        isOpen={isArchivedModalOpen}
+        onClose={() => setIsArchivedModalOpen(false)}
+      />
     </div>
   );
 };
