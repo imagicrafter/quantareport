@@ -184,8 +184,8 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
     
     if (type === 'word') {
       exportToWord(report);
-    } else {
-      exportToGoogleDocs(report);
+    } else if (type === 'google-docs') {
+      exportToGoogleDocs(report.id);
     }
   };
 

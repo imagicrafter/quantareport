@@ -225,10 +225,10 @@ export const exportToWord = async (report: Report): Promise<void> => {
 /**
  * Exports the report to Google Docs
  */
-export const exportToGoogleDocs = async (report: Report): Promise<void> => {
+export const exportToGoogleDocs = async (reportId: string): Promise<void> => {
   try {
-    console.log('Exporting to Google Docs:', report.title);
-    await initiateGoogleDocsExport(report.id);
+    console.log('Exporting to Google Docs, report ID:', reportId);
+    await initiateGoogleDocsExport(reportId);
   } catch (error) {
     console.error('Error exporting to Google Docs:', error);
     throw error;

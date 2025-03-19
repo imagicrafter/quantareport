@@ -29,14 +29,18 @@ Deno.serve(async (req) => {
   }
   
   try {
-    const { code, redirect_uri, report_id } = await req.json();
+    const requestData = await req.json();
+    const { code, redirect_uri, report_id } = requestData;
     
     if (!code || !redirect_uri || !report_id) {
+      console.error('Missing required parameters:', { code: !!code, redirect_uri: !!redirect_uri, report_id });
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log('Processing export for report:', report_id);
     
     // Set the redirect URI
     oauth2Client.redirectUri = redirect_uri;
@@ -84,8 +88,9 @@ Deno.serve(async (req) => {
     // Convert HTML content to Google Docs format
     // This is a simplified version - a full implementation would need to parse HTML properly
     let plainTextContent = report.content
-      .replace(/<[^>]*>/g, '') // Remove HTML tags
-      .replace(/&nbsp;/g, ' '); // Replace HTML entities
+      ? report.content.replace(/<[^>]*>/g, '') // Remove HTML tags
+                     .replace(/&nbsp;/g, ' ')  // Replace HTML entities
+      : 'No content';
       
     // Prepare batch update to insert content
     const batchUpdateResponse = await fetch(`https://docs.googleapis.com/v1/documents/${documentId}:batchUpdate`, {

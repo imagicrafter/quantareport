@@ -55,6 +55,13 @@ export const checkPendingExport = async () => {
 
 export const initiateGoogleDocsExport = async (reportId: string) => {
   try {
+    // Ensure reportId is a string
+    if (typeof reportId !== 'string') {
+      console.error('Invalid report ID type:', typeof reportId, reportId);
+      toast.error('Invalid report ID');
+      return;
+    }
+    
     // Store the report ID for after OAuth redirect
     storeReportForExport(reportId);
     
