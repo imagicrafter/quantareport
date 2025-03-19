@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Report } from './ReportService';
-import { Eye, FileExport, Search } from 'lucide-react';
+import { Eye, FileDown, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { initiateGoogleDocsExport } from '@/utils/googleDocsExport';
 import { toast } from 'sonner';
@@ -110,7 +110,7 @@ const ReportsTable = ({ reports, isLoading }: ReportsTableProps) => {
                       size="sm"
                       onClick={() => handleExportToGoogleDocs(report.id)}
                     >
-                      <FileExport className="h-4 w-4 mr-1" /> Export
+                      <FileDown className="h-4 w-4 mr-1" /> Export
                     </Button>
                   </TableCell>
                 </TableRow>
