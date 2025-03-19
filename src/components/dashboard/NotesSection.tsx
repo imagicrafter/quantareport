@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,7 +36,7 @@ interface NotesSectionProps {
 
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
-  content: z.string().min(5, 'Content must be at least 5 characters.'),
+  content: z.string().optional(),
 });
 
 const editFormSchema = z.object({
@@ -126,7 +127,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         .from('notes')
         .insert({
           title: values.title,
-          content: values.content,
+          content: values.content || '',
           project_id: projectId,
           user_id: session.session.user.id,
           position: nextPosition
@@ -365,7 +366,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                 name="content"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Content</FormLabel>
+                    <FormLabel>Content (Optional)</FormLabel>
                     <FormControl>
                       <Textarea 
                         placeholder="Enter note content" 
