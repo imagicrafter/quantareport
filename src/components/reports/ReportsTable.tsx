@@ -12,10 +12,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Report } from './ReportService';
-import { Eye, FileDown, Search } from 'lucide-react';
+import { Eye, Search } from 'lucide-react';
 import { format } from 'date-fns';
-import { initiateGoogleDocsExport } from '@/utils/googleDocsExport';
-import { toast } from 'sonner';
 
 export interface ReportsTableProps {
   reports: Report[];
@@ -36,16 +34,6 @@ const ReportsTable = ({ reports, isLoading }: ReportsTableProps) => {
     } catch (e) {
       console.error('Invalid date:', dateString);
       return 'Invalid date';
-    }
-  };
-
-  const handleExportToGoogleDocs = (reportId: string) => {
-    try {
-      initiateGoogleDocsExport(reportId);
-      toast.info('Preparing to export to Google Docs...');
-    } catch (error) {
-      console.error('Error exporting to Google Docs:', error);
-      toast.error('Failed to export to Google Docs');
     }
   };
 
@@ -97,20 +85,13 @@ const ReportsTable = ({ reports, isLoading }: ReportsTableProps) => {
                       {report.status}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
+                  <TableCell className="text-right">
                     <Button 
                       variant="outline" 
                       size="sm" 
                       onClick={() => navigate(`/dashboard/reports/editor/${report.id}`)}
                     >
                       <Eye className="h-4 w-4 mr-1" /> View
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleExportToGoogleDocs(report.id)}
-                    >
-                      <FileDown className="h-4 w-4 mr-1" /> Export
                     </Button>
                   </TableCell>
                 </TableRow>
