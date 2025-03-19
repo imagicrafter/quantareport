@@ -8,6 +8,7 @@ import { industries } from '../data/industries';
 import SignUpContainer from '../components/auth/SignUpContainer';
 import SignUpStep1Form from '../components/auth/SignUpStep1Form';
 import SignUpStep2Form from '../components/auth/SignUpStep2Form';
+import { validateSignupCode, markSignupCodeAsUsed } from '@/services/signupCodeService';
 
 const SignUp = () => {
   const [searchParams] = useSearchParams();
@@ -17,6 +18,7 @@ const SignUp = () => {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [signUpCode, setSignUpCode] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [industry, setIndustry] = useState('');
@@ -39,16 +41,27 @@ const SignUp = () => {
     setError(oAuthError);
   }
   
-  const handleNextStep = (e: React.FormEvent) => {
+  const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
     if (step === 1) {
       // Validate first step
-      if (!email || !password) {
+      if (!email || !password || !signUpCode) {
         setError('Please fill in all fields');
         return;
       }
+      
+      // Validate signup code
+      setIsLoading(true);
+      const isValid = await validateSignupCode(signUpCode, email);
+      setIsLoading(false);
+      
+      if (!isValid) {
+        setError('Invalid signup code or email combination');
+        return;
+      }
+      
       setStep(2);
     } else if (step === 2) {
       // Validate second step and submit
@@ -79,6 +92,9 @@ const SignUp = () => {
       
       if (signUpError) throw signUpError;
       
+      // Mark the signup code as used and update status to active
+      await markSignupCodeAsUsed(signUpCode, email);
+      
       toast.success('Account created successfully!');
       console.log('Signed up successfully:', data);
       
@@ -103,6 +119,8 @@ const SignUp = () => {
           setEmail={setEmail}
           password={password}
           setPassword={setPassword}
+          signUpCode={signUpCode}
+          setSignUpCode={setSignUpCode}
           handleNextStep={handleNextStep}
           error={error}
           isLoading={isSubmitting}

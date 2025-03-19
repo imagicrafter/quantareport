@@ -1,6 +1,7 @@
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { X, Plus, FolderPlus, Image, FileText, FileCheck, FileArchive, Settings, LogOut } from 'lucide-react';
+import { X, Plus, FolderPlus, Image, FileText, FileCheck, FileArchive, Settings, LogOut, Shield } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import Logo from '../ui-elements/Logo';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -15,6 +16,26 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkUserRole = async () => {
+      const { data: session } = await supabase.auth.getSession();
+      if (session.session) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.session.user.id)
+          .single();
+        
+        if (profile && profile.role === 'admin') {
+          setIsAdmin(true);
+        }
+      }
+    };
+    
+    checkUserRole();
+  }, []);
 
   const menuItems = [
     { name: 'Projects', icon: <FolderPlus size={20} />, path: '/dashboard/projects' },
@@ -83,6 +104,17 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
         </nav>
         
         <div className="border-t border-sidebar-border p-4 space-y-2">
+          {isAdmin && (
+            <Link
+              to="/dashboard/admin"
+              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
+                currentPath.includes('/dashboard/admin') ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+              }`}
+            >
+              <Shield size={20} />
+              <span>Admin</span>
+            </Link>
+          )}
           <Link
             to="/dashboard/settings"
             className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${

@@ -1,7 +1,8 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
-export type ReportStatus = 'draft' | 'published' | 'archived';
+export type ReportStatus = 'draft' | 'published' | 'archived' | 'processing';
 
 export interface Report {
   id: string;

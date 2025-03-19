@@ -18,6 +18,7 @@ export const fetchFiles = async (projectId: string): Promise<ProjectFile[]> => {
     .from('files')
     .select('*')
     .eq('project_id', projectId)
+    .order('position', { ascending: true })
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -72,6 +73,18 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
     throw new Error('You must upload a file.');
   }
 
+  // Get the max position for this project to place new file at the end
+  const { data: posData, error: posError } = await supabase
+    .from('files')
+    .select('position')
+    .eq('project_id', projectId)
+    .order('position', { ascending: false })
+    .limit(1);
+
+  const nextPosition = posData && posData.length > 0 && posData[0].position 
+    ? posData[0].position + 1 
+    : 1;
+
   // Save file metadata to database
   const { error } = await supabase
     .from('files')
@@ -81,7 +94,8 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
       file_path: filePath,
       type: values.type,
       project_id: projectId,
-      user_id: session.session.user.id
+      user_id: session.session.user.id,
+      position: nextPosition
     });
 
   if (error) throw error;

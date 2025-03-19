@@ -70,6 +70,7 @@ export type Database = {
           id: string
           metadata: Json | null
           name: string
+          position: number | null
           project_id: string
           type: string
           user_id: string
@@ -81,6 +82,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           name: string
+          position?: number | null
           project_id: string
           type: string
           user_id: string
@@ -92,6 +94,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           name?: string
+          position?: number | null
           project_id?: string
           type?: string
           user_id?: string
@@ -140,6 +143,20 @@ export type Database = {
             referencedRelation: "files"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "image_descriptions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_descriptions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "project_images"
+            referencedColumns: ["files_id"]
+          },
         ]
       }
       notes: {
@@ -147,6 +164,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          position: number | null
           project_id: string
           title: string
           user_id: string
@@ -155,6 +173,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
+          position?: number | null
           project_id: string
           title: string
           user_id: string
@@ -163,6 +182,7 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
+          position?: number | null
           project_id?: string
           title?: string
           user_id?: string
@@ -274,6 +294,44 @@ export type Database = {
           },
         ]
       }
+      report_progress: {
+        Row: {
+          created_at: string
+          id: string
+          job: string
+          message: string
+          progress: number | null
+          report_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job: string
+          message?: string
+          progress?: number | null
+          report_id?: string | null
+          status: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job?: string
+          message?: string
+          progress?: number | null
+          report_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_progress_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           content: string | null
@@ -338,6 +396,39 @@ export type Database = {
           },
         ]
       }
+      signup_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          email: string
+          id: string
+          status: string
+          used: boolean
+          used_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          email: string
+          id?: string
+          status?: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          email?: string
+          id?: string
+          status?: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       templates: {
         Row: {
           created_at: string | null
@@ -346,6 +437,7 @@ export type Database = {
           id: string
           image_module: Json | null
           is_public: boolean | null
+          layout_module: Json | null
           name: string
           report_module: Json | null
           user_id: string | null
@@ -357,6 +449,7 @@ export type Database = {
           id?: string
           image_module?: Json | null
           is_public?: boolean | null
+          layout_module?: Json | null
           name: string
           report_module?: Json | null
           user_id?: string | null
@@ -368,6 +461,7 @@ export type Database = {
           id?: string
           image_module?: Json | null
           is_public?: boolean | null
+          layout_module?: Json | null
           name?: string
           report_module?: Json | null
           user_id?: string | null
@@ -384,7 +478,57 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      files_not_processed: {
+        Row: {
+          file_path: string | null
+          id: string | null
+          name: string | null
+          project_id: string | null
+          type: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_report_error_count: {
+        Row: {
+          count: number | null
+          job: string | null
+        }
+        Relationships: []
+      }
+      project_images: {
+        Row: {
+          file_path: string | null
+          files_id: string | null
+          image_description: Json | null
+          name: string | null
+          project_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       binary_quantize:

@@ -1,12 +1,15 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { createReport, ReportStatus, fetchReportById } from './ReportService';
+import { createReport, ReportStatus, fetchReportById, updateReport } from './ReportService';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertCircle } from 'lucide-react';
+import ReportGenerationProgress from './ReportGenerationProgress';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ProjectDetails {
   id: string;
@@ -16,6 +19,14 @@ interface ProjectDetails {
   notes_count: number;
   has_report: boolean;
   template_id: string | null;
+}
+
+interface ProgressUpdate {
+  report_id: string;
+  status: 'idle' | 'generating' | 'completed' | 'error';
+  message: string;
+  progress: number;
+  created_at: string;
 }
 
 interface CreateReportModalProps {
@@ -29,6 +40,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   const [creatingReport, setCreatingReport] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reportCreated, setReportCreated] = useState<{id: string, content: string} | null>(null);
+  const [progressUpdate, setProgressUpdate] = useState<ProgressUpdate | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,35 +50,131 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   }, [isOpen]);
 
   useEffect(() => {
-    // Poll for report content if a report has been created
-    let interval: number | null = null;
+    let subscription: any = null;
+    let contentCheckInterval: number | null = null;
+    
+    const setupSubscription = async () => {
+      if (!reportCreated?.id) return;
+      
+      console.log(`Setting up subscription for report progress updates on report ${reportCreated.id}`);
+      
+      // Get initial status to handle cases where events might have been missed
+      try {
+        const { data: initialStatus, error: initialStatusError } = await supabase
+          .from('report_progress')
+          .select('*')
+          .eq('report_id', reportCreated.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (!initialStatusError && initialStatus && initialStatus.length > 0) {
+          console.log('Initial status found:', initialStatus[0]);
+          const update = initialStatus[0] as ProgressUpdate;
+          setProgressUpdate(update);
+          
+          // If report is already complete, navigate to it
+          if (update.status === 'completed' || update.progress >= 100) {
+            console.log('Report already completed, navigating to editor...');
+            navigateToReport();
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error checking initial status:', err);
+      }
+      
+      // Create a unique channel name with timestamp to avoid conflicts
+      const channelName = `report-progress-${reportCreated.id}-${Date.now()}`;
+      console.log(`Creating channel with name: ${channelName}`);
+      
+      // Set up real-time subscription
+      subscription = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'report_progress',
+            filter: `report_id=eq.${reportCreated.id}`
+          },
+          (payload) => {
+            const update = payload.new as ProgressUpdate;
+            console.log('Received progress update:', update);
+            setProgressUpdate(update);
+            
+            if (update.status === 'completed' || update.progress >= 100) {
+              console.log('Report completed, navigating to editor...');
+              navigateToReport();
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log(`Channel ${channelName} subscription status:`, status);
+        });
+        
+      console.log('Subscription set up successfully');
+      
+      // Set up polling interval as backup
+      contentCheckInterval = window.setInterval(() => {
+        checkReportContent();
+      }, 5000); // Check every 5 seconds
+    };
     
     if (reportCreated?.id) {
-      interval = window.setInterval(async () => {
-        try {
-          console.log(`Checking if report ${reportCreated.id} content has been updated...`);
-          const report = await fetchReportById(reportCreated.id);
-          
-          // If content has been updated and is different from initial content
-          if (report.content && report.content !== reportCreated.content) {
-            console.log('Report content has been updated, navigating to editor...');
-            clearInterval(interval!);
-            setReportCreated(null);
-            onClose();
-            navigate(`/dashboard/reports/editor/${report.id}`);
-          }
-        } catch (error) {
-          console.error('Error checking report content:', error);
-        }
-      }, 2000); // Check every 2 seconds
+      setupSubscription();
     }
     
     return () => {
-      if (interval) {
-        clearInterval(interval);
+      console.log('Cleaning up subscriptions and intervals');
+      if (subscription) {
+        console.log('Removing channel:', subscription.topic);
+        supabase.removeChannel(subscription);
+      }
+      if (contentCheckInterval) {
+        window.clearInterval(contentCheckInterval);
       }
     };
-  }, [reportCreated, navigate, onClose]);
+  }, [reportCreated]);
+  
+  const navigateToReport = async () => {
+    if (!reportCreated?.id) return;
+    
+    try {
+      console.log(`Report ${reportCreated.id} completed, navigating to editor...`);
+      const report = await fetchReportById(reportCreated.id);
+      
+      // Update report status from 'processing' to 'draft' when complete
+      if (report.status === 'processing') {
+        await updateReport(report.id, { status: 'draft' });
+      }
+      
+      setReportCreated(null);
+      setProgressUpdate(null);
+      onClose();
+      
+      navigate(`/dashboard/reports/editor/${report.id}`);
+    } catch (error) {
+      console.error('Error navigating to report:', error);
+      toast.error('Something went wrong. Please try again.');
+    }
+  };
+  
+  const checkReportContent = async () => {
+    if (!reportCreated?.id) return;
+    
+    try {
+      console.log(`Checking if report ${reportCreated.id} content has been updated...`);
+      const report = await fetchReportById(reportCreated.id);
+      
+      if (report.content && report.content !== reportCreated.content) {
+        console.log('Report content has been updated, navigating to editor...');
+        navigateToReport();
+      }
+    } catch (error) {
+      console.error('Error checking report content:', error);
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -80,7 +188,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         return;
       }
 
-      // Get all projects for the user
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
         .select('id, name, description, template_id')
@@ -88,7 +195,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
 
       if (projectsError) throw projectsError;
 
-      // Get all reports for the user
       const { data: reports, error: reportsError } = await supabase
         .from('reports')
         .select('project_id')
@@ -96,12 +202,9 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
 
       if (reportsError) throw reportsError;
 
-      // Create a set of project IDs that already have reports
       const projectsWithReports = new Set(reports.map(report => report.project_id));
 
-      // Get image and note counts for each project directly from the database
       const projectDetails = await Promise.all(projects.map(async (project) => {
-        // Get image count
         const { count: imageCount, error: imageError } = await supabase
           .from('files')
           .select('id', { count: 'exact', head: true })
@@ -112,7 +215,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           console.error('Error fetching image count:', imageError);
         }
 
-        // Get notes count
         const { count: notesCount, error: notesError } = await supabase
           .from('notes')
           .select('id', { count: 'exact', head: true })
@@ -130,7 +232,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         };
       }));
 
-      // No longer filtering out projects with reports
       setProjects(projectDetails);
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -153,7 +254,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       const userId = session.session.user.id;
       
-      // Get project details for report
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .select('*')
@@ -162,7 +262,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         
       if (projectError) throw projectError;
       
-      // Get images for the project
       const { data: images, error: imagesError } = await supabase
         .from('files')
         .select('file_path')
@@ -172,10 +271,8 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         
       if (imagesError) throw imagesError;
       
-      // Create the report
       const imageUrls = images ? images.map(img => img.file_path) : [];
       
-      // Generate a basic initial content for the report
       const currentDate = new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -190,12 +287,18 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         </div>
       `;
       
+      // Generate report title - add testing tag if requested via project name
+      const isTestReport = project.name.toLowerCase().includes('test');
+      const reportTitle = isTestReport 
+        ? `##TESTING## ${project.name} Report` 
+        : `${project.name} Report`;
+      
       const reportData = {
-        title: `${project.name} Report`,
+        title: reportTitle,
         content: initialContent,
         project_id: projectId,
         user_id: userId,
-        status: 'draft' as ReportStatus,
+        status: 'processing' as ReportStatus, // Start with 'processing' status
         image_urls: imageUrls,
         template_id: project.template_id || null
       };
@@ -204,35 +307,68 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       const newReport = await createReport(reportData);
       console.log('Report created:', newReport);
       
-      // Store the new report ID and initial content to poll for updates
       setReportCreated({
         id: newReport.id,
         content: newReport.content
       });
       
-      toast.success('Report created successfully');
+      const jobUuid = uuidv4();
+      console.log(`Generated job UUID: ${jobUuid}`);
       
-      // Send webhook notification with more comprehensive payload
-      try {
-        // Fixed webhook URL for POST
-        const webhookUrl = 'https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d';
-        
-        const webhookPayload = {
-          project_id: projectId,
+      // Create initial progress record
+      const { error: progressError } = await supabase
+        .from('report_progress')
+        .insert({
           report_id: newReport.id,
-          user_id: userId,
-          project_name: project.name,
-          timestamp: new Date().toISOString(),
-          image_count: imageUrls.length,
-          image_urls: imageUrls,
-          template_id: project.template_id,
-          action: 'generate_report'
-        };
+          status: 'generating',
+          message: 'Starting report generation...',
+          progress: 5,
+          job: jobUuid
+        });
         
-        console.log('Sending webhook payload:', webhookPayload);
-        console.log('Webhook URL:', webhookUrl);
+      if (progressError) {
+        console.error('Error creating initial progress record:', progressError);
+      }
+      
+      toast.success('Report created. Generating content...');
+      
+      // Determine which webhook URL to use based on report title
+      const isTestingTitle = newReport.title.includes('##TESTING##');
+      
+      // Select the appropriate webhook URL based on title
+      const webhookUrl = isTestingTitle
+        ? 'https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d'
+        : 'https://n8n-01.imagicrafterai.com/webhook/58f03c25-d09d-4094-bd62-2a3d35514b6d';
+      
+      console.log(`Using ${isTestingTitle ? 'TESTING' : 'PRODUCTION'} webhook URL: ${webhookUrl}`);
+      
+      // Use the Supabase edge function URL directly instead of a frontend route
+      const supabaseProjectUrl = 'https://vtaufnxworztolfdwlll.supabase.co';
+      const callbackUrl = `${supabaseProjectUrl}/functions/v1/report-progress/${newReport.id}`;
+      
+      console.log(`Using Supabase edge function callback URL: ${callbackUrl}`);
+      
+      const webhookPayload = {
+        project_id: projectId,
+        report_id: newReport.id,
+        user_id: userId,
+        project_name: project.name,
+        timestamp: new Date().toISOString(),
+        image_count: imageUrls.length,
+        image_urls: imageUrls,
+        template_id: project.template_id,
+        action: 'generate_report',
+        callback_url: callbackUrl,
+        job: jobUuid,
+        is_test: isTestingTitle
+      };
+      
+      console.log('Webhook payload:', webhookPayload);
+      
+      // Send webhook request (only one webhook now based on report type)
+      try {
+        console.log(`Sending webhook to: ${webhookUrl}`);
         
-        // Send POST request
         const postResponse = await fetch(webhookUrl, {
           method: 'POST',
           headers: {
@@ -243,13 +379,12 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         });
         
         if (postResponse.ok) {
-          console.log('Webhook POST request succeeded:', await postResponse.text());
+          console.log(`Webhook POST request to ${webhookUrl} succeeded:`, await postResponse.text());
         } else {
-          console.error('Webhook POST response error:', await postResponse.text());
+          console.error(`Webhook POST response error for ${webhookUrl}:`, await postResponse.text());
           
-          // As a fallback, try GET request
+          // Fallback to GET request
           const getUrl = new URL(webhookUrl);
-          // Add all payload fields as query parameters
           Object.entries(webhookPayload).forEach(([key, value]) => {
             getUrl.searchParams.append(key, String(value));
           });
@@ -262,20 +397,16 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           });
           
           if (getResponse.ok) {
-            console.log('Webhook GET request succeeded:', await getResponse.text());
+            console.log(`Webhook GET request to ${webhookUrl} succeeded:`, await getResponse.text());
           } else {
-            console.error('Webhook GET response error:', await getResponse.text());
+            console.error(`Webhook GET response error for ${webhookUrl}:`, await getResponse.text());
+            throw new Error(`Failed to send webhook request to ${webhookUrl}`);
           }
         }
-      } catch (webhookError) {
-        console.error('Error sending webhook:', webhookError);
-        // Continue even if webhook fails
+      } catch (error) {
+        console.error(`Error sending webhook to ${webhookUrl}:`, error);
+        toast.error('Failed to start report generation. Please try again.');
       }
-      
-      // Navigate to the editor after creation
-      onClose();
-      navigate(`/dashboard/reports/editor/${newReport.id}`);
-      
     } catch (error) {
       console.error('Error creating report:', error);
       toast.error('Failed to create report. Please try again.');
@@ -284,84 +415,92 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create a New Report</DialogTitle>
-          <DialogDescription>
-            Select a project to create a new report.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="mt-4">
-          <h3 className="text-lg font-semibold mb-4">Recent Projects</h3>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create a New Report</DialogTitle>
+            <DialogDescription>
+              Select a project to create a new report.
+            </DialogDescription>
+          </DialogHeader>
           
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <Card key={i} className="h-40 animate-pulse">
-                  <CardHeader className="bg-gray-200 h-full rounded-md"></CardHeader>
-                </Card>
-              ))}
-            </div>
-          ) : error ? (
-            <div className="flex items-center p-4 border rounded-md bg-destructive/10 text-destructive">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              <span>{error}</span>
-            </div>
-          ) : projects.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {projects.map((project) => (
-                <Card key={project.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <CardTitle>{project.name}</CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      {project.description || 'No description'}
-                      {project.has_report && (
-                        <span className="ml-2 text-amber-600 font-medium">(Has existing report)</span>
-                      )}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-1 pt-0">
-                    <p>{project.image_count} {project.image_count === 1 ? 'Image' : 'Images'}</p>
-                    <p>{project.notes_count} {project.notes_count === 1 ? 'Note' : 'Notes'}</p>
-                  </CardContent>
-                  <CardFooter>
-                    <Button 
-                      onClick={() => handleCreateReport(project.id)}
-                      disabled={creatingReport === project.id || reportCreated !== null}
-                      className="w-full"
-                    >
-                      {creatingReport === project.id ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating Report...
-                        </>
-                      ) : reportCreated !== null ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generating Content...
-                        </>
-                      ) : project.has_report ? (
-                        'Create New Report'
-                      ) : (
-                        'Create Report'
-                      )}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center p-8 border rounded-md">
-              <p className="text-muted-foreground">
-                No projects available. Create a project first to generate a report.
-              </p>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="mt-4">
+            {reportCreated && progressUpdate && (
+              <div className="mb-6 p-4 border rounded-md">
+                <h3 className="text-md font-semibold mb-3">Report Generation Status</h3>
+                <ReportGenerationProgress
+                  status={progressUpdate.status}
+                  progress={progressUpdate.progress}
+                  message={progressUpdate.message}
+                />
+              </div>
+            )}
+            
+            <h3 className="text-lg font-semibold mb-4">Recent Projects</h3>
+            
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <Card key={i} className="h-40 animate-pulse">
+                    <CardHeader className="bg-gray-200 h-full rounded-md"></CardHeader>
+                  </Card>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="flex items-center p-4 border rounded-md bg-destructive/10 text-destructive">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                <span>{error}</span>
+              </div>
+            ) : projects.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {projects.map((project) => (
+                  <Card key={project.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                      <CardTitle>{project.name}</CardTitle>
+                      <CardDescription className="line-clamp-2">
+                        {project.description || 'No description'}
+                        {project.has_report && (
+                          <span className="ml-2 text-amber-600 font-medium">(Has existing report)</span>
+                        )}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-1 pt-0">
+                      <p>{project.image_count} {project.image_count === 1 ? 'Image' : 'Images'}</p>
+                      <p>{project.notes_count} {project.notes_count === 1 ? 'Note' : 'Notes'}</p>
+                    </CardContent>
+                    <CardFooter>
+                      <Button 
+                        onClick={() => handleCreateReport(project.id)}
+                        disabled={creatingReport !== null || reportCreated !== null}
+                        className="w-full"
+                      >
+                        {creatingReport === project.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating Report...
+                          </>
+                        ) : project.has_report ? (
+                          'Create New Report'
+                        ) : (
+                          'Create Report'
+                        )}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center p-8 border rounded-md">
+                <p className="text-muted-foreground">
+                  No projects available. Create a project first to generate a report.
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

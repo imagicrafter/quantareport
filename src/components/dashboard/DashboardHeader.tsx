@@ -1,5 +1,6 @@
 
-import { Search, Menu, User } from 'lucide-react';
+import { Search, Menu } from 'lucide-react';
+import UserAvatar from './UserAvatar';
 
 interface DashboardHeaderProps {
   toggleSidebar: () => void;
@@ -31,9 +32,7 @@ const DashboardHeader = ({ toggleSidebar, title }: DashboardHeaderProps) => {
             />
           </div>
           
-          <button className="p-1 rounded-full bg-secondary/50 hover:bg-secondary transition-colors">
-            <User size={24} className="text-muted-foreground" />
-          </button>
+          <UserAvatar />
         </div>
       </div>
     </header>

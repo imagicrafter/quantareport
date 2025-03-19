@@ -32,6 +32,7 @@ const TemplateEditForm = ({ currentTemplate, onSuccess, onCancel }: TemplateEdit
   const [jsonErrors, setJsonErrors] = useState({
     image_module: false,
     report_module: false,
+    layout_module: false,
   });
 
   const form = useForm<FormValues>({
@@ -41,10 +42,11 @@ const TemplateEditForm = ({ currentTemplate, onSuccess, onCancel }: TemplateEdit
       description: currentTemplate?.description || "",
       image_module: formatJsonForDisplay(currentTemplate?.image_module) || "",
       report_module: formatJsonForDisplay(currentTemplate?.report_module) || "",
+      layout_module: formatJsonForDisplay(currentTemplate?.layout_module) || "",
     },
   });
 
-  const validateJson = (jsonString: string | null, field: 'image_module' | 'report_module'): boolean => {
+  const validateJson = (jsonString: string | null, field: 'image_module' | 'report_module' | 'layout_module'): boolean => {
     if (!jsonString) return true;
     
     try {
@@ -63,8 +65,9 @@ const TemplateEditForm = ({ currentTemplate, onSuccess, onCancel }: TemplateEdit
     // Validate JSON fields
     const imageModuleValid = validateJson(values.image_module, 'image_module');
     const reportModuleValid = validateJson(values.report_module, 'report_module');
+    const layoutModuleValid = validateJson(values.layout_module, 'layout_module');
 
-    if (!imageModuleValid || !reportModuleValid) {
+    if (!imageModuleValid || !reportModuleValid || !layoutModuleValid) {
       toast({
         title: "Validation Error",
         description: "One or more JSON fields contain invalid JSON. Please correct and try again.",
@@ -80,6 +83,7 @@ const TemplateEditForm = ({ currentTemplate, onSuccess, onCancel }: TemplateEdit
         description: values.description,
         image_module: values.image_module ? JSON.parse(values.image_module) : null,
         report_module: values.report_module ? JSON.parse(values.report_module) : null,
+        layout_module: values.layout_module ? JSON.parse(values.layout_module) : null,
       };
 
       const { error, data } = await supabase
@@ -206,6 +210,41 @@ const TemplateEditForm = ({ currentTemplate, onSuccess, onCancel }: TemplateEdit
               </FormDescription>
               <FormMessage />
               {jsonErrors.report_module && (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Invalid JSON</AlertTitle>
+                  <AlertDescription>
+                    The JSON format is invalid. Please check for missing commas, brackets, or quotes.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="layout_module"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Layout Module Content (JSON)</FormLabel>
+              <FormControl>
+                <Textarea
+                  className="font-mono text-sm min-h-[150px]"
+                  placeholder="{}"
+                  {...field}
+                  value={field.value || ""}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    validateJson(e.target.value, 'layout_module');
+                  }}
+                />
+              </FormControl>
+              <FormDescription>
+                Enter valid JSON for the layout configuration
+              </FormDescription>
+              <FormMessage />
+              {jsonErrors.layout_module && (
                 <Alert variant="destructive" className="mt-2">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Invalid JSON</AlertTitle>
