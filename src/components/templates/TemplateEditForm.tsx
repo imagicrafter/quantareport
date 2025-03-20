@@ -346,7 +346,7 @@ const TemplateEditForm = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {domainOptions.map(domain => (
                         <SelectItem key={domain.value} value={domain.value}>
                           {domain.label}
