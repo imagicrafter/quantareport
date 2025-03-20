@@ -76,7 +76,7 @@ const TemplateEditForm = ({
       report_module: formatJsonForDisplay(currentTemplate?.report_module) || "",
       layout_module: formatJsonForDisplay(currentTemplate?.layout_module) || "",
       is_public: currentTemplate?.is_public || false,
-      domain_id: currentTemplate?.domain_id || "",
+      domain_id: currentTemplate?.domain_id || null,
     },
   });
 
@@ -338,7 +338,7 @@ const TemplateEditForm = ({
                   <FormLabel>Domain</FormLabel>
                   <Select 
                     onValueChange={field.onChange} 
-                    defaultValue={field.value}
+                    value={field.value || ""}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -390,7 +390,7 @@ const TemplateEditForm = ({
                 <h3 className="text-lg font-medium">Template Notes</h3>
                 
                 <div className="flex gap-2">
-                  <Select value={selectedNoteId} onValueChange={setSelectedNoteId}>
+                  <Select value={selectedNoteId || ""} onValueChange={setSelectedNoteId}>
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Select a note to add" />
                     </SelectTrigger>
