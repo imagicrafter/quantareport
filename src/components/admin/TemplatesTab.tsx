@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { PlusCircle } from 'lucide-react'; 
 import TemplateEditForm from '@/components/templates/TemplateEditForm';
 
 const TemplatesTab = () => {
@@ -20,6 +21,7 @@ const TemplatesTab = () => {
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [userProfiles, setUserProfiles] = useState<Record<string, string>>({});
   const [domains, setDomains] = useState<Record<string, string>>({});
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     loadTemplates();
@@ -85,14 +87,37 @@ const TemplatesTab = () => {
 
   const handleEditTemplate = (template: Template) => {
     setEditingTemplate(template);
+    setIsCreating(false);
+  };
+
+  const handleCreateTemplate = () => {
+    const newTemplate: Template = {
+      id: '',
+      name: 'New Template',
+      description: '',
+      image_module: null,
+      report_module: null,
+      layout_module: null,
+      is_public: false,
+      domain_id: null,
+      user_id: null,
+      created_at: null
+    };
+    setEditingTemplate(newTemplate);
+    setIsCreating(true);
   };
 
   const handleUpdateSuccess = (updatedTemplate: Template) => {
-    setTemplates(prevTemplates => 
-      prevTemplates.map(t => t.id === updatedTemplate.id ? updatedTemplate : t)
-    );
+    if (isCreating) {
+      setTemplates(prevTemplates => [updatedTemplate, ...prevTemplates]);
+    } else {
+      setTemplates(prevTemplates => 
+        prevTemplates.map(t => t.id === updatedTemplate.id ? updatedTemplate : t)
+      );
+    }
     setEditingTemplate(null);
-    toast.success('Template updated successfully');
+    setIsCreating(false);
+    toast.success(isCreating ? 'Template created successfully' : 'Template updated successfully');
   };
 
   const getTemplateType = (template: Template) => {
@@ -108,7 +133,10 @@ const TemplatesTab = () => {
       <div>
         <Button 
           variant="outline" 
-          onClick={() => setEditingTemplate(null)} 
+          onClick={() => {
+            setEditingTemplate(null);
+            setIsCreating(false);
+          }} 
           className="mb-4"
         >
           ← Back to Templates
@@ -116,7 +144,12 @@ const TemplatesTab = () => {
         <TemplateEditForm 
           currentTemplate={editingTemplate}
           onSuccess={handleUpdateSuccess}
-          onCancel={() => setEditingTemplate(null)}
+          onCancel={() => {
+            setEditingTemplate(null);
+            setIsCreating(false);
+          }}
+          isCreating={isCreating}
+          domains={domains}
         />
       </div>
     );
@@ -124,7 +157,13 @@ const TemplatesTab = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Template Management</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Template Management</h2>
+        <Button onClick={handleCreateTemplate}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add Template
+        </Button>
+      </div>
       
       <div className="rounded-md border">
         <Table>
@@ -135,19 +174,20 @@ const TemplatesTab = () => {
               <TableHead>Description</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>User</TableHead>
+              <TableHead>Public</TableHead>
               <TableHead className="w-[100px]">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-4">
+                <TableCell colSpan={7} className="text-center py-4">
                   Loading templates...
                 </TableCell>
               </TableRow>
             ) : templates.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
                   No templates found
                 </TableCell>
               </TableRow>
@@ -168,6 +208,9 @@ const TemplatesTab = () => {
                   </TableCell>
                   <TableCell>
                     {template.user_id ? userProfiles[template.user_id] || 'Unknown' : '—'}
+                  </TableCell>
+                  <TableCell>
+                    {template.is_public ? 'Yes' : 'No'}
                   </TableCell>
                   <TableCell>
                     <Button

@@ -479,6 +479,42 @@ export type Database = {
         }
         Relationships: []
       }
+      template_notes: {
+        Row: {
+          created_at: string
+          id: string
+          note_id: string
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note_id: string
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note_id?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_notes_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_notes_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       templates: {
         Row: {
           created_at: string | null
