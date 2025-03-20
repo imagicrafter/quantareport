@@ -82,7 +82,14 @@ const Templates = () => {
           await domainTemplatesQuery;
 
         if (domainTemplateError) throw domainTemplateError;
-        setDomainTemplates(domainTemplateData || []);
+        
+        // Ensure all templates have parent_template_id
+        const domainTemplatesWithParentId = (domainTemplateData || []).map(template => ({
+          ...template,
+          parent_template_id: template.parent_template_id || null
+        }));
+        
+        setDomainTemplates(domainTemplatesWithParentId);
 
         // Fetch user templates
         const { data: myTemplateData, error: myTemplateError } = await supabase
@@ -91,7 +98,14 @@ const Templates = () => {
           .eq("user_id", authData.user.id);
 
         if (myTemplateError) throw myTemplateError;
-        setMyTemplates(myTemplateData || []);
+        
+        // Ensure all templates have parent_template_id
+        const myTemplatesWithParentId = (myTemplateData || []).map(template => ({
+          ...template,
+          parent_template_id: template.parent_template_id || null
+        }));
+        
+        setMyTemplates(myTemplatesWithParentId);
       } catch (error) {
         console.error("Error fetching templates:", error);
         toast({
@@ -130,17 +144,23 @@ const Templates = () => {
         .single();
 
       if (error) throw error;
+      
+      // Ensure template has parent_template_id
+      const completeTemplate: Template = {
+        ...data,
+        parent_template_id: data.parent_template_id || template.id  // Fallback to template.id if somehow null
+      };
 
-      setMyTemplates([...myTemplates, data]);
+      setMyTemplates([...myTemplates, completeTemplate]);
       toast({
         title: "Success",
         description: "Template added to your collection.",
       });
       
       // Set the newly created template as current and open the edit sheet
-      setJustAddedTemplate(data);
-      setCurrentTemplate(data);
-      setIsEditing(data.id);
+      setJustAddedTemplate(completeTemplate);
+      setCurrentTemplate(completeTemplate);
+      setIsEditing(completeTemplate.id);
       setIsSheetOpen(true);
     } catch (error) {
       console.error("Error copying template:", error);

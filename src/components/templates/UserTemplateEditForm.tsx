@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
@@ -24,7 +23,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// Schema for the simplified form
 const userFormSchema = z.object({
   name: z.string().min(2, {
     message: "Template name must be at least 2 characters.",
@@ -71,10 +69,8 @@ const UserTemplateEditForm = ({
 
   useEffect(() => {
     if (currentTemplate) {
-      // Load user's template notes
       loadTemplateNotes(currentTemplate.id);
       
-      // If there's a parent template, load its notes too
       if (currentTemplate.parent_template_id) {
         loadParentTemplateNotes(currentTemplate.parent_template_id);
       }
@@ -152,7 +148,6 @@ const UserTemplateEditForm = ({
   const addNoteToUserTemplate = async (noteId: string) => {
     if (!currentTemplate) return;
     
-    // Check if this note is already associated with the user's template
     const noteAlreadyExists = userTemplateNotes.some(tn => tn.note_id === noteId);
     
     if (noteAlreadyExists) {
@@ -201,7 +196,6 @@ const UserTemplateEditForm = ({
     
     setIsSubmitting(true);
     try {
-      // Only update the name field
       const { error, data } = await supabase
         .from("templates")
         .update({ name: values.name })
@@ -211,11 +205,14 @@ const UserTemplateEditForm = ({
 
       if (error) throw error;
       
-      toast.success("Template updated successfully");
-      onSuccess({
+      const updatedTemplate: Template = {
         ...currentTemplate,
-        ...data
-      });
+        ...data,
+        parent_template_id: data.parent_template_id || currentTemplate.parent_template_id || null
+      };
+      
+      toast.success("Template updated successfully");
+      onSuccess(updatedTemplate);
     } catch (error) {
       console.error("Error saving template:", error);
       toast.error("Failed to save template. Please try again.");
@@ -224,7 +221,6 @@ const UserTemplateEditForm = ({
     }
   };
 
-  // Determine which note IDs the user has already added
   const addedNoteIds = userTemplateNotes.map(tn => tn.note_id);
 
   return (
@@ -259,7 +255,6 @@ const UserTemplateEditForm = ({
             )}
           </div>
 
-          {/* Template Notes Section */}
           <div className="mt-8">
             <div className="flex items-center gap-2 mb-4">
               <h3 className="text-lg font-medium">Your Template Notes</h3>
@@ -296,7 +291,6 @@ const UserTemplateEditForm = ({
               </div>
             )}
             
-            {/* Parent Template Notes Section */}
             {currentTemplate?.parent_template_id && parentTemplateNotes.length > 0 && (
               <div className="mt-8">
                 <h3 className="text-lg font-medium mb-4">Available Notes from Original Template</h3>

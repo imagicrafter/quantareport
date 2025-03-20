@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
@@ -81,7 +80,6 @@ const TemplateEditForm = ({
     },
   });
 
-  // Watch for changes in is_public field
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'is_public') {
@@ -102,7 +100,6 @@ const TemplateEditForm = ({
     try {
       setLoadingNotes(true);
       
-      // Fetch template notes with note details
       const { data, error } = await supabase
         .from('template_notes')
         .select(`
@@ -119,7 +116,6 @@ const TemplateEditForm = ({
 
       if (error) throw error;
 
-      // Transform the data to include the note details directly
       const notesWithDetails = (data || []).map((item) => ({
         id: item.id,
         template_id: item.template_id,
@@ -165,7 +161,6 @@ const TemplateEditForm = ({
   };
 
   const onSubmit = async (values: FormValues) => {
-    // Validate JSON fields
     const imageModuleValid = validateJson(values.image_module, 'image_module');
     const reportModuleValid = validateJson(values.report_module, 'report_module');
     const layoutModuleValid = validateJson(values.layout_module, 'layout_module');
@@ -176,7 +171,6 @@ const TemplateEditForm = ({
     }
 
     try {
-      // Parse JSON strings to objects before saving
       const updateData = {
         name: values.name,
         description: values.description,
@@ -185,12 +179,12 @@ const TemplateEditForm = ({
         layout_module: values.layout_module ? JSON.parse(values.layout_module) : null,
         is_public: values.is_public,
         domain_id: values.domain_id || null,
+        parent_template_id: currentTemplate?.parent_template_id || null,
       };
 
       let templateId: string;
       
       if (isCreating) {
-        // Create new template
         const { data, error } = await supabase
           .from("templates")
           .insert(updateData)
@@ -200,10 +194,14 @@ const TemplateEditForm = ({
         if (error) throw error;
         templateId = data.id;
         
+        const completeTemplate: Template = {
+          ...data,
+          parent_template_id: data.parent_template_id || null
+        };
+        
         toast.success("Template created successfully");
-        onSuccess(data);
+        onSuccess(completeTemplate);
       } else if (currentTemplate) {
-        // Update existing template
         const { error, data } = await supabase
           .from("templates")
           .update(updateData)
@@ -214,11 +212,14 @@ const TemplateEditForm = ({
         if (error) throw error;
         templateId = currentTemplate.id;
         
-        toast.success("Template updated successfully");
-        onSuccess({
+        const completeTemplate: Template = {
           ...currentTemplate,
-          ...data
-        });
+          ...data,
+          parent_template_id: data.parent_template_id || currentTemplate.parent_template_id || null
+        };
+        
+        toast.success("Template updated successfully");
+        onSuccess(completeTemplate);
       }
     } catch (error) {
       console.error("Error saving template:", error);
@@ -232,7 +233,6 @@ const TemplateEditForm = ({
       return;
     }
 
-    // Check if this note is already associated with the template
     const noteAlreadyExists = templateNotes.some(tn => tn.note_id === selectedNoteId);
     
     if (noteAlreadyExists) {
@@ -261,7 +261,6 @@ const TemplateEditForm = ({
 
       if (error) throw error;
 
-      // Add the new note to the list
       const newTemplateNote = {
         id: data.id,
         template_id: data.template_id,
@@ -287,7 +286,6 @@ const TemplateEditForm = ({
 
       if (error) throw error;
 
-      // Remove the note from the list
       setTemplateNotes(prev => prev.filter(tn => tn.id !== templateNoteId));
       toast.success("Note removed from template");
     } catch (error) {

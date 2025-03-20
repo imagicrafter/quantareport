@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Template } from '@/types/template.types';
@@ -40,14 +39,12 @@ const TemplatesTab = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Filter states
   const [domainFilter, setDomainFilter] = useState<string>('all');
   const [userFilter, setUserFilter] = useState<string>('all');
   const [publicFilter, setPublicFilter] = useState<boolean | null>(null);
   const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
-    // Check if user is admin before allowing access
     const checkAdminRole = async () => {
       const { data: session } = await supabase.auth.getSession();
       if (session.session) {
@@ -72,7 +69,6 @@ const TemplatesTab = () => {
   }, []);
 
   useEffect(() => {
-    // Apply filters whenever filter values or templates change
     applyFilters();
   }, [templates, domainFilter, userFilter, publicFilter, searchText]);
 
@@ -85,8 +81,14 @@ const TemplatesTab = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTemplates(data || []);
-      setFilteredTemplates(data || []);
+      
+      const templatesWithParentId = (data || []).map(template => ({
+        ...template,
+        parent_template_id: template.parent_template_id || null
+      }));
+      
+      setTemplates(templatesWithParentId);
+      setFilteredTemplates(templatesWithParentId);
     } catch (error) {
       console.error('Error loading templates:', error);
       toast.error('Failed to load templates');
@@ -136,7 +138,6 @@ const TemplatesTab = () => {
   const applyFilters = () => {
     let filtered = [...templates];
     
-    // Apply domain filter
     if (domainFilter !== 'all') {
       filtered = filtered.filter(template => 
         domainFilter === 'none' 
@@ -145,7 +146,6 @@ const TemplatesTab = () => {
       );
     }
     
-    // Apply user filter
     if (userFilter !== 'all') {
       filtered = filtered.filter(template => 
         userFilter === 'none' 
@@ -154,12 +154,10 @@ const TemplatesTab = () => {
       );
     }
     
-    // Apply public filter
     if (publicFilter !== null) {
       filtered = filtered.filter(template => template.is_public === publicFilter);
     }
     
-    // Apply search filter
     if (searchText.trim()) {
       const search = searchText.toLowerCase();
       filtered = filtered.filter(template => 
@@ -187,7 +185,7 @@ const TemplatesTab = () => {
       is_public: false,
       domain_id: null,
       user_id: null,
-      parent_template_id: null, // Add the new field
+      parent_template_id: null,
       created_at: null
     };
     setEditingTemplate(newTemplate);
@@ -295,7 +293,6 @@ const TemplatesTab = () => {
         </Button>
       </div>
       
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex-1 min-w-[200px]">
           <Input
