@@ -1,7 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
-import { initiateGoogleDocsExport } from '@/utils/googleDocsExport';
 
 export type ReportStatus = 'draft' | 'published' | 'archived' | 'processing';
 
@@ -56,11 +55,6 @@ export const fetchReports = async (): Promise<Report[]> => {
  */
 export const fetchReportById = async (id: string): Promise<Report> => {
   try {
-    if (!id || typeof id !== 'string') {
-      console.error(`Invalid report ID: ${id}, type: ${typeof id}`);
-      throw new Error(`Invalid report ID: ${id}`);
-    }
-
     console.log(`Fetching report with ID ${id} from Supabase...`);
     const { data, error } = await supabase
       .from('reports')
@@ -231,16 +225,14 @@ export const exportToWord = async (report: Report): Promise<void> => {
 /**
  * Exports the report to Google Docs
  */
-export const exportToGoogleDocs = async (reportId: string): Promise<void> => {
+export const exportToGoogleDocs = async (report: Report): Promise<void> => {
   try {
-    // Validate reportId is a string
-    if (!reportId || typeof reportId !== 'string') {
-      console.error('Invalid report ID:', reportId, typeof reportId);
-      throw new Error('Invalid report ID provided for Google Docs export');
-    }
+    // This is a placeholder for the actual Google Docs export functionality
+    // In a real implementation, this would interact with the Google Docs API
+    console.log('Exporting to Google Docs:', report.title);
     
-    console.log('Exporting to Google Docs, report ID:', reportId);
-    await initiateGoogleDocsExport(reportId);
+    // For now, we'll just show a notification that this feature is not implemented
+    alert('Export to Google Docs is not yet implemented. This would require Google Drive API integration.');
   } catch (error) {
     console.error('Error exporting to Google Docs:', error);
     throw error;

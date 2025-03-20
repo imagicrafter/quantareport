@@ -182,15 +182,10 @@ const ReportEditor = ({ reportId }: ReportEditorProps) => {
   const handleExport = (type: 'word' | 'google-docs') => {
     if (!report) return;
     
-    try {
-      if (type === 'word') {
-        exportToWord(report);
-      } else if (type === 'google-docs') {
-        exportToGoogleDocs(report.id);
-      }
-    } catch (error) {
-      console.error(`Error exporting to ${type}:`, error);
-      toast.error(`Failed to export to ${type}`);
+    if (type === 'word') {
+      exportToWord(report);
+    } else {
+      exportToGoogleDocs(report);
     }
   };
 

@@ -15,7 +15,7 @@ import { Report } from './ReportService';
 import { Eye, Search } from 'lucide-react';
 import { format } from 'date-fns';
 
-export interface ReportsTableProps {
+interface ReportsTableProps {
   reports: Report[];
   isLoading: boolean;
 }
