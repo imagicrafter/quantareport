@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Template } from '@/types/template.types';
@@ -82,6 +83,7 @@ const TemplatesTab = () => {
 
       if (error) throw error;
       
+      // Add parent_template_id if it doesn't exist in the data
       const templatesWithParentId = (data || []).map(template => ({
         ...template,
         parent_template_id: template.parent_template_id || null

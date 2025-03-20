@@ -1,3 +1,4 @@
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
@@ -205,6 +206,7 @@ const UserTemplateEditForm = ({
 
       if (error) throw error;
       
+      // Ensure parent_template_id is present in the returned data
       const updatedTemplate: Template = {
         ...currentTemplate,
         ...data,

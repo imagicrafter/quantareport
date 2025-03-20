@@ -179,7 +179,7 @@ const TemplateEditForm = ({
         layout_module: values.layout_module ? JSON.parse(values.layout_module) : null,
         is_public: values.is_public,
         domain_id: values.domain_id || null,
-        parent_template_id: currentTemplate?.parent_template_id || null,
+        ...(currentTemplate?.parent_template_id && { parent_template_id: currentTemplate.parent_template_id }),
       };
 
       let templateId: string;
@@ -213,7 +213,6 @@ const TemplateEditForm = ({
         templateId = currentTemplate.id;
         
         const completeTemplate: Template = {
-          ...currentTemplate,
           ...data,
           parent_template_id: data.parent_template_id || currentTemplate.parent_template_id || null
         };
