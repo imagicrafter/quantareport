@@ -10,6 +10,7 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import TemplateTable from "@/components/templates/TemplateTable";
 import TemplateSummaryCards from "@/components/templates/TemplateSummaryCards";
 import TemplateEditForm from "@/components/templates/TemplateEditForm";
+import UserTemplateEditForm from "@/components/templates/UserTemplateEditForm";
 
 const Templates = () => {
   const { toast } = useToast();
@@ -17,10 +18,12 @@ const Templates = () => {
   const [domainTemplates, setDomainTemplates] = useState<Template[]>([]);
   const [myTemplates, setMyTemplates] = useState<Template[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<Template | null>(null);
+  const [domains, setDomains] = useState<Record<string, string>>({});
 
   // Fetch user profile and templates
   useEffect(() => {
@@ -43,6 +46,22 @@ const Templates = () => {
 
         if (profileError) throw profileError;
         setProfile(profileData);
+        setIsAdmin(profileData.role === "admin");
+
+        // Fetch domains if admin
+        if (profileData.role === "admin") {
+          const { data: domainsData } = await supabase
+            .from("domains")
+            .select("id, name");
+          
+          if (domainsData) {
+            const domainMap: Record<string, string> = {};
+            domainsData.forEach(domain => {
+              domainMap[domain.id] = domain.name;
+            });
+            setDomains(domainMap);
+          }
+        }
 
         // Fetch domain templates based on role and domain
         let domainTemplatesQuery = supabase
@@ -97,6 +116,7 @@ const Templates = () => {
         description: template.description,
         image_module: template.image_module,
         report_module: template.report_module,
+        layout_module: template.layout_module,
         is_public: false,
         domain_id: template.domain_id,
         user_id: profile.id,
@@ -192,15 +212,24 @@ const Templates = () => {
                 <SheetHeader>
                   <SheetTitle>Edit Template</SheetTitle>
                   <SheetDescription>
-                    Modify your template details below
+                    {isAdmin ? "Modify template details below" : "Customize your template"}
                   </SheetDescription>
                 </SheetHeader>
 
-                <TemplateEditForm 
-                  currentTemplate={currentTemplate}
-                  onSuccess={handleTemplateUpdate}
-                  onCancel={handleCancelEdit}
-                />
+                {isAdmin ? (
+                  <TemplateEditForm 
+                    currentTemplate={currentTemplate}
+                    onSuccess={handleTemplateUpdate}
+                    onCancel={handleCancelEdit}
+                    domains={domains}
+                  />
+                ) : (
+                  <UserTemplateEditForm
+                    currentTemplate={currentTemplate}
+                    onSuccess={handleTemplateUpdate}
+                    onCancel={handleCancelEdit}
+                  />
+                )}
               </SheetContent>
             </Sheet>
           </>

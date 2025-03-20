@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { PlusCircle } from 'lucide-react'; 
+import { PlusCircle, ShieldAlert } from 'lucide-react'; 
 import TemplateEditForm from '@/components/templates/TemplateEditForm';
 
 const TemplatesTab = () => {
@@ -22,11 +22,31 @@ const TemplatesTab = () => {
   const [userProfiles, setUserProfiles] = useState<Record<string, string>>({});
   const [domains, setDomains] = useState<Record<string, string>>({});
   const [isCreating, setIsCreating] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    loadTemplates();
-    loadUserProfiles();
-    loadDomains();
+    // Check if user is admin before allowing access
+    const checkAdminRole = async () => {
+      const { data: session } = await supabase.auth.getSession();
+      if (session.session) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.session.user.id)
+          .single();
+        
+        if (profile && profile.role === 'admin') {
+          setIsAdmin(true);
+          loadTemplates();
+          loadUserProfiles();
+          loadDomains();
+        } else {
+          toast.error("You don't have permission to access this page");
+        }
+      }
+    };
+    
+    checkAdminRole();
   }, []);
 
   const loadTemplates = async () => {
@@ -128,6 +148,16 @@ const TemplatesTab = () => {
     return types.length > 0 ? types.join(", ") : "—";
   };
 
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center p-6 text-center">
+        <ShieldAlert className="h-16 w-16 text-destructive mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Admin Access Required</h2>
+        <p className="text-muted-foreground">You don't have permission to access this section.</p>
+      </div>
+    );
+  }
+
   if (editingTemplate) {
     return (
       <div>
@@ -158,7 +188,7 @@ const TemplatesTab = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Template Management</h2>
+        <h2 className="text-xl font-semibold">Admin Template Management</h2>
         <Button onClick={handleCreateTemplate}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Add Template
