@@ -83,7 +83,7 @@ const TemplatesTab = () => {
 
       if (error) throw error;
       
-      // Add parent_template_id if it doesn't exist in the data
+      // Ensure all templates have the parent_template_id field
       const templatesWithParentId = (data || []).map(template => ({
         ...template,
         parent_template_id: template.parent_template_id || null

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,19 +25,16 @@ const Templates = () => {
   const [domains, setDomains] = useState<Record<string, string>>({});
   const [justAddedTemplate, setJustAddedTemplate] = useState<Template | null>(null);
 
-  // Fetch user profile and templates
   useEffect(() => {
     const fetchUserAndTemplates = async () => {
       setIsLoading(true);
       try {
-        // Check if user is authenticated
         const { data: authData } = await supabase.auth.getUser();
         if (!authData.user) {
           navigate("/signin");
           return;
         }
 
-        // Get user profile
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
@@ -49,7 +45,6 @@ const Templates = () => {
         setProfile(profileData);
         setIsAdmin(profileData.role === "admin");
 
-        // Fetch domains if admin
         if (profileData.role === "admin") {
           const { data: domainsData } = await supabase
             .from("domains")
@@ -64,13 +59,11 @@ const Templates = () => {
           }
         }
 
-        // Fetch domain templates based on role and domain
         let domainTemplatesQuery = supabase
           .from("templates")
           .select("*")
           .eq("is_public", true);
 
-        // If not admin, filter by domain_id
         if (profileData.role !== "admin") {
           domainTemplatesQuery = domainTemplatesQuery.eq(
             "domain_id",
@@ -83,7 +76,6 @@ const Templates = () => {
 
         if (domainTemplateError) throw domainTemplateError;
         
-        // Ensure all templates have parent_template_id
         const domainTemplatesWithParentId = (domainTemplateData || []).map(template => ({
           ...template,
           parent_template_id: template.parent_template_id || null
@@ -91,7 +83,6 @@ const Templates = () => {
         
         setDomainTemplates(domainTemplatesWithParentId);
 
-        // Fetch user templates
         const { data: myTemplateData, error: myTemplateError } = await supabase
           .from("templates")
           .select("*")
@@ -99,7 +90,6 @@ const Templates = () => {
 
         if (myTemplateError) throw myTemplateError;
         
-        // Ensure all templates have parent_template_id
         const myTemplatesWithParentId = (myTemplateData || []).map(template => ({
           ...template,
           parent_template_id: template.parent_template_id || null
@@ -134,7 +124,7 @@ const Templates = () => {
         is_public: false,
         domain_id: template.domain_id,
         user_id: profile.id,
-        parent_template_id: template.id, // Store the original template id
+        parent_template_id: template.id,
       };
 
       const { data, error } = await supabase
@@ -145,10 +135,9 @@ const Templates = () => {
 
       if (error) throw error;
       
-      // Ensure template has parent_template_id
       const completeTemplate: Template = {
         ...data,
-        parent_template_id: data.parent_template_id || template.id  // Fallback to template.id if somehow null
+        parent_template_id: data.parent_template_id || template.id
       };
 
       setMyTemplates([...myTemplates, completeTemplate]);
@@ -157,7 +146,6 @@ const Templates = () => {
         description: "Template added to your collection.",
       });
       
-      // Set the newly created template as current and open the edit sheet
       setJustAddedTemplate(completeTemplate);
       setCurrentTemplate(completeTemplate);
       setIsEditing(completeTemplate.id);

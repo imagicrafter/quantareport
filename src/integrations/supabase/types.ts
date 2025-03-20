@@ -525,6 +525,7 @@ export type Database = {
           is_public: boolean | null
           layout_module: Json | null
           name: string
+          parent_template_id: string | null
           report_module: Json | null
           user_id: string | null
         }
@@ -537,6 +538,7 @@ export type Database = {
           is_public?: boolean | null
           layout_module?: Json | null
           name: string
+          parent_template_id?: string | null
           report_module?: Json | null
           user_id?: string | null
         }
@@ -549,10 +551,18 @@ export type Database = {
           is_public?: boolean | null
           layout_module?: Json | null
           name?: string
+          parent_template_id?: string | null
           report_module?: Json | null
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "templates_parent_template_id_fkey"
+            columns: ["parent_template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "templates_user_id_fkey"
             columns: ["user_id"]

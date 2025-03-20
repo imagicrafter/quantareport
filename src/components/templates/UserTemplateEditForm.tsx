@@ -206,7 +206,7 @@ const UserTemplateEditForm = ({
 
       if (error) throw error;
       
-      // Ensure parent_template_id is present in the returned data
+      // Ensure the updated template includes parent_template_id
       const updatedTemplate: Template = {
         ...currentTemplate,
         ...data,
