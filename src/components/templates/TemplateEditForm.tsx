@@ -66,6 +66,7 @@ const TemplateEditForm = ({
   const [templateNotes, setTemplateNotes] = useState<TemplateNote[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string>("");
   const [loadingNotes, setLoadingNotes] = useState(false);
+  const [isPublic, setIsPublic] = useState(currentTemplate?.is_public || false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -79,6 +80,16 @@ const TemplateEditForm = ({
       domain_id: currentTemplate?.domain_id || null,
     },
   });
+
+  // Watch for changes in is_public field
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'is_public') {
+        setIsPublic(value.is_public || false);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch]);
 
   useEffect(() => {
     if (!isCreating && currentTemplate?.id) {
@@ -337,8 +348,8 @@ const TemplateEditForm = ({
                 <FormItem>
                   <FormLabel>Domain</FormLabel>
                   <Select 
-                    onValueChange={field.onChange} 
-                    value={field.value || ""}
+                    onValueChange={(value) => field.onChange(value === "none" ? null : value)} 
+                    value={field.value || "none"}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -385,7 +396,7 @@ const TemplateEditForm = ({
           </div>
 
           <div className="space-y-6">
-            {!isCreating && currentTemplate?.id && (
+            {!isCreating && currentTemplate?.id && isPublic && (
               <div className="border rounded-lg p-4 space-y-4">
                 <h3 className="text-lg font-medium">Template Notes</h3>
                 

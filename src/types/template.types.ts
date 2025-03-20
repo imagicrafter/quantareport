@@ -10,6 +10,7 @@ export interface Template {
   domain_id: string | null;
   user_id: string | null;
   created_at: string | null;
+  parent_template_id: string | null;
 }
 
 export interface Profile {

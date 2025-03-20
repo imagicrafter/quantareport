@@ -24,6 +24,7 @@ const Templates = () => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<Template | null>(null);
   const [domains, setDomains] = useState<Record<string, string>>({});
+  const [justAddedTemplate, setJustAddedTemplate] = useState<Template | null>(null);
 
   // Fetch user profile and templates
   useEffect(() => {
@@ -87,8 +88,7 @@ const Templates = () => {
         const { data: myTemplateData, error: myTemplateError } = await supabase
           .from("templates")
           .select("*")
-          .eq("user_id", authData.user.id)
-          .eq("is_public", false);
+          .eq("user_id", authData.user.id);
 
         if (myTemplateError) throw myTemplateError;
         setMyTemplates(myTemplateData || []);
@@ -112,7 +112,7 @@ const Templates = () => {
 
     try {
       const newTemplate = {
-        name: template.name,
+        name: `Copy of ${template.name}`,
         description: template.description,
         image_module: template.image_module,
         report_module: template.report_module,
@@ -120,6 +120,7 @@ const Templates = () => {
         is_public: false,
         domain_id: template.domain_id,
         user_id: profile.id,
+        parent_template_id: template.id, // Store the original template id
       };
 
       const { data, error } = await supabase
@@ -135,6 +136,12 @@ const Templates = () => {
         title: "Success",
         description: "Template added to your collection.",
       });
+      
+      // Set the newly created template as current and open the edit sheet
+      setJustAddedTemplate(data);
+      setCurrentTemplate(data);
+      setIsEditing(data.id);
+      setIsSheetOpen(true);
     } catch (error) {
       console.error("Error copying template:", error);
       toast({
@@ -159,11 +166,13 @@ const Templates = () => {
     setMyTemplates(updatedTemplates);
     setIsEditing(null);
     setIsSheetOpen(false);
+    setJustAddedTemplate(null);
   };
 
   const handleCancelEdit = () => {
     setIsSheetOpen(false);
     setIsEditing(null);
+    setJustAddedTemplate(null);
   };
 
   return (
@@ -210,7 +219,9 @@ const Templates = () => {
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
                 <SheetHeader>
-                  <SheetTitle>Edit Template</SheetTitle>
+                  <SheetTitle>
+                    {justAddedTemplate ? "Customize New Template" : "Edit Template"}
+                  </SheetTitle>
                   <SheetDescription>
                     {isAdmin ? "Modify template details below" : "Customize your template"}
                   </SheetDescription>

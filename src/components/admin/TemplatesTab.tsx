@@ -12,17 +12,39 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { PlusCircle, ShieldAlert } from 'lucide-react'; 
+import { PlusCircle, ShieldAlert, Filter } from 'lucide-react'; 
 import TemplateEditForm from '@/components/templates/TemplateEditForm';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const TemplatesTab = () => {
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [filteredTemplates, setFilteredTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [userProfiles, setUserProfiles] = useState<Record<string, string>>({});
   const [domains, setDomains] = useState<Record<string, string>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Filter states
+  const [domainFilter, setDomainFilter] = useState<string>('all');
+  const [userFilter, setUserFilter] = useState<string>('all');
+  const [publicFilter, setPublicFilter] = useState<boolean | null>(null);
+  const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     // Check if user is admin before allowing access
@@ -49,6 +71,11 @@ const TemplatesTab = () => {
     checkAdminRole();
   }, []);
 
+  useEffect(() => {
+    // Apply filters whenever filter values or templates change
+    applyFilters();
+  }, [templates, domainFilter, userFilter, publicFilter, searchText]);
+
   const loadTemplates = async () => {
     try {
       setLoading(true);
@@ -59,6 +86,7 @@ const TemplatesTab = () => {
 
       if (error) throw error;
       setTemplates(data || []);
+      setFilteredTemplates(data || []);
     } catch (error) {
       console.error('Error loading templates:', error);
       toast.error('Failed to load templates');
@@ -105,6 +133,44 @@ const TemplatesTab = () => {
     }
   };
 
+  const applyFilters = () => {
+    let filtered = [...templates];
+    
+    // Apply domain filter
+    if (domainFilter !== 'all') {
+      filtered = filtered.filter(template => 
+        domainFilter === 'none' 
+          ? !template.domain_id 
+          : template.domain_id === domainFilter
+      );
+    }
+    
+    // Apply user filter
+    if (userFilter !== 'all') {
+      filtered = filtered.filter(template => 
+        userFilter === 'none' 
+          ? !template.user_id 
+          : template.user_id === userFilter
+      );
+    }
+    
+    // Apply public filter
+    if (publicFilter !== null) {
+      filtered = filtered.filter(template => template.is_public === publicFilter);
+    }
+    
+    // Apply search filter
+    if (searchText.trim()) {
+      const search = searchText.toLowerCase();
+      filtered = filtered.filter(template => 
+        template.name.toLowerCase().includes(search) || 
+        (template.description && template.description.toLowerCase().includes(search))
+      );
+    }
+    
+    setFilteredTemplates(filtered);
+  };
+
   const handleEditTemplate = (template: Template) => {
     setEditingTemplate(template);
     setIsCreating(false);
@@ -121,6 +187,7 @@ const TemplatesTab = () => {
       is_public: false,
       domain_id: null,
       user_id: null,
+      parent_template_id: null, // Add the new field
       created_at: null
     };
     setEditingTemplate(newTemplate);
@@ -146,6 +213,39 @@ const TemplatesTab = () => {
     if (template.report_module) types.push("Report");
     if (template.layout_module) types.push("Layout");
     return types.length > 0 ? types.join(", ") : "—";
+  };
+
+  const getUserOptions = () => {
+    const options = Object.entries(userProfiles).map(([id, email]) => ({
+      value: id,
+      label: email
+    }));
+    
+    return [
+      { value: 'all', label: 'All Users' },
+      { value: 'none', label: 'No User' },
+      ...options
+    ];
+  };
+  
+  const getDomainOptions = () => {
+    const options = Object.entries(domains).map(([id, name]) => ({
+      value: id,
+      label: name
+    }));
+    
+    return [
+      { value: 'all', label: 'All Domains' },
+      { value: 'none', label: 'No Domain' },
+      ...options
+    ];
+  };
+
+  const resetFilters = () => {
+    setDomainFilter('all');
+    setUserFilter('all');
+    setPublicFilter(null);
+    setSearchText('');
   };
 
   if (!isAdmin) {
@@ -195,6 +295,96 @@ const TemplatesTab = () => {
         </Button>
       </div>
       
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex-1 min-w-[200px]">
+          <Input
+            placeholder="Search templates..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9">
+              <Filter className="h-4 w-4 mr-2" />
+              Filters
+              {(domainFilter !== 'all' || userFilter !== 'all' || publicFilter !== null) && (
+                <span className="ml-1 rounded-full bg-primary w-2 h-2"></span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[300px] p-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="domain-filter">Domain</Label>
+                <Select value={domainFilter} onValueChange={setDomainFilter}>
+                  <SelectTrigger id="domain-filter">
+                    <SelectValue placeholder="Select domain" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getDomainOptions().map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="user-filter">User</Label>
+                <Select value={userFilter} onValueChange={setUserFilter}>
+                  <SelectTrigger id="user-filter">
+                    <SelectValue placeholder="Select user" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getUserOptions().map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="public-filter">Public Status</Label>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox 
+                      id="public-yes"
+                      checked={publicFilter === true}
+                      onCheckedChange={() => setPublicFilter(publicFilter === true ? null : true)}
+                    />
+                    <label htmlFor="public-yes">Public</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox 
+                      id="public-no"
+                      checked={publicFilter === false}
+                      onCheckedChange={() => setPublicFilter(publicFilter === false ? null : false)}
+                    />
+                    <label htmlFor="public-no">Private</label>
+                  </div>
+                </div>
+              </div>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={resetFilters} 
+                className="w-full mt-2"
+              >
+                Reset Filters
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+      
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -215,14 +405,14 @@ const TemplatesTab = () => {
                   Loading templates...
                 </TableCell>
               </TableRow>
-            ) : templates.length === 0 ? (
+            ) : filteredTemplates.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
                   No templates found
                 </TableCell>
               </TableRow>
             ) : (
-              templates.map((template) => (
+              filteredTemplates.map((template) => (
                 <TableRow key={template.id}>
                   <TableCell className="font-medium">
                     {template.name}
