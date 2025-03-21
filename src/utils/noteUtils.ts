@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface Note {
   id: string;
   title: string;
+  name: string;
   content: string;
   created_at: string;
   position: number;

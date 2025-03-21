@@ -1,4 +1,3 @@
-
 import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -15,18 +14,6 @@ interface CreateProjectModalProps {
   showCreateProject: boolean;
   setShowCreateProject: (show: boolean) => void;
   onProjectCreated?: () => void;
-}
-
-interface TemplateNote {
-  id: string;
-  template_id: string;
-  note_id: string;
-  custom_content: string | null;
-  note: {
-    id: string;
-    title: string;
-    content: string | null;
-  };
 }
 
 const formSchema = z.object({
@@ -92,13 +79,9 @@ const CreateProjectModal = ({
         .select(`
           id,
           template_id,
-          note_id,
-          custom_content,
-          notes:note_id (
-            id,
-            title,
-            content
-          )
+          title,
+          name,
+          custom_content
         `)
         .eq('template_id', templateId);
 
@@ -115,10 +98,11 @@ const CreateProjectModal = ({
       console.log('Template notes found:', templateNotes);
       
       // Create new notes for the project based on template notes
-      // If custom_content exists, use it, otherwise use the original note content
+      // If custom_content exists, use it, otherwise use empty string
       const notesToCreate = templateNotes.map((tn: any) => ({
-        title: tn.notes.title,
-        content: tn.custom_content !== null ? tn.custom_content : tn.notes.content,
+        title: tn.title,
+        name: tn.name,
+        content: tn.custom_content !== null ? tn.custom_content : '',
         project_id: projectId,
         user_id: userId
       }));
