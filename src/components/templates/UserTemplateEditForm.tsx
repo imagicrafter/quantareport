@@ -61,6 +61,7 @@ const UserTemplateEditForm = ({
   const [userTemplateNotes, setUserTemplateNotes] = useState<TemplateNote[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingParentNotes, setLoadingParentNotes] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -71,10 +72,14 @@ const UserTemplateEditForm = ({
 
   useEffect(() => {
     if (currentTemplate) {
+      console.log("Current template:", currentTemplate);
       loadTemplateNotes(currentTemplate.id);
       
       if (currentTemplate.parent_template_id) {
+        console.log("Loading parent template notes for ID:", currentTemplate.parent_template_id);
         loadParentTemplateNotes(currentTemplate.parent_template_id);
+      } else {
+        console.log("No parent template ID found");
       }
     }
   }, [currentTemplate]);
@@ -82,6 +87,9 @@ const UserTemplateEditForm = ({
   const loadTemplateNotes = async (templateId: string) => {
     try {
       setLoadingNotes(true);
+      setError(null);
+      
+      console.log("Loading notes for template ID:", templateId);
       
       const { data, error } = await supabase
         .from('template_notes')
@@ -97,7 +105,13 @@ const UserTemplateEditForm = ({
         `)
         .eq('template_id', templateId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading template notes:', error);
+        setError(`Failed to load notes: ${error.message}`);
+        throw error;
+      }
+
+      console.log("User template notes data:", data);
 
       const notesWithDetails = (data || []).map((item) => ({
         id: item.id,
@@ -118,9 +132,11 @@ const UserTemplateEditForm = ({
   const loadParentTemplateNotes = async (parentTemplateId: string) => {
     try {
       setLoadingParentNotes(true);
+      setError(null);
       
       console.log("Loading parent template notes for:", parentTemplateId);
       
+      // Get all notes from the parent template
       const { data, error } = await supabase
         .from('template_notes')
         .select(`
@@ -137,12 +153,19 @@ const UserTemplateEditForm = ({
 
       if (error) {
         console.error('Supabase error loading parent notes:', error);
+        setError(`Failed to load parent notes: ${error.message}`);
         throw error;
       }
 
       console.log("Parent template notes data:", data);
 
-      const notesWithDetails = (data || []).map((item) => ({
+      if (!data || data.length === 0) {
+        console.log("No parent template notes found");
+        setParentTemplateNotes([]);
+        return;
+      }
+
+      const notesWithDetails = data.map((item) => ({
         id: item.id,
         template_id: item.template_id,
         note_id: item.note_id,
@@ -159,7 +182,10 @@ const UserTemplateEditForm = ({
   };
 
   const addNoteToUserTemplate = async (noteId: string) => {
-    if (!currentTemplate) return;
+    if (!currentTemplate) {
+      toast.error("Template information is missing");
+      return;
+    }
     
     const noteAlreadyExists = userTemplateNotes.some(tn => tn.note_id === noteId);
     
@@ -169,6 +195,8 @@ const UserTemplateEditForm = ({
     }
 
     try {
+      console.log("Adding note to template:", noteId, currentTemplate.id);
+      
       const { data, error } = await supabase
         .from('template_notes')
         .insert({
@@ -187,7 +215,13 @@ const UserTemplateEditForm = ({
         `)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error adding note to template:", error);
+        toast.error(`Failed to add note: ${error.message}`);
+        throw error;
+      }
+
+      console.log("Note added successfully:", data);
 
       const newTemplateNote = {
         id: data.id,
@@ -235,6 +269,7 @@ const UserTemplateEditForm = ({
     }
   };
 
+  // Get note IDs already added to the user's template
   const addedNoteIds = userTemplateNotes.map(tn => tn.note_id);
 
   return (
@@ -269,6 +304,12 @@ const UserTemplateEditForm = ({
             )}
           </div>
 
+          {error && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-600">
+              {error}
+            </div>
+          )}
+
           <div className="mt-8">
             <div className="flex items-center gap-2 mb-4">
               <h3 className="text-lg font-medium">Your Template Notes</h3>
@@ -285,7 +326,7 @@ const UserTemplateEditForm = ({
             </div>
             
             {loadingNotes ? (
-              <div className="text-center py-4">Loading notes...</div>
+              <div className="text-center py-4">Loading your notes...</div>
             ) : userTemplateNotes.length === 0 ? (
               <div className="text-muted-foreground py-2">
                 You haven't added any notes to this template yet.

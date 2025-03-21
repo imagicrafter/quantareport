@@ -44,6 +44,7 @@ const Templates = () => {
 
         if (profileError) throw profileError;
         setProfile(profileData);
+        console.log("User profile:", profileData);
         setIsAdmin(profileData.role === "admin");
 
         if (profileData.role === "admin") {
@@ -77,6 +78,8 @@ const Templates = () => {
 
         if (domainTemplateError) throw domainTemplateError;
         
+        console.log("Domain templates data:", domainTemplateData);
+        
         const domainTemplatesWithParentId = (domainTemplateData || []).map(template => ({
           ...template,
           parent_template_id: template.parent_template_id || null
@@ -90,6 +93,8 @@ const Templates = () => {
           .eq("user_id", authData.user.id);
 
         if (myTemplateError) throw myTemplateError;
+        
+        console.log("My templates data:", myTemplateData);
         
         const myTemplatesWithParentId = (myTemplateData || []).map(template => ({
           ...template,
@@ -116,6 +121,8 @@ const Templates = () => {
     if (!profile) return;
 
     try {
+      console.log("Copying template:", template);
+      
       const newTemplate = {
         name: `Copy of ${template.name}`,
         description: template.description,
@@ -135,6 +142,8 @@ const Templates = () => {
         .single();
 
       if (error) throw error;
+      
+      console.log("New template created:", data);
       
       const completeTemplate: Template = {
         ...data,
@@ -162,6 +171,7 @@ const Templates = () => {
   };
 
   const handleEditTemplate = (template: Template) => {
+    console.log("Editing template:", template);
     setCurrentTemplate(template);
     setIsEditing(template.id);
     setIsSheetOpen(true);
