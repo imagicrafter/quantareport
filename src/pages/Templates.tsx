@@ -11,6 +11,7 @@ import TemplateTable from "@/components/templates/TemplateTable";
 import TemplateSummaryCards from "@/components/templates/TemplateSummaryCards";
 import TemplateEditForm from "@/components/templates/TemplateEditForm";
 import UserTemplateEditForm from "@/components/templates/UserTemplateEditForm";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Templates = () => {
   const { toast } = useToast();
@@ -25,10 +26,12 @@ const Templates = () => {
   const [currentTemplate, setCurrentTemplate] = useState<Template | null>(null);
   const [domains, setDomains] = useState<Record<string, string>>({});
   const [justAddedTemplate, setJustAddedTemplate] = useState<Template | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserAndTemplates = async () => {
       setIsLoading(true);
+      setFetchError(null);
       try {
         const { data: authData } = await supabase.auth.getUser();
         if (!authData.user) {
@@ -36,21 +39,33 @@ const Templates = () => {
           return;
         }
 
+        console.log("Auth user data:", authData.user);
+
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", authData.user.id)
           .single();
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error("Profile error:", profileError);
+          setFetchError(`Error fetching profile: ${profileError.message}`);
+          throw profileError;
+        }
+        
         setProfile(profileData);
         console.log("User profile:", profileData);
         setIsAdmin(profileData.role === "admin");
 
         if (profileData.role === "admin") {
-          const { data: domainsData } = await supabase
+          const { data: domainsData, error: domainsError } = await supabase
             .from("domains")
             .select("id, name");
+          
+          if (domainsError) {
+            console.error("Domains error:", domainsError);
+            setFetchError(`Error fetching domains: ${domainsError.message}`);
+          }
           
           if (domainsData) {
             const domainMap: Record<string, string> = {};
@@ -76,7 +91,11 @@ const Templates = () => {
         const { data: domainTemplateData, error: domainTemplateError } =
           await domainTemplatesQuery;
 
-        if (domainTemplateError) throw domainTemplateError;
+        if (domainTemplateError) {
+          console.error("Domain templates error:", domainTemplateError);
+          setFetchError(`Error fetching domain templates: ${domainTemplateError.message}`);
+          throw domainTemplateError;
+        }
         
         console.log("Domain templates data:", domainTemplateData);
         
@@ -92,7 +111,11 @@ const Templates = () => {
           .select("*")
           .eq("user_id", authData.user.id);
 
-        if (myTemplateError) throw myTemplateError;
+        if (myTemplateError) {
+          console.error("My templates error:", myTemplateError);
+          setFetchError(`Error fetching my templates: ${myTemplateError.message}`);
+          throw myTemplateError;
+        }
         
         console.log("My templates data:", myTemplateData);
         
@@ -135,13 +158,18 @@ const Templates = () => {
         parent_template_id: template.id,
       };
 
+      console.log("New template data:", newTemplate);
+
       const { data, error } = await supabase
         .from("templates")
         .insert([newTemplate])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error creating template:", error);
+        throw error;
+      }
       
       console.log("New template created:", data);
       
@@ -149,6 +177,8 @@ const Templates = () => {
         ...data,
         parent_template_id: data.parent_template_id || template.id
       };
+
+      console.log("Complete template with parent ID:", completeTemplate);
 
       setMyTemplates([...myTemplates, completeTemplate]);
       toast({
@@ -178,6 +208,8 @@ const Templates = () => {
   };
 
   const handleTemplateUpdate = (updatedTemplate: Template) => {
+    console.log("Template updated:", updatedTemplate);
+    
     const updatedTemplates = myTemplates.map((template) =>
       template.id === updatedTemplate.id ? updatedTemplate : template
     );
@@ -199,6 +231,12 @@ const Templates = () => {
       <DashboardHeader title="Templates" toggleSidebar={() => {}} />
       
       <div className="px-4 py-4">
+        {fetchError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{fetchError}</AlertDescription>
+          </Alert>
+        )}
+        
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
             <p>Loading templates...</p>

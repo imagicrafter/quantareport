@@ -23,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const userFormSchema = z.object({
   name: z.string().min(2, {
@@ -305,9 +306,9 @@ const UserTemplateEditForm = ({
           </div>
 
           {error && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-600">
-              {error}
-            </div>
+            <Alert variant="destructive" className="mt-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
           <div className="mt-8">
