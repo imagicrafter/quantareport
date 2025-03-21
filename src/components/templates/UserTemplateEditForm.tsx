@@ -14,9 +14,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Template } from "@/types/template.types";
 import { z } from "zod";
-import { Plus, Info, AlertTriangle } from "lucide-react";
+import { Plus, Info, AlertTriangle, Edit2, Check, X } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -24,6 +25,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const userFormSchema = z.object({
   name: z.string().min(2, {
@@ -50,6 +59,7 @@ interface TemplateNote {
   template_id: string;
   note_id: string;
   note?: Note;
+  custom_content?: string | null; // New field to store user-edited content
 }
 
 const UserTemplateEditForm = ({ 
@@ -64,6 +74,8 @@ const UserTemplateEditForm = ({
   const [loadingParentNotes, setLoadingParentNotes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [parentError, setParentError] = useState<string | null>(null);
+  const [isEditingNote, setIsEditingNote] = useState<string | null>(null);
+  const [editedNoteContent, setEditedNoteContent] = useState<string>("");
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -99,6 +111,7 @@ const UserTemplateEditForm = ({
           id,
           template_id,
           note_id,
+          custom_content,
           notes:note_id (
             id,
             title,
@@ -119,7 +132,8 @@ const UserTemplateEditForm = ({
         id: item.id,
         template_id: item.template_id,
         note_id: item.note_id,
-        note: item.notes as Note
+        note: item.notes as Note,
+        custom_content: item.custom_content
       }));
       
       setUserTemplateNotes(notesWithDetails);
@@ -225,7 +239,7 @@ const UserTemplateEditForm = ({
     }
   };
 
-  const addNoteToUserTemplate = async (noteId: string) => {
+  const addNoteToUserTemplate = async (noteId: string, content: string | null) => {
     if (!currentTemplate) {
       toast.error("Template information is missing");
       return;
@@ -245,12 +259,14 @@ const UserTemplateEditForm = ({
         .from('template_notes')
         .insert({
           template_id: currentTemplate.id,
-          note_id: noteId
+          note_id: noteId,
+          custom_content: content // Store the original or edited content
         })
         .select(`
           id,
           template_id,
           note_id,
+          custom_content,
           notes:note_id (
             id,
             title,
@@ -271,7 +287,8 @@ const UserTemplateEditForm = ({
         id: data.id,
         template_id: data.template_id,
         note_id: data.note_id,
-        note: data.notes as Note
+        note: data.notes as Note,
+        custom_content: data.custom_content
       };
 
       setUserTemplateNotes(prev => [...prev, newTemplateNote]);
@@ -280,6 +297,51 @@ const UserTemplateEditForm = ({
       console.error("Error adding note to template:", error);
       toast.error("Failed to add note to your template");
     }
+  };
+
+  const updateNoteContent = async (templateNoteId: string, content: string) => {
+    try {
+      console.log("Updating template note content:", templateNoteId, content);
+      
+      const { error } = await supabase
+        .from('template_notes')
+        .update({ 
+          custom_content: content 
+        })
+        .eq('id', templateNoteId);
+
+      if (error) {
+        console.error("Error updating note content:", error);
+        toast.error(`Failed to update note: ${error.message}`);
+        throw error;
+      }
+
+      // Update local state
+      setUserTemplateNotes(prev => 
+        prev.map(tn => 
+          tn.id === templateNoteId 
+            ? { ...tn, custom_content: content } 
+            : tn
+        )
+      );
+      
+      toast.success("Note content updated");
+      setIsEditingNote(null);
+    } catch (error) {
+      console.error("Error updating note content:", error);
+      toast.error("Failed to update note content");
+    }
+  };
+
+  const openNoteEditor = (templateNote: TemplateNote) => {
+    // Initialize the editor with custom content if it exists, otherwise use the original note content
+    setEditedNoteContent(templateNote.custom_content || templateNote.note?.content || "");
+    setIsEditingNote(templateNote.id);
+  };
+
+  const cancelEditing = () => {
+    setIsEditingNote(null);
+    setEditedNoteContent("");
   };
 
   const onSubmit = async (values: UserFormValues) => {
@@ -382,12 +444,20 @@ const UserTemplateEditForm = ({
               <div className="space-y-3 mb-6">
                 {userTemplateNotes.map(templateNote => (
                   <div key={templateNote.id} className="p-3 bg-gray-50 rounded-md border">
-                    <h4 className="font-medium">{templateNote.note?.title}</h4>
-                    {templateNote.note?.content && (
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                        {templateNote.note.content}
-                      </p>
-                    )}
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium">{templateNote.note?.title}</h4>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => openNoteEditor(templateNote)}
+                      >
+                        <Edit2 className="h-4 w-4 mr-1" /> Edit
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {templateNote.custom_content || templateNote.note?.content || "No content"}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -426,33 +496,37 @@ const UserTemplateEditForm = ({
                       return (
                         <div 
                           key={templateNote.id} 
-                          className={`p-3 rounded-md border flex justify-between items-center ${
+                          className={`p-3 rounded-md border flex flex-col ${
                             isAdded ? 'bg-gray-100 border-gray-300' : 'bg-white'
                           }`}
                         >
-                          <div>
+                          <div className="flex justify-between items-center mb-2">
                             <h4 className="font-medium">{templateNote.note?.title}</h4>
-                            {templateNote.note?.content && (
-                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                {templateNote.note.content}
-                              </p>
-                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={isAdded ? "outline" : "default"}
+                              onClick={() => {
+                                if (!isAdded) {
+                                  addNoteToUserTemplate(templateNote.note_id, templateNote.note?.content);
+                                }
+                              }}
+                              disabled={isAdded}
+                            >
+                              {isAdded ? (
+                                "Added"
+                              ) : (
+                                <>
+                                  <Plus className="mr-1 h-3 w-3" /> Add
+                                </>
+                              )}
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={isAdded ? "outline" : "default"}
-                            onClick={() => addNoteToUserTemplate(templateNote.note_id)}
-                            disabled={isAdded}
-                          >
-                            {isAdded ? (
-                              "Added"
-                            ) : (
-                              <>
-                                <Plus className="mr-1 h-3 w-3" /> Add
-                              </>
-                            )}
-                          </Button>
+                          {templateNote.note?.content && (
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-4 whitespace-pre-wrap">
+                              {templateNote.note.content}
+                            </p>
+                          )}
                         </div>
                       );
                     })}
@@ -476,6 +550,39 @@ const UserTemplateEditForm = ({
           </div>
         </form>
       </Form>
+
+      {/* Note editor dialog */}
+      <Dialog open={!!isEditingNote} onOpenChange={(open) => !open && cancelEditing()}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Note Content</DialogTitle>
+            <DialogDescription>
+              Edit the content of this note for your template.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea 
+              value={editedNoteContent} 
+              onChange={(e) => setEditedNoteContent(e.target.value)}
+              className="min-h-[200px] font-mono text-sm"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelEditing}>
+              <X className="h-4 w-4 mr-2" /> Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (isEditingNote) {
+                  updateNoteContent(isEditingNote, editedNoteContent);
+                }
+              }}
+            >
+              <Check className="h-4 w-4 mr-2" /> Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
