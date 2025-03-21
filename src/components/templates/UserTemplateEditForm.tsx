@@ -63,6 +63,7 @@ const UserTemplateEditForm = ({
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingParentNotes, setLoadingParentNotes] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [parentError, setParentError] = useState<string | null>(null);
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -133,9 +134,24 @@ const UserTemplateEditForm = ({
   const loadParentTemplateNotes = async (parentTemplateId: string) => {
     try {
       setLoadingParentNotes(true);
-      setError(null);
+      setParentError(null);
       
       console.log("Loading parent template notes for:", parentTemplateId);
+      
+      // Fetch the parent template first to verify it exists
+      const { data: parentTemplate, error: parentTemplateError } = await supabase
+        .from('templates')
+        .select('id, name')
+        .eq('id', parentTemplateId)
+        .single();
+        
+      if (parentTemplateError) {
+        console.error('Error loading parent template:', parentTemplateError);
+        setParentError(`Failed to verify parent template: ${parentTemplateError.message}`);
+        throw parentTemplateError;
+      }
+      
+      console.log("Parent template verified:", parentTemplate);
       
       // Get all notes from the parent template
       const { data, error } = await supabase
@@ -154,7 +170,7 @@ const UserTemplateEditForm = ({
 
       if (error) {
         console.error('Supabase error loading parent notes:', error);
-        setError(`Failed to load parent notes: ${error.message}`);
+        setParentError(`Failed to load parent notes: ${error.message}`);
         throw error;
       }
 
@@ -257,8 +273,11 @@ const UserTemplateEditForm = ({
       const updatedTemplate: Template = {
         ...currentTemplate,
         ...data,
+        // Important: Preserve the parent_template_id
         parent_template_id: data.parent_template_id || currentTemplate.parent_template_id || null
       };
+      
+      console.log("Updated template with preserved parent ID:", updatedTemplate);
       
       toast.success("Template updated successfully");
       onSuccess(updatedTemplate);
@@ -349,14 +368,29 @@ const UserTemplateEditForm = ({
             
             {currentTemplate?.parent_template_id && (
               <div className="mt-8">
-                <h3 className="text-lg font-medium mb-4">Available Notes from Original Template</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium">Available Notes from Original Template</h3>
+                  <div className="text-xs text-muted-foreground">
+                    Parent ID: {currentTemplate.parent_template_id}
+                  </div>
+                </div>
+                
+                {parentError && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertDescription>{parentError}</AlertDescription>
+                  </Alert>
+                )}
                 
                 {loadingParentNotes ? (
                   <div className="text-center py-4">Loading available notes...</div>
                 ) : parentTemplateNotes.length === 0 ? (
-                  <div className="text-muted-foreground py-2">
-                    No notes available from the original template.
-                  </div>
+                  <Alert variant="warning" className="mb-4">
+                    <AlertDescription>
+                      No notes available from the original template.
+                      {currentTemplate.parent_template_id && 
+                        ` Parent template ID: ${currentTemplate.parent_template_id}`}
+                    </AlertDescription>
+                  </Alert>
                 ) : (
                   <div className="space-y-3">
                     {parentTemplateNotes.map(templateNote => {

@@ -76,6 +76,7 @@ const Templates = () => {
           }
         }
 
+        // Fetch domain templates that are public
         let domainTemplatesQuery = supabase
           .from("templates")
           .select("*")
@@ -106,6 +107,7 @@ const Templates = () => {
         
         setDomainTemplates(domainTemplatesWithParentId);
 
+        // Fetch user's templates
         const { data: myTemplateData, error: myTemplateError } = await supabase
           .from("templates")
           .select("*")
@@ -145,7 +147,10 @@ const Templates = () => {
 
     try {
       console.log("Copying template:", template);
+      console.log("Original template parent ID:", template.parent_template_id);
+      console.log("Using template ID as parent:", template.id);
       
+      // When copying a template, we set the original template ID as the parent_template_id
       const newTemplate = {
         name: `Copy of ${template.name}`,
         description: template.description,
@@ -155,7 +160,7 @@ const Templates = () => {
         is_public: false,
         domain_id: template.domain_id,
         user_id: profile.id,
-        parent_template_id: template.id,
+        parent_template_id: template.id, // Important: set the original template as parent
       };
 
       console.log("New template data:", newTemplate);
@@ -173,6 +178,7 @@ const Templates = () => {
       
       console.log("New template created:", data);
       
+      // Ensure parent_template_id is preserved
       const completeTemplate: Template = {
         ...data,
         parent_template_id: data.parent_template_id || template.id
@@ -180,7 +186,7 @@ const Templates = () => {
 
       console.log("Complete template with parent ID:", completeTemplate);
 
-      setMyTemplates([...myTemplates, completeTemplate]);
+      setMyTemplates(prevTemplates => [...prevTemplates, completeTemplate]);
       toast({
         title: "Success",
         description: "Template added to your collection.",
