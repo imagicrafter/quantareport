@@ -86,7 +86,7 @@ const CreateProjectModal = ({
   // New function to create notes from template notes
   const createNotesFromTemplate = async (templateId: string, projectId: string, userId: string) => {
     try {
-      // Get the template notes with their custom content
+      // Get the template notes with their note details
       const { data: templateNotes, error: templateNotesError } = await supabase
         .from('template_notes')
         .select(`
@@ -115,6 +115,7 @@ const CreateProjectModal = ({
       console.log('Template notes found:', templateNotes);
       
       // Create new notes for the project based on template notes
+      // If custom_content exists, use it, otherwise use the original note content
       const notesToCreate = templateNotes.map((tn: any) => ({
         title: tn.notes.title,
         content: tn.custom_content !== null ? tn.custom_content : tn.notes.content,

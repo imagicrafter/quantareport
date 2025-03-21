@@ -59,7 +59,7 @@ interface TemplateNote {
   template_id: string;
   note_id: string;
   note?: Note;
-  custom_content?: string | null; // New field to store user-edited content
+  custom_content?: string | null; // Field to store user-edited content
 }
 
 const UserTemplateEditForm = ({ 
@@ -260,7 +260,7 @@ const UserTemplateEditForm = ({
         .insert({
           template_id: currentTemplate.id,
           note_id: noteId,
-          custom_content: content // Store the original or edited content
+          custom_content: content // Store custom content if edited
         })
         .select(`
           id,
