@@ -40,6 +40,7 @@ interface Note {
   id: string;
   title: string;
   content: string | null;
+  template_name?: string;
 }
 
 interface TemplateNote {
@@ -136,11 +137,48 @@ const TemplateEditForm = ({
     try {
       const { data, error } = await supabase
         .from('notes')
-        .select('id, title, content')
+        .select(`
+          id, 
+          title, 
+          content,
+          template_notes!inner (
+            template_id
+          ),
+          templates:template_notes!inner(
+            templates(
+              id,
+              name,
+              is_public
+            )
+          )
+        `)
+        .filter('templates.templates.is_public', 'eq', true)
         .order('title', { ascending: true });
 
-      if (error) throw error;
-      setAvailableNotes(data || []);
+      if (error) {
+        console.error('Error loading available notes:', error);
+        throw error;
+      }
+
+      console.log('Filtered notes data:', data);
+
+      const notesWithTemplateInfo = (data || []).map(item => {
+        const templateInfo = item.templates?.[0]?.templates;
+        
+        return {
+          id: item.id,
+          title: item.title,
+          content: item.content,
+          template_name: templateInfo?.name || 'Unknown Template'
+        };
+      });
+
+      const uniqueNotes = Array.from(
+        new Map(notesWithTemplateInfo.map(note => [note.id, note])).values()
+      );
+
+      console.log('Processed notes with template info:', uniqueNotes);
+      setAvailableNotes(uniqueNotes);
     } catch (error) {
       console.error('Error loading available notes:', error);
       toast.error('Failed to load available notes');
@@ -405,7 +443,7 @@ const TemplateEditForm = ({
                     <SelectContent>
                       {availableNotes.map(note => (
                         <SelectItem key={note.id} value={note.id}>
-                          {note.title}
+                          {note.title} - {note.template_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
