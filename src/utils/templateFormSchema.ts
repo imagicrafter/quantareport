@@ -6,6 +6,8 @@ export const formSchema = z.object({
     message: "Template name must be at least 2 characters.",
   }),
   description: z.string().optional().nullable(),
+  domain_id: z.string().optional().nullable(),
+  is_public: z.boolean().default(false),
   image_module: z.string().optional().nullable()
     .refine(
       (val) => {

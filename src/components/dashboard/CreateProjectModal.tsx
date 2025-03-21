@@ -1,4 +1,3 @@
-
 import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -71,6 +70,67 @@ const CreateProjectModal = ({
     }
   }, [showCreateProject, toast]);
 
+  // New function to create notes from template notes
+  const createNotesFromTemplate = async (templateId: string, projectId: string, userId: string) => {
+    try {
+      // Get the template notes with their note details
+      const { data: templateNotes, error: templateNotesError } = await supabase
+        .from('template_notes')
+        .select(`
+          id,
+          template_id,
+          title,
+          name,
+          custom_content
+        `)
+        .eq('template_id', templateId);
+
+      if (templateNotesError) {
+        console.error('Error fetching template notes:', templateNotesError);
+        throw templateNotesError;
+      }
+
+      if (!templateNotes || templateNotes.length === 0) {
+        console.log('No template notes found for this template');
+        return;
+      }
+
+      console.log('Template notes found:', templateNotes);
+      
+      // Create new notes for the project based on template notes
+      // If custom_content exists, use it, otherwise use empty string
+      const notesToCreate = templateNotes.map((tn: any) => ({
+        title: tn.title,
+        name: tn.name,
+        content: tn.custom_content !== null ? tn.custom_content : '',
+        project_id: projectId,
+        user_id: userId
+      }));
+
+      if (notesToCreate.length > 0) {
+        const { data: newNotes, error: createNotesError } = await supabase
+          .from('notes')
+          .insert(notesToCreate)
+          .select();
+
+        if (createNotesError) {
+          console.error('Error creating notes from template:', createNotesError);
+          throw createNotesError;
+        }
+
+        console.log('Created notes from template:', newNotes);
+      }
+    } catch (error) {
+      console.error('Error processing template notes:', error);
+      // We don't want to fail project creation if notes can't be created
+      toast({
+        title: 'Warning',
+        description: 'Project created, but there was an issue creating notes from the template.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
@@ -85,11 +145,13 @@ const CreateProjectModal = ({
         return;
       }
 
+      const userId = session.session.user.id;
+
       const { data, error } = await supabase
         .from('projects')
         .insert({
           name: values.name,
-          user_id: session.session.user.id,
+          user_id: userId,
           template_id: values.template_id,
           status: 'active'
         })
@@ -97,6 +159,9 @@ const CreateProjectModal = ({
         .single();
 
       if (error) throw error;
+
+      // After project is created, create notes from template notes
+      await createNotesFromTemplate(values.template_id, data.id, userId);
 
       toast({
         title: 'Success',

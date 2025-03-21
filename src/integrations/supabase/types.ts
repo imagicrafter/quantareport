@@ -159,29 +159,82 @@ export type Database = {
           },
         ]
       }
+      note_file_relationships: {
+        Row: {
+          created_at: string
+          file_id: string
+          id: string
+          note_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_id: string
+          id?: string
+          note_id: string
+        }
+        Update: {
+          created_at?: string
+          file_id?: string
+          id?: string
+          note_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "project_images"
+            referencedColumns: ["files_id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
-          content: string
+          content: string | null
           created_at: string | null
           id: string
+          name: string
           position: number | null
           project_id: string
           title: string
           user_id: string
         }
         Insert: {
-          content: string
+          content?: string | null
           created_at?: string | null
           id?: string
+          name: string
           position?: number | null
           project_id: string
           title: string
           user_id: string
         }
         Update: {
-          content?: string
+          content?: string | null
           created_at?: string | null
           id?: string
+          name?: string
           position?: number | null
           project_id?: string
           title?: string
@@ -429,6 +482,41 @@ export type Database = {
         }
         Relationships: []
       }
+      template_notes: {
+        Row: {
+          created_at: string
+          custom_content: string | null
+          id: string
+          name: string
+          template_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          custom_content?: string | null
+          id?: string
+          name: string
+          template_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          custom_content?: string | null
+          id?: string
+          name?: string
+          template_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_notes_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       templates: {
         Row: {
           created_at: string | null
@@ -439,6 +527,7 @@ export type Database = {
           is_public: boolean | null
           layout_module: Json | null
           name: string
+          parent_template_id: string | null
           report_module: Json | null
           user_id: string | null
         }
@@ -451,6 +540,7 @@ export type Database = {
           is_public?: boolean | null
           layout_module?: Json | null
           name: string
+          parent_template_id?: string | null
           report_module?: Json | null
           user_id?: string | null
         }
@@ -463,10 +553,18 @@ export type Database = {
           is_public?: boolean | null
           layout_module?: Json | null
           name?: string
+          parent_template_id?: string | null
           report_module?: Json | null
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "templates_parent_template_id_fkey"
+            columns: ["parent_template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "templates_user_id_fkey"
             columns: ["user_id"]
@@ -478,6 +576,50 @@ export type Database = {
       }
     }
     Views: {
+      dim_note_image_project: {
+        Row: {
+          file_id: string | null
+          note_id: string | null
+          project_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "project_images"
+            referencedColumns: ["files_id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       files_not_processed: {
         Row: {
           file_path: string | null

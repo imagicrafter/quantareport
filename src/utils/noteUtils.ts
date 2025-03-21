@@ -1,9 +1,9 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Note {
   id: string;
   title: string;
+  name: string;
   content: string;
   created_at: string;
   position: number;
@@ -59,4 +59,28 @@ export const reorderNotes = async (
   await Promise.all(updatePromises);
   
   return updatedNotes;
+};
+
+/**
+ * Converts a title to camelCase for use as a note name
+ * @param title The title to convert
+ * @returns The title converted to camelCase
+ */
+export const titleToCamelCase = (title: string): string => {
+  // Remove any non-alphanumeric characters and split by spaces
+  const words = title.replace(/[^\w\s]/g, '').split(/\s+/);
+  
+  if (words.length === 0) return '';
+  
+  // First word lowercase
+  let result = words[0].toLowerCase();
+  
+  // Rest of the words with first letter capitalized
+  for (let i = 1; i < words.length; i++) {
+    if (words[i]) {
+      result += words[i][0].toUpperCase() + words[i].substring(1).toLowerCase();
+    }
+  }
+  
+  return result;
 };

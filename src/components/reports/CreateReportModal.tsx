@@ -337,8 +337,8 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       // Select the appropriate webhook URL based on title
       const webhookUrl = isTestingTitle
-        ? 'https://n8n-01.imagicrafterai.com/webhook-test/58f03c25-d09d-4094-bd62-2a3d35514b6d'
-        : 'https://n8n-01.imagicrafterai.com/webhook/58f03c25-d09d-4094-bd62-2a3d35514b6d';
+        ? 'https://n8n-01.imagicrafterai.com/webhook-test/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0'
+        : 'https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0';
       
       console.log(`Using ${isTestingTitle ? 'TESTING' : 'PRODUCTION'} webhook URL: ${webhookUrl}`);
       

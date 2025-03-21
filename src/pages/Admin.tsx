@@ -2,9 +2,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import SignupCodeManager from '@/components/admin/SignupCodeManager';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import SignupCodesTab from '@/components/admin/SignupCodesTab';
+import TemplatesTab from '@/components/admin/TemplatesTab';
 
 const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -68,9 +70,20 @@ const Admin = () => {
       <div className="container mx-auto py-8 px-4">
         <h1 className="text-2xl font-bold mb-6">Admin Controls</h1>
         
-        <div className="bg-card border rounded-lg p-6">
-          <SignupCodeManager />
-        </div>
+        <Tabs defaultValue="signup-codes" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="signup-codes">Signup Codes</TabsTrigger>
+            <TabsTrigger value="templates">Templates</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="signup-codes" className="bg-card border rounded-lg p-6">
+            <SignupCodesTab />
+          </TabsContent>
+          
+          <TabsContent value="templates" className="bg-card border rounded-lg p-6">
+            <TemplatesTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
