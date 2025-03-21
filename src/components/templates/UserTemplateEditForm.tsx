@@ -138,6 +138,19 @@ const UserTemplateEditForm = ({
       
       console.log("Loading parent template notes for:", parentTemplateId);
       
+      // First, directly query for template_notes to see if any exist
+      const { data: directNotes, error: directNotesError } = await supabase
+        .from('template_notes')
+        .select('id, template_id, note_id')
+        .eq('template_id', parentTemplateId);
+        
+      if (directNotesError) {
+        console.error('Error directly checking template notes:', directNotesError);
+        setParentError(`Failed to check template notes: ${directNotesError.message}`);
+      } else {
+        console.log("Direct template notes check:", directNotes);
+      }
+      
       // Fetch the parent template first to verify it exists
       const { data: parentTemplate, error: parentTemplateError } = await supabase
         .from('templates')
@@ -153,7 +166,7 @@ const UserTemplateEditForm = ({
       
       console.log("Parent template verified:", parentTemplate);
       
-      // Get all notes from the parent template
+      // Get all notes from the parent template with the full join
       const { data, error } = await supabase
         .from('template_notes')
         .select(`
@@ -174,7 +187,7 @@ const UserTemplateEditForm = ({
         throw error;
       }
 
-      console.log("Parent template notes data:", data);
+      console.log("Parent template notes data:", data, "Length:", data?.length || 0);
 
       if (!data || data.length === 0) {
         console.log("No parent template notes found");
@@ -182,13 +195,27 @@ const UserTemplateEditForm = ({
         return;
       }
 
-      const notesWithDetails = data.map((item) => ({
-        id: item.id,
-        template_id: item.template_id,
-        note_id: item.note_id,
-        note: item.notes as Note
-      }));
+      // Check if notes objects are present
+      for (const item of data) {
+        if (!item.notes) {
+          console.error("Note details missing for note_id:", item.note_id);
+        }
+      }
+
+      const notesWithDetails = data.map((item) => {
+        if (!item.notes) {
+          console.warn("Missing note details for note_id:", item.note_id);
+        }
+        
+        return {
+          id: item.id,
+          template_id: item.template_id,
+          note_id: item.note_id,
+          note: item.notes as Note
+        };
+      });
       
+      console.log("Processed parent template notes:", notesWithDetails);
       setParentTemplateNotes(notesWithDetails);
     } catch (error) {
       console.error('Error loading parent template notes:', error);

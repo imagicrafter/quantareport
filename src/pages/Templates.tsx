@@ -160,10 +160,10 @@ const Templates = () => {
         is_public: false,
         domain_id: template.domain_id,
         user_id: profile.id,
-        parent_template_id: template.id, // Important: set the original template as parent
+        parent_template_id: template.id, // Set the original template as parent
       };
 
-      console.log("New template data:", newTemplate);
+      console.log("New template data with parent_template_id:", newTemplate);
 
       const { data, error } = await supabase
         .from("templates")
@@ -176,15 +176,20 @@ const Templates = () => {
         throw error;
       }
       
-      console.log("New template created:", data);
+      console.log("New template created from DB:", data);
+      
+      // Double check that parent_template_id is preserved in the response
+      if (!data.parent_template_id) {
+        console.warn("Warning: parent_template_id missing from DB response, adding it back");
+      }
       
       // Ensure parent_template_id is preserved
       const completeTemplate: Template = {
         ...data,
-        parent_template_id: data.parent_template_id || template.id
+        parent_template_id: data.parent_template_id || template.id // Fallback to template.id if missing
       };
 
-      console.log("Complete template with parent ID:", completeTemplate);
+      console.log("Complete template with verified parent ID:", completeTemplate);
 
       setMyTemplates(prevTemplates => [...prevTemplates, completeTemplate]);
       toast({
