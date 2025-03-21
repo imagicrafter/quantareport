@@ -484,31 +484,24 @@ export type Database = {
           created_at: string
           custom_content: string | null
           id: string
-          note_id: string
           template_id: string
+          title: string
         }
         Insert: {
           created_at?: string
           custom_content?: string | null
           id?: string
-          note_id: string
           template_id: string
+          title: string
         }
         Update: {
           created_at?: string
           custom_content?: string | null
           id?: string
-          note_id?: string
           template_id?: string
+          title?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "template_notes_note_id_fkey"
-            columns: ["note_id"]
-            isOneToOne: false
-            referencedRelation: "notes"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "template_notes_template_id_fkey"
             columns: ["template_id"]

@@ -1,3 +1,4 @@
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
@@ -36,18 +37,11 @@ interface TemplateEditFormProps {
   domains?: Record<string, string>;
 }
 
-interface Note {
-  id: string;
-  title: string;
-  content: string | null;
-  template_name?: string;
-}
-
 interface TemplateNote {
   id: string;
   template_id: string;
-  note_id: string;
-  note?: Note;
+  title: string;
+  custom_content: string | null;
 }
 
 const TemplateEditForm = ({ 
@@ -62,11 +56,10 @@ const TemplateEditForm = ({
     report_module: false,
     layout_module: false,
   });
-  const [availableNotes, setAvailableNotes] = useState<Note[]>([]);
   const [templateNotes, setTemplateNotes] = useState<TemplateNote[]>([]);
-  const [selectedNoteId, setSelectedNoteId] = useState<string>("");
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [isPublic, setIsPublic] = useState(currentTemplate?.is_public || false);
+  const [noteTitle, setNoteTitle] = useState("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -94,7 +87,6 @@ const TemplateEditForm = ({
     if (!isCreating && currentTemplate?.id) {
       loadTemplateNotes(currentTemplate.id);
     }
-    loadAvailableNotes();
   }, [currentTemplate, isCreating]);
 
   const loadTemplateNotes = async (templateId: string) => {
@@ -106,82 +98,19 @@ const TemplateEditForm = ({
         .select(`
           id,
           template_id,
-          note_id,
-          notes:note_id (
-            id,
-            title,
-            content
-          )
+          title,
+          custom_content
         `)
         .eq('template_id', templateId);
 
       if (error) throw error;
-
-      const notesWithDetails = (data || []).map((item) => ({
-        id: item.id,
-        template_id: item.template_id,
-        note_id: item.note_id,
-        note: item.notes as Note
-      }));
       
-      setTemplateNotes(notesWithDetails);
+      setTemplateNotes(data || []);
     } catch (error) {
       console.error('Error loading template notes:', error);
       toast.error('Failed to load template notes');
     } finally {
       setLoadingNotes(false);
-    }
-  };
-
-  const loadAvailableNotes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('notes')
-        .select(`
-          id, 
-          title, 
-          content,
-          template_notes!inner (
-            template_id
-          ),
-          templates:template_notes!inner(
-            templates(
-              id,
-              name,
-              is_public
-            )
-          )
-        `)
-        .filter('templates.templates.is_public', 'eq', true)
-        .order('title', { ascending: true });
-
-      if (error) {
-        console.error('Error loading available notes:', error);
-        throw error;
-      }
-
-      console.log('Filtered notes data:', data);
-
-      const notesWithTemplateInfo = (data || []).map(item => {
-        const templateInfo = item.templates?.[0]?.templates;
-        
-        return {
-          id: item.id,
-          title: item.title,
-          content: item.content,
-          template_name: templateInfo?.name || 'Unknown Template'
-        };
-      });
-
-      const uniqueNotes = Array.from(
-        new Map(notesWithTemplateInfo.map(note => [note.id, note])).values()
-      );
-
-      console.log('Processed notes with template info:', uniqueNotes);
-      setAvailableNotes(uniqueNotes);
-    } catch (error) {
-      console.error('Error loading available notes:', error);
-      toast.error('Failed to load available notes');
     }
   };
 
@@ -265,15 +194,8 @@ const TemplateEditForm = ({
   };
 
   const addNoteToTemplate = async () => {
-    if (!selectedNoteId || !currentTemplate?.id) {
-      toast.error("Please select a note to add");
-      return;
-    }
-
-    const noteAlreadyExists = templateNotes.some(tn => tn.note_id === selectedNoteId);
-    
-    if (noteAlreadyExists) {
-      toast.error("This note is already associated with the template");
+    if (!noteTitle.trim() || !currentTemplate?.id) {
+      toast.error("Please enter a title for the note");
       return;
     }
 
@@ -282,31 +204,16 @@ const TemplateEditForm = ({
         .from('template_notes')
         .insert({
           template_id: currentTemplate.id,
-          note_id: selectedNoteId
+          title: noteTitle.trim(),
+          custom_content: ""
         })
-        .select(`
-          id,
-          template_id,
-          note_id,
-          notes:note_id (
-            id,
-            title,
-            content
-          )
-        `)
+        .select()
         .single();
 
       if (error) throw error;
 
-      const newTemplateNote = {
-        id: data.id,
-        template_id: data.template_id,
-        note_id: data.note_id,
-        note: data.notes as Note
-      };
-
-      setTemplateNotes(prev => [...prev, newTemplateNote]);
-      setSelectedNoteId("");
+      setTemplateNotes(prev => [...prev, data]);
+      setNoteTitle("");
       toast.success("Note added to template");
     } catch (error) {
       console.error("Error adding note to template:", error);
@@ -436,18 +343,12 @@ const TemplateEditForm = ({
                 <h3 className="text-lg font-medium">Template Notes</h3>
                 
                 <div className="flex gap-2">
-                  <Select value={selectedNoteId || ""} onValueChange={setSelectedNoteId}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select a note to add" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableNotes.map(note => (
-                        <SelectItem key={note.id} value={note.id}>
-                          {note.title} - {note.template_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    placeholder="Enter note title"
+                    value={noteTitle}
+                    onChange={(e) => setNoteTitle(e.target.value)}
+                    className="flex-1"
+                  />
                   <Button type="button" onClick={addNoteToTemplate}>
                     <PlusCircle className="h-4 w-4 mr-2" />
                     Add
@@ -462,7 +363,7 @@ const TemplateEditForm = ({
                   <div className="space-y-2">
                     {templateNotes.map(templateNote => (
                       <div key={templateNote.id} className="flex items-center justify-between rounded-md border p-2">
-                        <span className="font-medium">{templateNote.note?.title || 'Unknown Note'}</span>
+                        <span className="font-medium">{templateNote.title}</span>
                         <Button 
                           type="button" 
                           variant="ghost" 
