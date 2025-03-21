@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
-import { AlertCircle, Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Dialog, 
   DialogContent, 
@@ -25,6 +24,7 @@ import {
   DialogTitle, 
   DialogFooter 
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Template } from "@/types/template.types";
 import { titleToCamelCase } from "@/utils/noteUtils";
 import { 
@@ -98,26 +98,12 @@ const UserTemplateEditForm = ({
     try {
       setLoadingNotes(true);
       
-      // First check if this template has a parent
-      if (currentTemplate?.parent_template_id) {
-        // Load notes from the parent template first
-        const parentNotes = await loadTemplateNotes(currentTemplate.parent_template_id);
-        if (parentNotes.length > 0) {
-          setTemplateNotes(parentNotes);
-        }
-      }
-      
-      // Then load this template's own notes
+      // Only load the current template's notes - don't include parent notes
       const templateNotes = await loadTemplateNotes(templateId);
       if (templateNotes.length > 0) {
-        setTemplateNotes(prev => {
-          // Combine notes, preferring template's own notes over parent notes with the same name
-          const noteMap = new Map<string, TemplateNote>();
-          [...prev, ...templateNotes].forEach(note => {
-            noteMap.set(note.id, note);
-          });
-          return Array.from(noteMap.values());
-        });
+        setTemplateNotes(templateNotes);
+      } else {
+        setTemplateNotes([]);
       }
     } catch (error) {
       console.error('Error loading template notes:', error);
@@ -274,7 +260,7 @@ const UserTemplateEditForm = ({
             />
           </div>
 
-          {/* Template Notes Section */}
+          {/* Template Notes Section with ScrollArea */}
           <div className="border rounded-lg p-4 space-y-4">
             <h3 className="text-lg font-medium">Template Notes</h3>
             
@@ -295,44 +281,46 @@ const UserTemplateEditForm = ({
             ) : templateNotes.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">No notes attached to this template</div>
             ) : (
-              <div className="space-y-2">
-                {templateNotes.map(note => (
-                  <div key={note.id} className="flex items-center justify-between rounded-md border p-3">
-                    <div>
-                      <p className="font-medium">{note.title}</p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {note.custom_content ? 
-                          (note.custom_content.length > 50 
-                            ? note.custom_content.substring(0, 50) + '...' 
-                            : note.custom_content) 
-                          : 'No content'}
-                      </p>
+              <ScrollArea className="h-[300px] pr-4">
+                <div className="space-y-2">
+                  {templateNotes.map(note => (
+                    <div key={note.id} className="flex items-center justify-between rounded-md border p-3">
+                      <div>
+                        <p className="font-medium">{note.title}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {note.custom_content ? 
+                            (note.custom_content.length > 50 
+                              ? note.custom_content.substring(0, 50) + '...' 
+                              : note.custom_content) 
+                            : 'No content'}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditNote(note.id, note.custom_content, note.title)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleRemoveNote(note.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleEditNote(note.id, note.custom_content, note.title)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleRemoveNote(note.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </ScrollArea>
             )}
           </div>
 
-          <div className="flex justify-end space-x-4 pt-4">
+          <div className="flex justify-end space-x-4 pt-4 sticky bottom-0 bg-background pb-2">
             <Button
               type="button"
               variant="outline"
