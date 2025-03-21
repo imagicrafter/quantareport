@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { Note, reorderNotes } from '@/utils/noteUtils';
+import { Note, reorderNotes, titleToCamelCase } from '@/utils/noteUtils';
 import { NoteFileRelationship, fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 import FilePicker from './notes/FilePicker';
 import RelatedFiles from './notes/RelatedFiles';
@@ -35,13 +35,11 @@ interface NotesSectionProps {
 
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
-  name: z.string().min(2, 'Name must be at least 2 characters.'),
   content: z.string().optional(),
 });
 
 const editFormSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
-  name: z.string().min(2, 'Name must be at least 2 characters.'),
   content: z.string().optional(),
 });
 
@@ -60,7 +58,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: '',
-      name: '',
       content: '',
     },
   });
@@ -69,7 +66,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     resolver: zodResolver(editFormSchema),
     defaultValues: {
       title: '',
-      name: '',
       content: '',
     },
   });
@@ -126,11 +122,13 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         ? Math.max(...notes.map(note => note.position || 0)) + 1 
         : 1;
 
+      const name = titleToCamelCase(values.title);
+
       const { error } = await supabase
         .from('notes')
         .insert({
           title: values.title,
-          name: values.name,
+          name: name,
           content: values.content || '',
           project_id: projectId,
           user_id: session.session.user.id,
@@ -168,7 +166,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         .from('notes')
         .update({
           title: values.title,
-          name: values.name,
           content: values.content || '',
         })
         .eq('id', selectedNote.id);
@@ -311,7 +308,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                                 setSelectedNote(note);
                                 editForm.reset({
                                   title: note.title,
-                                  name: note.name,
                                   content: note.content,
                                 });
                                 fetchFileRelationships(note.id);
@@ -361,20 +357,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                     <FormLabel>Title</FormLabel>
                     <FormControl>
                       <Input placeholder="Enter note title" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter note name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -437,20 +419,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                     <FormLabel>Title</FormLabel>
                     <FormControl>
                       <Input placeholder="Enter note title" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter note name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -549,4 +517,3 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
 };
 
 export default NotesSection;
-

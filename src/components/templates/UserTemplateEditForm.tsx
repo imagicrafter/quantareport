@@ -26,7 +26,13 @@ import {
   DialogFooter 
 } from "@/components/ui/dialog";
 import { Template } from "@/types/template.types";
-import { formatJsonForDisplay } from "@/utils/templateFormSchema";
+import { titleToCamelCase } from "@/utils/noteUtils";
+import { 
+  loadTemplateNotes, 
+  addNoteToTemplate, 
+  updateTemplateNote, 
+  removeNoteFromTemplate 
+} from "@/utils/templateNoteUtils";
 
 interface TemplateNote {
   id: string;
@@ -59,11 +65,6 @@ const UserTemplateEditForm = ({
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteContent, setNoteContent] = useState("");
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
-  const [jsonErrors, setJsonErrors] = useState({
-    image_module: false,
-    report_module: false,
-    layout_module: false,
-  });
   const [noteTitle, setNoteTitle] = useState("");
   const [noteName, setNoteName] = useState("");
 
@@ -77,28 +78,35 @@ const UserTemplateEditForm = ({
 
   useEffect(() => {
     if (currentTemplate?.id) {
-      loadTemplateNotes(currentTemplate.id);
+      fetchTemplateNotes(currentTemplate.id);
     }
   }, [currentTemplate]);
 
-  const loadTemplateNotes = async (templateId: string) => {
+  const fetchTemplateNotes = async (templateId: string) => {
     try {
       setLoadingNotes(true);
       
-      const { data, error } = await supabase
-        .from('template_notes')
-        .select(`
-          id,
-          template_id,
-          title,
-          name,
-          custom_content
-        `)
-        .eq('template_id', templateId);
-
-      if (error) throw error;
+      // First check if this template has a parent
+      if (currentTemplate?.parent_template_id) {
+        // Load notes from the parent template first
+        const parentNotes = await loadTemplateNotes(currentTemplate.parent_template_id);
+        if (parentNotes.length > 0) {
+          setTemplateNotes(parentNotes);
+        }
+      }
       
-      setTemplateNotes(data || []);
+      // Then load this template's own notes
+      const templateNotes = await loadTemplateNotes(templateId);
+      if (templateNotes.length > 0) {
+        setTemplateNotes(prev => {
+          // Combine notes, preferring template's own notes over parent notes with the same name
+          const noteMap = new Map<string, TemplateNote>();
+          [...prev, ...templateNotes].forEach(note => {
+            noteMap.set(note.id, note);
+          });
+          return Array.from(noteMap.values());
+        });
+      }
     } catch (error) {
       console.error('Error loading template notes:', error);
       toast.error('Failed to load template notes');
@@ -107,16 +115,28 @@ const UserTemplateEditForm = ({
     }
   };
 
-  const validateJson = (jsonString: string | null, field: 'image_module' | 'report_module' | 'layout_module'): boolean => {
-    if (!jsonString) return true;
-    
+  const handleAddNote = async () => {
+    if (!noteTitle.trim() || !currentTemplate?.id) {
+      toast.error("Please enter a title for the note");
+      return;
+    }
+
     try {
-      JSON.parse(jsonString);
-      setJsonErrors(prev => ({ ...prev, [field]: false }));
-      return true;
-    } catch (e) {
-      setJsonErrors(prev => ({ ...prev, [field]: true }));
-      return false;
+      // Convert the title to camelCase for the name
+      const name = titleToCamelCase(noteTitle);
+      
+      const newNote = await addNoteToTemplate(
+        currentTemplate.id,
+        noteTitle.trim(),
+        name
+      );
+
+      setTemplateNotes(prev => [...prev, newNote]);
+      setNoteTitle("");
+      toast.success("Note added to template");
+    } catch (error) {
+      console.error("Error adding note to template:", error);
+      toast.error("Failed to add note to template");
     }
   };
 
@@ -132,21 +152,16 @@ const UserTemplateEditForm = ({
     if (!editingNoteId) return;
 
     try {
-      const { error } = await supabase
-        .from('template_notes')
-        .update({ 
-          custom_content: noteContent,
-          title: noteTitle,
-          name: noteName
-        })
-        .eq('id', editingNoteId);
-
-      if (error) throw error;
+      await updateTemplateNote(editingNoteId, { 
+        custom_content: noteContent,
+        title: noteTitle
+        // Not updating the name to preserve the camelCase format
+      });
 
       setTemplateNotes(prev => 
         prev.map(note => 
           note.id === editingNoteId 
-            ? { ...note, custom_content: noteContent, title: noteTitle, name: noteName } 
+            ? { ...note, custom_content: noteContent, title: noteTitle } 
             : note
         )
       );
@@ -156,6 +171,17 @@ const UserTemplateEditForm = ({
     } catch (error) {
       console.error("Error updating note content:", error);
       toast.error("Failed to update note content");
+    }
+  };
+
+  const handleRemoveNote = async (templateNoteId: string) => {
+    try {
+      await removeNoteFromTemplate(templateNoteId);
+      setTemplateNotes(prev => prev.filter(tn => tn.id !== templateNoteId));
+      toast.success("Note removed from template");
+    } catch (error) {
+      console.error("Error removing note from template:", error);
+      toast.error("Failed to remove note from template");
     }
   };
 
@@ -188,53 +214,6 @@ const UserTemplateEditForm = ({
     } catch (error) {
       console.error("Error updating template:", error);
       toast.error("Failed to update template. Please try again.");
-    }
-  };
-
-  const addNoteToTemplate = async () => {
-    if (!noteTitle.trim() || !noteName.trim() || !currentTemplate?.id) {
-      toast.error("Please enter both a title and name for the note");
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('template_notes')
-        .insert({
-          template_id: currentTemplate.id,
-          title: noteTitle.trim(),
-          name: noteName.trim(),
-          custom_content: ""
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setTemplateNotes(prev => [...prev, data]);
-      setNoteTitle("");
-      setNoteName("");
-      toast.success("Note added to template");
-    } catch (error) {
-      console.error("Error adding note to template:", error);
-      toast.error("Failed to add note to template");
-    }
-  };
-
-  const removeNoteFromTemplate = async (templateNoteId: string) => {
-    try {
-      const { error } = await supabase
-        .from('template_notes')
-        .delete()
-        .eq('id', templateNoteId);
-
-      if (error) throw error;
-
-      setTemplateNotes(prev => prev.filter(tn => tn.id !== templateNoteId));
-      toast.success("Note removed from template");
-    } catch (error) {
-      console.error("Error removing note from template:", error);
-      toast.error("Failed to remove note from template");
     }
   };
 
@@ -290,13 +269,7 @@ const UserTemplateEditForm = ({
                 onChange={(e) => setNoteTitle(e.target.value)}
                 className="w-full"
               />
-              <Input
-                placeholder="Enter note name"
-                value={noteName}
-                onChange={(e) => setNoteName(e.target.value)}
-                className="w-full"
-              />
-              <Button type="button" onClick={addNoteToTemplate} className="w-full">
+              <Button type="button" onClick={handleAddNote} className="w-full">
                 Add Note
               </Button>
             </div>
@@ -332,7 +305,7 @@ const UserTemplateEditForm = ({
                         type="button" 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => removeNoteFromTemplate(note.id)}
+                        onClick={() => handleRemoveNote(note.id)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -341,36 +314,6 @@ const UserTemplateEditForm = ({
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Read-only JSON Modules */}
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-base font-medium">Image Module Content (JSON)</h3>
-              <Textarea
-                className="font-mono text-sm min-h-[150px] mt-2"
-                value={formatJsonForDisplay(currentTemplate?.image_module) || ""}
-                readOnly
-              />
-            </div>
-
-            <div>
-              <h3 className="text-base font-medium">Report Module Content (JSON)</h3>
-              <Textarea
-                className="font-mono text-sm min-h-[150px] mt-2"
-                value={formatJsonForDisplay(currentTemplate?.report_module) || ""}
-                readOnly
-              />
-            </div>
-
-            <div>
-              <h3 className="text-base font-medium">Layout Module Content (JSON)</h3>
-              <Textarea
-                className="font-mono text-sm min-h-[150px] mt-2"
-                value={formatJsonForDisplay(currentTemplate?.layout_module) || ""}
-                readOnly
-              />
-            </div>
           </div>
 
           <div className="flex justify-end space-x-4 pt-4">
@@ -399,14 +342,6 @@ const UserTemplateEditForm = ({
                 value={noteTitle} 
                 onChange={(e) => setNoteTitle(e.target.value)} 
                 placeholder="Enter note title"
-              />
-            </div>
-            <div className="space-y-2">
-              <FormLabel>Note Name</FormLabel>
-              <Input 
-                value={noteName} 
-                onChange={(e) => setNoteName(e.target.value)} 
-                placeholder="Enter note name"
               />
             </div>
             <div className="space-y-2">
