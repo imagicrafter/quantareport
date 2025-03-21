@@ -32,6 +32,7 @@ interface TemplateNote {
   id: string;
   template_id: string;
   title: string;
+  name: string;
   custom_content: string | null;
 }
 
@@ -64,6 +65,7 @@ const UserTemplateEditForm = ({
     layout_module: false,
   });
   const [noteTitle, setNoteTitle] = useState("");
+  const [noteName, setNoteName] = useState("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -89,6 +91,7 @@ const UserTemplateEditForm = ({
           id,
           template_id,
           title,
+          name,
           custom_content
         `)
         .eq('template_id', templateId);
@@ -117,10 +120,11 @@ const UserTemplateEditForm = ({
     }
   };
 
-  const handleEditNote = (noteId: string, content: string | null, title: string) => {
+  const handleEditNote = (noteId: string, content: string | null, title: string, name: string) => {
     setEditingNoteId(noteId);
     setNoteContent(content || "");
     setNoteTitle(title);
+    setNoteName(name);
     setNoteDialogOpen(true);
   };
 
@@ -132,7 +136,8 @@ const UserTemplateEditForm = ({
         .from('template_notes')
         .update({ 
           custom_content: noteContent,
-          title: noteTitle
+          title: noteTitle,
+          name: noteName
         })
         .eq('id', editingNoteId);
 
@@ -141,7 +146,7 @@ const UserTemplateEditForm = ({
       setTemplateNotes(prev => 
         prev.map(note => 
           note.id === editingNoteId 
-            ? { ...note, custom_content: noteContent, title: noteTitle } 
+            ? { ...note, custom_content: noteContent, title: noteTitle, name: noteName } 
             : note
         )
       );
@@ -187,8 +192,8 @@ const UserTemplateEditForm = ({
   };
 
   const addNoteToTemplate = async () => {
-    if (!noteTitle.trim() || !currentTemplate?.id) {
-      toast.error("Please enter a title for the note");
+    if (!noteTitle.trim() || !noteName.trim() || !currentTemplate?.id) {
+      toast.error("Please enter both a title and name for the note");
       return;
     }
 
@@ -198,6 +203,7 @@ const UserTemplateEditForm = ({
         .insert({
           template_id: currentTemplate.id,
           title: noteTitle.trim(),
+          name: noteName.trim(),
           custom_content: ""
         })
         .select()
@@ -207,6 +213,7 @@ const UserTemplateEditForm = ({
 
       setTemplateNotes(prev => [...prev, data]);
       setNoteTitle("");
+      setNoteName("");
       toast.success("Note added to template");
     } catch (error) {
       console.error("Error adding note to template:", error);
@@ -276,15 +283,21 @@ const UserTemplateEditForm = ({
           <div className="border rounded-lg p-4 space-y-4">
             <h3 className="text-lg font-medium">Template Notes</h3>
             
-            <div className="flex gap-2">
+            <div className="space-y-2">
               <Input
                 placeholder="Enter note title"
                 value={noteTitle}
                 onChange={(e) => setNoteTitle(e.target.value)}
-                className="flex-1"
+                className="w-full"
               />
-              <Button type="button" onClick={addNoteToTemplate}>
-                Add
+              <Input
+                placeholder="Enter note name"
+                value={noteName}
+                onChange={(e) => setNoteName(e.target.value)}
+                className="w-full"
+              />
+              <Button type="button" onClick={addNoteToTemplate} className="w-full">
+                Add Note
               </Button>
             </div>
             
@@ -311,7 +324,7 @@ const UserTemplateEditForm = ({
                         type="button" 
                         variant="outline" 
                         size="sm"
-                        onClick={() => handleEditNote(note.id, note.custom_content, note.title)}
+                        onClick={() => handleEditNote(note.id, note.custom_content, note.title, note.name)}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -386,6 +399,14 @@ const UserTemplateEditForm = ({
                 value={noteTitle} 
                 onChange={(e) => setNoteTitle(e.target.value)} 
                 placeholder="Enter note title"
+              />
+            </div>
+            <div className="space-y-2">
+              <FormLabel>Note Name</FormLabel>
+              <Input 
+                value={noteName} 
+                onChange={(e) => setNoteName(e.target.value)} 
+                placeholder="Enter note name"
               />
             </div>
             <div className="space-y-2">

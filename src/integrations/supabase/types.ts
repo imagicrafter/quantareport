@@ -214,6 +214,7 @@ export type Database = {
           content: string | null
           created_at: string | null
           id: string
+          name: string
           position: number | null
           project_id: string
           title: string
@@ -223,6 +224,7 @@ export type Database = {
           content?: string | null
           created_at?: string | null
           id?: string
+          name: string
           position?: number | null
           project_id: string
           title: string
@@ -232,6 +234,7 @@ export type Database = {
           content?: string | null
           created_at?: string | null
           id?: string
+          name?: string
           position?: number | null
           project_id?: string
           title?: string
@@ -484,6 +487,7 @@ export type Database = {
           created_at: string
           custom_content: string | null
           id: string
+          name: string
           template_id: string
           title: string
         }
@@ -491,6 +495,7 @@ export type Database = {
           created_at?: string
           custom_content?: string | null
           id?: string
+          name: string
           template_id: string
           title: string
         }
@@ -498,6 +503,7 @@ export type Database = {
           created_at?: string
           custom_content?: string | null
           id?: string
+          name?: string
           template_id?: string
           title?: string
         }

@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
@@ -41,6 +40,7 @@ interface TemplateNote {
   id: string;
   template_id: string;
   title: string;
+  name: string;
   custom_content: string | null;
 }
 
@@ -60,6 +60,7 @@ const TemplateEditForm = ({
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [isPublic, setIsPublic] = useState(currentTemplate?.is_public || false);
   const [noteTitle, setNoteTitle] = useState("");
+  const [noteName, setNoteName] = useState("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -99,6 +100,7 @@ const TemplateEditForm = ({
           id,
           template_id,
           title,
+          name,
           custom_content
         `)
         .eq('template_id', templateId);
@@ -194,8 +196,8 @@ const TemplateEditForm = ({
   };
 
   const addNoteToTemplate = async () => {
-    if (!noteTitle.trim() || !currentTemplate?.id) {
-      toast.error("Please enter a title for the note");
+    if (!noteTitle.trim() || !noteName.trim() || !currentTemplate?.id) {
+      toast.error("Please enter both a title and name for the note");
       return;
     }
 
@@ -205,6 +207,7 @@ const TemplateEditForm = ({
         .insert({
           template_id: currentTemplate.id,
           title: noteTitle.trim(),
+          name: noteName.trim(),
           custom_content: ""
         })
         .select()
@@ -214,6 +217,7 @@ const TemplateEditForm = ({
 
       setTemplateNotes(prev => [...prev, data]);
       setNoteTitle("");
+      setNoteName("");
       toast.success("Note added to template");
     } catch (error) {
       console.error("Error adding note to template:", error);
@@ -342,16 +346,22 @@ const TemplateEditForm = ({
               <div className="border rounded-lg p-4 space-y-4">
                 <h3 className="text-lg font-medium">Template Notes</h3>
                 
-                <div className="flex gap-2">
+                <div className="space-y-2">
                   <Input
                     placeholder="Enter note title"
                     value={noteTitle}
                     onChange={(e) => setNoteTitle(e.target.value)}
-                    className="flex-1"
+                    className="w-full"
                   />
-                  <Button type="button" onClick={addNoteToTemplate}>
+                  <Input
+                    placeholder="Enter note name"
+                    value={noteName}
+                    onChange={(e) => setNoteName(e.target.value)}
+                    className="w-full"
+                  />
+                  <Button type="button" onClick={addNoteToTemplate} className="w-full">
                     <PlusCircle className="h-4 w-4 mr-2" />
-                    Add
+                    Add Note
                   </Button>
                 </div>
                 
