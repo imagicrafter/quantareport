@@ -12,6 +12,7 @@ import TemplateSummaryCards from "@/components/templates/TemplateSummaryCards";
 import TemplateEditForm from "@/components/templates/TemplateEditForm";
 import UserTemplateEditForm from "@/components/templates/UserTemplateEditForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { loadTemplateNotes } from "@/utils/templateNoteUtils";
 
 const Templates = () => {
   const { toast } = useToast();
@@ -190,6 +191,37 @@ const Templates = () => {
       };
 
       console.log("Complete template with verified parent ID:", completeTemplate);
+
+      // Copy template notes from the parent template
+      const templateNotes = await loadTemplateNotes(template.id);
+      console.log("Template notes to copy:", templateNotes);
+      
+      if (templateNotes.length > 0) {
+        // Create new template_notes entries for the new template
+        const newTemplateNotes = templateNotes.map(note => ({
+          template_id: completeTemplate.id,
+          title: note.title,
+          name: note.name,
+          custom_content: note.custom_content
+        }));
+        
+        console.log("Creating new template notes:", newTemplateNotes);
+        
+        const { error: notesError } = await supabase
+          .from("template_notes")
+          .insert(newTemplateNotes);
+          
+        if (notesError) {
+          console.error("Error copying template notes:", notesError);
+          toast({
+            title: "Warning",
+            description: "Template was created but there was an error copying template notes.",
+            variant: "destructive",
+          });
+        } else {
+          console.log("Successfully copied template notes");
+        }
+      }
 
       setMyTemplates(prevTemplates => [...prevTemplates, completeTemplate]);
       toast({
