@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Template } from "@/types/template.types";
 import { z } from "zod";
-import { Plus, Info } from "lucide-react";
+import { Plus, Info, AlertTriangle } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -384,7 +384,8 @@ const UserTemplateEditForm = ({
                 {loadingParentNotes ? (
                   <div className="text-center py-4">Loading available notes...</div>
                 ) : parentTemplateNotes.length === 0 ? (
-                  <Alert variant="warning" className="mb-4">
+                  <Alert variant="default" className="mb-4">
+                    <AlertTriangle className="h-4 w-4 mr-2" />
                     <AlertDescription>
                       No notes available from the original template.
                       {currentTemplate.parent_template_id && 
