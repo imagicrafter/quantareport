@@ -482,18 +482,21 @@ export type Database = {
       template_notes: {
         Row: {
           created_at: string
+          custom_content: string | null
           id: string
           note_id: string
           template_id: string
         }
         Insert: {
           created_at?: string
+          custom_content?: string | null
           id?: string
           note_id: string
           template_id: string
         }
         Update: {
           created_at?: string
+          custom_content?: string | null
           id?: string
           note_id?: string
           template_id?: string
