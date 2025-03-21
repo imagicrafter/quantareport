@@ -53,7 +53,13 @@ const formSchema = z.object({
   description: z.string().optional(),
 });
 
+const noteFormSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  content: z.string().optional(),
+});
+
 type FormValues = z.infer<typeof formSchema>;
+type NoteFormValues = z.infer<typeof noteFormSchema>;
 
 const UserTemplateEditForm = ({ 
   currentTemplate, 
@@ -63,16 +69,22 @@ const UserTemplateEditForm = ({
   const [templateNotes, setTemplateNotes] = useState<TemplateNote[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [noteContent, setNoteContent] = useState("");
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
-  const [noteName, setNoteName] = useState("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: currentTemplate?.name || "",
       description: currentTemplate?.description || "",
+    },
+  });
+  
+  const noteForm = useForm<NoteFormValues>({
+    resolver: zodResolver(noteFormSchema),
+    defaultValues: {
+      title: "",
+      content: "",
     },
   });
 
@@ -140,28 +152,32 @@ const UserTemplateEditForm = ({
     }
   };
 
-  const handleEditNote = (noteId: string, content: string | null, title: string, name: string) => {
+  const handleEditNote = (noteId: string, content: string | null, title: string) => {
     setEditingNoteId(noteId);
-    setNoteContent(content || "");
-    setNoteTitle(title);
-    setNoteName(name);
+    
+    // Reset the form with the note values
+    noteForm.reset({
+      title: title,
+      content: content || "",
+    });
+    
     setNoteDialogOpen(true);
   };
 
-  const saveNoteContent = async () => {
+  const saveNoteContent = async (values: NoteFormValues) => {
     if (!editingNoteId) return;
 
     try {
       await updateTemplateNote(editingNoteId, { 
-        custom_content: noteContent,
-        title: noteTitle
+        custom_content: values.content,
+        title: values.title
         // Not updating the name to preserve the camelCase format
       });
 
       setTemplateNotes(prev => 
         prev.map(note => 
           note.id === editingNoteId 
-            ? { ...note, custom_content: noteContent, title: noteTitle } 
+            ? { ...note, custom_content: values.content, title: values.title } 
             : note
         )
       );
@@ -297,7 +313,7 @@ const UserTemplateEditForm = ({
                         type="button" 
                         variant="outline" 
                         size="sm"
-                        onClick={() => handleEditNote(note.id, note.custom_content, note.title, note.name)}
+                        onClick={() => handleEditNote(note.id, note.custom_content, note.title)}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -335,29 +351,47 @@ const UserTemplateEditForm = ({
           <DialogHeader>
             <DialogTitle>Edit Note</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <FormLabel>Note Title</FormLabel>
-              <Input 
-                value={noteTitle} 
-                onChange={(e) => setNoteTitle(e.target.value)} 
-                placeholder="Enter note title"
+          
+          <Form {...noteForm}>
+            <form onSubmit={noteForm.handleSubmit(saveNoteContent)} className="space-y-4 py-4">
+              <FormField
+                control={noteForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Note Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter note title" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="space-y-2">
-              <FormLabel>Note Content</FormLabel>
-              <Textarea 
-                value={noteContent} 
-                onChange={(e) => setNoteContent(e.target.value)}
-                className="min-h-[200px]"
-                placeholder="Enter note content here..."
+              
+              <FormField
+                control={noteForm.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Note Content</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        className="min-h-[200px]"
+                        placeholder="Enter note content here..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNoteDialogOpen(false)}>Cancel</Button>
-            <Button onClick={saveNoteContent}>Save</Button>
-          </DialogFooter>
+              
+              <DialogFooter>
+                <Button variant="outline" type="button" onClick={() => setNoteDialogOpen(false)}>Cancel</Button>
+                <Button type="submit">Save</Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </>
