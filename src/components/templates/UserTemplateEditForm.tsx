@@ -60,6 +60,7 @@ const UserTemplateEditForm = ({
   const [parentTemplateNotes, setParentTemplateNotes] = useState<TemplateNote[]>([]);
   const [userTemplateNotes, setUserTemplateNotes] = useState<TemplateNote[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
+  const [loadingParentNotes, setLoadingParentNotes] = useState(false);
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -116,6 +117,10 @@ const UserTemplateEditForm = ({
 
   const loadParentTemplateNotes = async (parentTemplateId: string) => {
     try {
+      setLoadingParentNotes(true);
+      
+      console.log("Loading parent template notes for:", parentTemplateId);
+      
       const { data, error } = await supabase
         .from('template_notes')
         .select(`
@@ -130,7 +135,12 @@ const UserTemplateEditForm = ({
         `)
         .eq('template_id', parentTemplateId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error loading parent notes:', error);
+        throw error;
+      }
+
+      console.log("Parent template notes data:", data);
 
       const notesWithDetails = (data || []).map((item) => ({
         id: item.id,
@@ -143,6 +153,8 @@ const UserTemplateEditForm = ({
     } catch (error) {
       console.error('Error loading parent template notes:', error);
       toast.error('Failed to load parent template notes');
+    } finally {
+      setLoadingParentNotes(false);
     }
   };
 
@@ -293,46 +305,55 @@ const UserTemplateEditForm = ({
               </div>
             )}
             
-            {currentTemplate?.parent_template_id && parentTemplateNotes.length > 0 && (
+            {currentTemplate?.parent_template_id && (
               <div className="mt-8">
                 <h3 className="text-lg font-medium mb-4">Available Notes from Original Template</h3>
-                <div className="space-y-3">
-                  {parentTemplateNotes.map(templateNote => {
-                    const isAdded = addedNoteIds.includes(templateNote.note_id);
-                    return (
-                      <div 
-                        key={templateNote.id} 
-                        className={`p-3 rounded-md border flex justify-between items-center ${
-                          isAdded ? 'bg-gray-100 border-gray-300' : 'bg-white'
-                        }`}
-                      >
-                        <div>
-                          <h4 className="font-medium">{templateNote.note?.title}</h4>
-                          {templateNote.note?.content && (
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              {templateNote.note.content}
-                            </p>
-                          )}
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={isAdded ? "outline" : "default"}
-                          onClick={() => addNoteToUserTemplate(templateNote.note_id)}
-                          disabled={isAdded}
+                
+                {loadingParentNotes ? (
+                  <div className="text-center py-4">Loading available notes...</div>
+                ) : parentTemplateNotes.length === 0 ? (
+                  <div className="text-muted-foreground py-2">
+                    No notes available from the original template.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {parentTemplateNotes.map(templateNote => {
+                      const isAdded = addedNoteIds.includes(templateNote.note_id);
+                      return (
+                        <div 
+                          key={templateNote.id} 
+                          className={`p-3 rounded-md border flex justify-between items-center ${
+                            isAdded ? 'bg-gray-100 border-gray-300' : 'bg-white'
+                          }`}
                         >
-                          {isAdded ? (
-                            "Added"
-                          ) : (
-                            <>
-                              <Plus className="mr-1 h-3 w-3" /> Add
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
+                          <div>
+                            <h4 className="font-medium">{templateNote.note?.title}</h4>
+                            {templateNote.note?.content && (
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                {templateNote.note.content}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={isAdded ? "outline" : "default"}
+                            onClick={() => addNoteToUserTemplate(templateNote.note_id)}
+                            disabled={isAdded}
+                          >
+                            {isAdded ? (
+                              "Added"
+                            ) : (
+                              <>
+                                <Plus className="mr-1 h-3 w-3" /> Add
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
