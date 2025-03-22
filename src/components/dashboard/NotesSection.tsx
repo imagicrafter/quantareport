@@ -28,6 +28,7 @@ import { Note, reorderNotes, titleToCamelCase } from '@/utils/noteUtils';
 import { NoteFileRelationship, fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 import FilePicker from './notes/FilePicker';
 import RelatedFiles from './notes/RelatedFiles';
+import AudioRecorder from './files/AudioRecorder';
 
 interface NotesSectionProps {
   projectId: string;
@@ -248,6 +249,14 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     }
   };
 
+  const handleTranscriptionComplete = (text: string) => {
+    form.setValue('content', text);
+  };
+
+  const handleEditTranscriptionComplete = (text: string) => {
+    editForm.setValue('content', text);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -381,6 +390,13 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                 )}
               />
               
+              <div className="border-t pt-3">
+                <div className="mb-3 text-sm text-muted-foreground">
+                  Record audio to automatically transcribe for content:
+                </div>
+                <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
+              </div>
+              
               <DialogFooter className="mt-6">
                 <Button 
                   type="button"
@@ -442,6 +458,13 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                   </FormItem>
                 )}
               />
+              
+              <div className="border-t pt-3">
+                <div className="mb-3 text-sm text-muted-foreground">
+                  Record audio to automatically transcribe for content:
+                </div>
+                <AudioRecorder onTranscriptionComplete={handleEditTranscriptionComplete} />
+              </div>
               
               {selectedNote && (
                 <div className="space-y-4 pt-2">

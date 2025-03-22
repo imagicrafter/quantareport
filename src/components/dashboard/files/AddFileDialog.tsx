@@ -39,9 +39,8 @@ interface AddFileDialogProps {
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   description: z.string().optional(),
-  type: z.enum(['image', 'audio', 'folder', 'transcription']),
+  type: z.enum(['image', 'audio']),
   file: z.any().optional(),
-  folderLink: z.string().optional(),
 });
 
 const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading }: AddFileDialogProps) => {
@@ -103,6 +102,13 @@ const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading }: AddFileDialogP
               )}
             />
             
+            <div className="border-t pt-3">
+              <div className="mb-3 text-sm text-muted-foreground">
+                Record audio to automatically transcribe for description:
+              </div>
+              <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
+            </div>
+            
             <FormField
               control={form.control}
               name="type"
@@ -123,14 +129,6 @@ const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading }: AddFileDialogP
                         <RadioGroupItem value="audio" id="audio" />
                         <Label htmlFor="audio">Audio</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="folder" id="folder" />
-                        <Label htmlFor="folder">Google Drive Folder</Label>
-                      </div>
-                      {/* Hidden transcription type - this will be set automatically */}
-                      <div className="hidden">
-                        <RadioGroupItem value="transcription" id="transcription" />
-                      </div>
                     </RadioGroup>
                   </FormControl>
                   <FormMessage />
@@ -138,53 +136,25 @@ const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading }: AddFileDialogP
               )}
             />
             
-            {form.watch('type') === 'audio' && (
-              <div className="border-t pt-3">
-                <div className="mb-3 text-sm text-muted-foreground">
-                  Record audio to automatically transcribe for description:
-                </div>
-                <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
-              </div>
-            )}
-            
-            {form.watch('type') === 'folder' ? (
+            {form.watch('type') === 'image' && (
               <FormField
                 control={form.control}
-                name="folderLink"
-                render={({ field }) => (
+                name="file"
+                render={({ field: { onChange, value, ...fieldProps } }) => (
                   <FormItem>
-                    <FormLabel>Google Drive Folder Link</FormLabel>
+                    <FormLabel>Upload File</FormLabel>
                     <FormControl>
-                      <Input placeholder="Paste shared Google Drive folder link" {...field} />
+                      <Input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={(e) => onChange(e.target.files)}
+                        {...fieldProps} 
+                      />
                     </FormControl>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Make sure the folder is shared and accessible.
-                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            ) : (
-              form.watch('type') === 'image' && (
-                <FormField
-                  control={form.control}
-                  name="file"
-                  render={({ field: { onChange, value, ...fieldProps } }) => (
-                    <FormItem>
-                      <FormLabel>Upload File</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="file" 
-                          accept="image/*"
-                          onChange={(e) => onChange(e.target.files)}
-                          {...fieldProps} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )
             )}
             
             <DialogFooter className="mt-6">

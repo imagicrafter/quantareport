@@ -6,9 +6,8 @@ import { z } from 'zod';
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   description: z.string().optional(),
-  type: z.enum(['image', 'audio', 'folder', 'transcription']),
+  type: z.enum(['image', 'audio']),
   file: z.any().optional(),
-  folderLink: z.string().optional(),
 });
 
 export type FileFormValues = z.infer<typeof formSchema>;
@@ -40,19 +39,8 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
 
   let filePath = '';
 
-  // For folder type, use the folderLink value
-  if (values.type === 'folder') {
-    if (!values.folderLink) {
-      throw new Error('You must provide a folder link.');
-    }
-    filePath = values.folderLink;
-  } 
-  // For transcription type, we don't need a file path
-  else if (values.type === 'transcription') {
-    filePath = 'transcription'; // Placeholder value
-  }
   // For audio type, we don't require a file upload anymore
-  else if (values.type === 'audio') {
+  if (values.type === 'audio') {
     filePath = 'audio'; // Placeholder value if no file is uploaded
     
     // But if a file was uploaded, process it
@@ -133,7 +121,7 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
   if (error) throw error;
 };
 
-export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'file' | 'folderLink'>): Promise<void> => {
+export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'file'>): Promise<void> => {
   const { error } = await supabase
     .from('files')
     .update({
@@ -146,20 +134,24 @@ export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'f
 };
 
 export const deleteFile = async (file: ProjectFile): Promise<void> => {
-  // If the file is in storage (not a folder link or transcription), delete it first
-  if (file.type !== 'folder' && file.type !== 'transcription') {
+  // If the file is a real file with a URL (not just a placeholder)
+  if (file.file_path && file.file_path !== 'audio') {
     const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
     
-    // Extract the file path from the URL
-    const urlPath = new URL(file.file_path).pathname;
-    const storagePath = urlPath.split('/').slice(2).join('/');
-    
-    // Delete file from storage
-    const { error: storageError } = await supabase.storage
-      .from(bucketName)
-      .remove([storagePath]);
+    try {
+      // Extract the file path from the URL
+      const urlPath = new URL(file.file_path).pathname;
+      const storagePath = urlPath.split('/').slice(2).join('/');
       
-    if (storageError) console.error('Storage removal error:', storageError);
+      // Delete file from storage
+      const { error: storageError } = await supabase.storage
+        .from(bucketName)
+        .remove([storagePath]);
+        
+      if (storageError) console.error('Storage removal error:', storageError);
+    } catch (error) {
+      console.error('Error parsing file path:', error);
+    }
   }
 
   // Delete metadata
