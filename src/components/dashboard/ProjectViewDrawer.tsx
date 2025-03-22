@@ -50,11 +50,18 @@ interface ProjectData {
   status: string;
 }
 
+interface Template {
+  id: string;
+  name: string;
+  is_public: boolean;
+  user_id: string | null;
+}
+
 const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -87,10 +94,13 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
           return;
         }
 
+        const userId = session.session.user.id;
+
+        // Modified query: Only fetch templates that belong to the current user OR are public
         const { data: templateData, error: templateError } = await supabase
           .from('templates')
           .select('*')
-          .or(`user_id.eq.${session.session.user.id},is_public.eq.true`);
+          .or(`user_id.eq.${userId},is_public.eq.true`);
 
         if (templateError) throw templateError;
         setTemplates(templateData || []);

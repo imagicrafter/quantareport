@@ -98,13 +98,15 @@ const UserTemplateEditForm = ({
     try {
       setLoadingNotes(true);
       
-      // Only load the current template's notes - don't include parent notes
-      const templateNotes = await loadTemplateNotes(templateId);
-      if (templateNotes.length > 0) {
-        setTemplateNotes(templateNotes);
-      } else {
-        setTemplateNotes([]);
-      }
+      // Only load notes that belong directly to this template
+      const { data, error } = await supabase
+        .from('template_notes')
+        .select('*')
+        .eq('template_id', templateId);
+        
+      if (error) throw error;
+      
+      setTemplateNotes(data || []);
     } catch (error) {
       console.error('Error loading template notes:', error);
       toast.error('Failed to load template notes');
@@ -260,7 +262,7 @@ const UserTemplateEditForm = ({
             />
           </div>
 
-          {/* Template Notes Section with ScrollArea */}
+          {/* Template Notes Section with MaxHeight ScrollArea */}
           <div className="border rounded-lg p-4 space-y-4">
             <h3 className="text-lg font-medium">Template Notes</h3>
             
