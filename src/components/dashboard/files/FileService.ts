@@ -51,15 +51,45 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
   else if (values.type === 'transcription') {
     filePath = 'transcription'; // Placeholder value
   }
-  // For image or audio, upload the file
-  else if (values.file && values.file.length > 0) {
+  // For audio type, we don't require a file upload anymore
+  else if (values.type === 'audio') {
+    filePath = 'audio'; // Placeholder value if no file is uploaded
+    
+    // But if a file was uploaded, process it
+    if (values.file && values.file.length > 0) {
+      const file = values.file[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('pub_audio')
+        .upload(`${projectId}/${fileName}`, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+      
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('pub_audio')
+        .getPublicUrl(`${projectId}/${fileName}`);
+        
+      filePath = urlData.publicUrl;
+    }
+  }
+  // For image type, upload the file (required)
+  else if (values.type === 'image') {
+    if (!values.file || values.file.length === 0) {
+      throw new Error('You must upload a file for image type.');
+    }
+    
     const file = values.file[0];
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-    const bucketName = values.type === 'image' ? 'pub_images' : 'pub_audio';
     
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from(bucketName)
+      .from('pub_images')
       .upload(`${projectId}/${fileName}`, file, {
         cacheControl: '3600',
         upsert: false
@@ -69,13 +99,10 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
     
     // Get the public URL
     const { data: urlData } = supabase.storage
-      .from(bucketName)
+      .from('pub_images')
       .getPublicUrl(`${projectId}/${fileName}`);
       
     filePath = urlData.publicUrl;
-  } else if (values.type === 'image' || values.type === 'audio') {
-    // Fix: Only require file upload for image and audio types, not for transcription
-    throw new Error('You must upload a file.');
   }
 
   // Get the max position for this project to place new file at the end
