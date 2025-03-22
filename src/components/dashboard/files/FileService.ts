@@ -73,7 +73,8 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
       .getPublicUrl(`${projectId}/${fileName}`);
       
     filePath = urlData.publicUrl;
-  } else if (values.type !== 'transcription') {
+  } else if (values.type === 'image' || values.type === 'audio') {
+    // Fix: Only require file upload for image and audio types, not for transcription
     throw new Error('You must upload a file.');
   }
 
