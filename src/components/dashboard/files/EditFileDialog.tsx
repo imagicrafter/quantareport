@@ -33,7 +33,7 @@ interface EditFileDialogProps {
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   description: z.string().optional(),
-  type: z.enum(['image', 'audio', 'folder']),
+  type: z.enum(['image', 'audio', 'folder', 'transcription']),
 });
 
 const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }: EditFileDialogProps) => {

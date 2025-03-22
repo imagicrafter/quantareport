@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
-import { Draggable } from 'react-beautiful-dnd';
-import { Edit, Trash2, FileText, Image, Audio, Folder, FileAudio } from 'lucide-react';
+import { Edit, Trash2, FileText, Image, Folder, FileAudio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -31,9 +30,10 @@ interface FileItemProps {
   index: number;
   onEdit: (file: ProjectFile) => void;
   onDelete: (file: ProjectFile) => void;
+  dragHandleProps?: any;
 }
 
-const FileItem = ({ file, index, onEdit, onDelete }: FileItemProps) => {
+const FileItem = ({ file, index, onEdit, onDelete, dragHandleProps }: FileItemProps) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const getFileIcon = (type: FileType) => {
@@ -75,67 +75,61 @@ const FileItem = ({ file, index, onEdit, onDelete }: FileItemProps) => {
   };
 
   return (
-    <Draggable draggableId={file.id} index={index}>
-      {(provided) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          <Card className="mb-3 transition-shadow hover:shadow-md">
-            <CardHeader className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  {getFileIcon(file.type)}
-                  <CardTitle className="text-base">{file.name}</CardTitle>
-                </div>
-                {file.type !== 'transcription' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleOpenFile}
-                    className={isHovered ? 'opacity-100' : 'opacity-0'}
-                  >
-                    Open
-                  </Button>
-                )}
-              </div>
-              <CardDescription>
-                {file.type === 'transcription' ? 'Transcription' : file.type.charAt(0).toUpperCase() + file.type.slice(1)} • Added {formatDate(file.created_at)}
-              </CardDescription>
-            </CardHeader>
-            {file.description && (
-              <CardContent className="py-0">
-                <p className="text-sm text-muted-foreground">
-                  {truncateDescription(file.description)}
-                </p>
-              </CardContent>
+    <div
+      {...dragHandleProps}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <Card className="mb-3 transition-shadow hover:shadow-md">
+        <CardHeader className="py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              {getFileIcon(file.type)}
+              <CardTitle className="text-base">{file.name}</CardTitle>
+            </div>
+            {file.type !== 'transcription' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleOpenFile}
+                className={isHovered ? 'opacity-100' : 'opacity-0'}
+              >
+                Open
+              </Button>
             )}
-            <CardFooter className="flex justify-end space-x-2 py-3">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => onEdit(file)}
-              >
-                <Edit className="h-4 w-4 mr-1" />
-                Edit
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => onDelete(file)}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      )}
-    </Draggable>
+          </div>
+          <CardDescription>
+            {file.type === 'transcription' ? 'Transcription' : file.type.charAt(0).toUpperCase() + file.type.slice(1)} • Added {formatDate(file.created_at)}
+          </CardDescription>
+        </CardHeader>
+        {file.description && (
+          <CardContent className="py-0">
+            <p className="text-sm text-muted-foreground">
+              {truncateDescription(file.description)}
+            </p>
+          </CardContent>
+        )}
+        <CardFooter className="flex justify-end space-x-2 py-3">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => onEdit(file)}
+          >
+            <Edit className="h-4 w-4 mr-1" />
+            Edit
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => onDelete(file)}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
   );
 };
 
