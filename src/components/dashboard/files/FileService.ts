@@ -6,7 +6,7 @@ import { z } from 'zod';
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   description: z.string().optional(),
-  type: z.enum(['image', 'audio', 'folder']),
+  type: z.enum(['image', 'audio', 'folder', 'transcription']),
   file: z.any().optional(),
   folderLink: z.string().optional(),
 });
@@ -47,6 +47,10 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
     }
     filePath = values.folderLink;
   } 
+  // For transcription type, we don't need a file path
+  else if (values.type === 'transcription') {
+    filePath = 'transcription'; // Placeholder value
+  }
   // For image or audio, upload the file
   else if (values.file && values.file.length > 0) {
     const file = values.file[0];
@@ -69,7 +73,7 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
       .getPublicUrl(`${projectId}/${fileName}`);
       
     filePath = urlData.publicUrl;
-  } else {
+  } else if (values.type !== 'transcription') {
     throw new Error('You must upload a file.');
   }
 
@@ -114,8 +118,8 @@ export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'f
 };
 
 export const deleteFile = async (file: ProjectFile): Promise<void> => {
-  // If the file is in storage (not a folder link), delete it first
-  if (file.type !== 'folder') {
+  // If the file is in storage (not a folder link or transcription), delete it first
+  if (file.type !== 'folder' && file.type !== 'transcription') {
     const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
     
     // Extract the file path from the URL

@@ -27,6 +27,7 @@ import {
 import { Label } from '@/components/ui/label';
 import Button from '../../ui-elements/Button';
 import { FileType } from './FileItem';
+import AudioRecorder from './AudioRecorder';
 
 interface AddFileDialogProps {
   isOpen: boolean;
@@ -38,7 +39,7 @@ interface AddFileDialogProps {
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   description: z.string().optional(),
-  type: z.enum(['image', 'audio', 'folder']),
+  type: z.enum(['image', 'audio', 'folder', 'transcription']),
   file: z.any().optional(),
   folderLink: z.string().optional(),
 });
@@ -56,6 +57,10 @@ const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading }: AddFileDialogP
   const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     await onAddFile(values);
     form.reset();
+  };
+
+  const handleTranscriptionComplete = (text: string) => {
+    form.setValue('description', text);
   };
 
   return (
@@ -122,12 +127,25 @@ const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading }: AddFileDialogP
                         <RadioGroupItem value="folder" id="folder" />
                         <Label htmlFor="folder">Google Drive Folder</Label>
                       </div>
+                      {/* Hidden transcription type - this will be set automatically */}
+                      <div className="hidden">
+                        <RadioGroupItem value="transcription" id="transcription" />
+                      </div>
                     </RadioGroup>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            
+            {form.watch('type') === 'audio' && (
+              <div className="border-t pt-3">
+                <div className="mb-3 text-sm text-muted-foreground">
+                  Record audio to automatically transcribe for description:
+                </div>
+                <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
+              </div>
+            )}
             
             {form.watch('type') === 'folder' ? (
               <FormField

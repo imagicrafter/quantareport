@@ -1,8 +1,18 @@
-import { DraggableProvidedDragHandleProps } from 'react-beautiful-dnd';
-import { Edit, Folder, GripVertical, Image, Music, Trash } from 'lucide-react';
-import Button from '../../ui-elements/Button';
 
-export type FileType = 'image' | 'audio' | 'folder';
+import { useState } from 'react';
+import { Draggable } from 'react-beautiful-dnd';
+import { Edit, Trash2, FileText, Image, Audio, Folder, FileAudio } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+
+export type FileType = 'image' | 'audio' | 'folder' | 'transcription';
 
 export interface ProjectFile {
   id: string;
@@ -10,77 +20,122 @@ export interface ProjectFile {
   description: string | null;
   file_path: string;
   type: FileType;
+  project_id: string;
+  user_id: string;
   created_at: string;
   position: number;
 }
 
 interface FileItemProps {
   file: ProjectFile;
+  index: number;
   onEdit: (file: ProjectFile) => void;
   onDelete: (file: ProjectFile) => void;
-  dragHandleProps?: DraggableProvidedDragHandleProps;
 }
 
-const FileItem = ({ file, onEdit, onDelete, dragHandleProps }: FileItemProps) => {
-  // Helper to get file type icon
-  const getFileTypeIcon = (type: string) => {
+const FileItem = ({ file, index, onEdit, onDelete }: FileItemProps) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  const getFileIcon = (type: FileType) => {
     switch (type) {
       case 'image':
-        return <div className="p-1 bg-blue-100 rounded-full"><Image size={16} className="text-blue-500" /></div>;
+        return <Image className="h-5 w-5 text-blue-500" />;
       case 'audio':
-        return <div className="p-1 bg-purple-100 rounded-full"><Music size={16} className="text-purple-500" /></div>;
+        return <FileAudio className="h-5 w-5 text-purple-500" />;
+      case 'transcription':
+        return <FileText className="h-5 w-5 text-green-500" />;
       case 'folder':
-        return <div className="p-1 bg-yellow-100 rounded-full"><Folder size={16} className="text-yellow-600" /></div>;
+        return <Folder className="h-5 w-5 text-yellow-500" />;
       default:
-        return <div className="p-1 bg-gray-100 rounded-full"><Folder size={16} className="text-gray-500" /></div>;
+        return <FileText className="h-5 w-5 text-gray-500" />;
     }
   };
 
-  const isImage = file.type === 'image';
+  const truncateDescription = (text: string | null, maxLength: number = 100) => {
+    if (!text) return 'No description';
+    return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const handleOpenFile = () => {
+    if (file.type === 'folder') {
+      window.open(file.file_path, '_blank');
+    } else if (file.type === 'image' || file.type === 'audio') {
+      window.open(file.file_path, '_blank');
+    }
+    // Transcription files don't have a file to open
+  };
 
   return (
-    <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-      <div className="flex items-center space-x-3">
-        <div {...dragHandleProps} className="cursor-grab">
-          <GripVertical size={16} className="text-muted-foreground" />
-        </div>
-        {getFileTypeIcon(file.type)}
-        <div className="flex items-center">
-          <div className="mr-3">
-            <div className="font-medium">{file.name}</div>
-            <div className="text-sm text-muted-foreground capitalize">{file.type}</div>
-          </div>
-          {isImage && (
-            <div className="h-12 w-12 rounded overflow-hidden bg-gray-200 flex-shrink-0">
-              <img 
-                src={file.file_path} 
-                alt={file.name} 
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = "/placeholder.svg";
-                }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="flex space-x-2">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => onEdit(file)}
+    <Draggable draggableId={file.id} index={index}>
+      {(provided) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
         >
-          <Edit size={16} />
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => onDelete(file)}
-        >
-          <Trash size={16} />
-        </Button>
-      </div>
-    </div>
+          <Card className="mb-3 transition-shadow hover:shadow-md">
+            <CardHeader className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  {getFileIcon(file.type)}
+                  <CardTitle className="text-base">{file.name}</CardTitle>
+                </div>
+                {file.type !== 'transcription' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleOpenFile}
+                    className={isHovered ? 'opacity-100' : 'opacity-0'}
+                  >
+                    Open
+                  </Button>
+                )}
+              </div>
+              <CardDescription>
+                {file.type === 'transcription' ? 'Transcription' : file.type.charAt(0).toUpperCase() + file.type.slice(1)} • Added {formatDate(file.created_at)}
+              </CardDescription>
+            </CardHeader>
+            {file.description && (
+              <CardContent className="py-0">
+                <p className="text-sm text-muted-foreground">
+                  {truncateDescription(file.description)}
+                </p>
+              </CardContent>
+            )}
+            <CardFooter className="flex justify-end space-x-2 py-3">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => onEdit(file)}
+              >
+                <Edit className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => onDelete(file)}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+    </Draggable>
   );
 };
 
