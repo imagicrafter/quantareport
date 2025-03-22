@@ -62,6 +62,8 @@ const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading }: AddFileDialogP
     form.setValue('description', text);
   };
 
+  const fileType = form.watch('type');
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -136,26 +138,24 @@ const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading }: AddFileDialogP
               )}
             />
             
-            {form.watch('type') === 'image' && (
-              <FormField
-                control={form.control}
-                name="file"
-                render={({ field: { onChange, value, ...fieldProps } }) => (
-                  <FormItem>
-                    <FormLabel>Upload File</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={(e) => onChange(e.target.files)}
-                        {...fieldProps} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="file"
+              render={({ field: { onChange, value, ...fieldProps } }) => (
+                <FormItem>
+                  <FormLabel>Upload File</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="file" 
+                      accept={fileType === 'image' ? "image/*" : "audio/*"}
+                      onChange={(e) => onChange(e.target.files)}
+                      {...fieldProps} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <DialogFooter className="mt-6">
               <Button 
