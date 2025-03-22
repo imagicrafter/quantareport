@@ -96,11 +96,12 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
 
         const userId = session.session.user.id;
 
-        // Modified query: Only fetch templates that belong to the current user OR are public
+        // Modified query: Only fetch templates that belong to the current user
+        // (removed the public templates from the query)
         const { data: templateData, error: templateError } = await supabase
           .from('templates')
           .select('*')
-          .or(`user_id.eq.${userId},is_public.eq.true`);
+          .eq('user_id', userId);
 
         if (templateError) throw templateError;
         setTemplates(templateData || []);
@@ -211,7 +212,7 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
                             ) : (
                               templates.map((template) => (
                                 <SelectItem key={template.id} value={template.id}>
-                                  {template.name} {template.is_public ? '(Public)' : ''}
+                                  {template.name}
                                 </SelectItem>
                               ))
                             )}
