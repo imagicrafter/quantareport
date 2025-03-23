@@ -6,29 +6,22 @@ const HowItWorksSection = () => {
   
   const steps = [
     {
-      title: "Upload Images & Notes",
-      description: "Upload your images and notes to the platform. You can upload files directly or import them from Google Drive.",
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-      )
-    },
-    {
-      title: "AI Processing",
-      description: "Our AI system analyzes your images and processes your notes, extracting key information for your report.",
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
-      )
-    },
-    {
       title: "Select Template",
-      description: "Choose from our library of industry-specific templates or customize your own to match your exact needs.",
+      description: "Choose from our library of industry-specific templates for your project or we can customize one to match your exact needs.",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
       )
     },
     {
-      title: "Report Generation",
-      description: "Generate a professional report that combines your images, notes, and selected template in one cohesive document.",
+      title: "Upload Images & Notes",
+      description: "Upload your images and notes to the platform. Upload files directly and instantly record and transcribe descriptions.",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+      )
+    },
+    {
+      title: "AI Report Generation",
+      description: "Our AI system analyzes your images and notes, extracting key information for your report that combines your images, notes using your project's selected template.",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M16 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16 21v-2"/><path d="M8 17H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6"/></svg>
       )
