@@ -16,28 +16,57 @@ export interface SignupCode {
  * Validates a signup code against an email address
  * @param code The signup code to validate
  * @param email The email to check against
- * @returns Boolean indicating if the code is valid for the email
+ * @returns Object with status and message
  */
-export const validateSignupCode = async (code: string, email: string): Promise<boolean> => {
+export const validateSignupCode = async (code: string, email: string): Promise<{ valid: boolean; message: string }> => {
   try {
-    // Use the any type to work around type constraints
+    // Check if code exists and is unused
     const { data, error } = await supabase
       .from('signup_codes' as any)
       .select()
       .eq('code', code)
       .eq('email', email)
       .eq('used', false)
+      .eq('status', 'pending')
       .single();
 
     if (error || !data) {
-      console.error('Error validating signup code:', error);
-      return false;
+      // Check if there's any code for this email at all
+      const { data: anyCodeData, error: anyCodeError } = await supabase
+        .from('signup_codes' as any)
+        .select()
+        .eq('email', email)
+        .single();
+      
+      if (anyCodeData) {
+        if (anyCodeData.used) {
+          return { 
+            valid: false, 
+            message: 'This signup code has already been used. Please contact support for assistance.' 
+          };
+        }
+        
+        if (anyCodeData.code !== code) {
+          return { 
+            valid: false, 
+            message: 'Invalid signup code for this email address.' 
+          };
+        }
+      }
+      
+      return { 
+        valid: false, 
+        message: 'Invalid signup code. Please email signup@inovy.ai to request participation in the beta program.' 
+      };
     }
 
-    return true;
+    return { valid: true, message: 'Signup code validated successfully' };
   } catch (error) {
     console.error('Error validating signup code:', error);
-    return false;
+    return { 
+      valid: false, 
+      message: 'An error occurred while validating your signup code. Please try again.' 
+    };
   }
 };
 

@@ -48,17 +48,23 @@ const SignUp = () => {
     if (step === 1) {
       // Validate first step
       if (!email || !password || !signUpCode) {
-        setError('Please fill in all fields');
+        setError('Please fill in all required fields');
+        return;
+      }
+      
+      // Validate password length
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters');
         return;
       }
       
       // Validate signup code
       setIsLoading(true);
-      const isValid = await validateSignupCode(signUpCode, email);
+      const validationResult = await validateSignupCode(signUpCode, email);
       setIsLoading(false);
       
-      if (!isValid) {
-        setError('Invalid signup code or email combination');
+      if (!validationResult.valid) {
+        setError(validationResult.message);
         return;
       }
       
@@ -66,7 +72,7 @@ const SignUp = () => {
     } else if (step === 2) {
       // Validate second step and submit
       if (!name || !phone || !industry) {
-        setError('Please fill in all fields');
+        setError('Please fill in all required fields');
         return;
       }
       handleSubmit();
@@ -77,6 +83,15 @@ const SignUp = () => {
     setIsLoading(true);
     
     try {
+      // Validate signup code one more time before registration
+      const validationResult = await validateSignupCode(signUpCode, email);
+      
+      if (!validationResult.valid) {
+        setError(validationResult.message);
+        setIsLoading(false);
+        return;
+      }
+      
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,

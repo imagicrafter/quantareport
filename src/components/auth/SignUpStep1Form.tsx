@@ -46,6 +46,23 @@ const SignUpStep1Form = ({
       </div>
       
       <div className="space-y-2">
+        <label htmlFor="password" className="text-sm font-medium">
+          Password
+        </label>
+        <input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-2 rounded-md border border-input bg-background"
+          required
+        />
+        <p className="text-xs text-muted-foreground">
+          Password must be at least 8 characters
+        </p>
+      </div>
+      
+      <div className="space-y-2">
         <label htmlFor="signUpCode" className="text-sm font-medium">
           Sign-up Code
         </label>
@@ -60,23 +77,6 @@ const SignUpStep1Form = ({
         />
         <p className="text-xs text-muted-foreground">
           A sign-up code is required to register
-        </p>
-      </div>
-      
-      <div className="space-y-2">
-        <label htmlFor="password" className="text-sm font-medium">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-2 rounded-md border border-input bg-background"
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          Password must be at least 8 characters
         </p>
       </div>
 
