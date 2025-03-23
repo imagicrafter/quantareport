@@ -39,8 +39,9 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
         .single();
       
       // Only access data properties if data exists (not error)
-      if (anyCodeResult.data && !anyCodeResult.error) {
-        const anyCodeData = anyCodeResult.data as SignupCode;
+      if (!anyCodeResult.error && anyCodeResult.data) {
+        const anyCodeData = anyCodeResult.data as any;
+        
         if (anyCodeData.used) {
           return { 
             valid: false, 
