@@ -39,15 +39,16 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
         .single();
       
       // Only access data properties if data exists (not error)
-      if (anyCodeResult.data) {
-        if (anyCodeResult.data.used) {
+      if (anyCodeResult.data && !anyCodeResult.error) {
+        const anyCodeData = anyCodeResult.data as SignupCode;
+        if (anyCodeData.used) {
           return { 
             valid: false, 
             message: 'This signup code has already been used. Please contact support for assistance.' 
           };
         }
         
-        if (anyCodeResult.data.code !== code) {
+        if (anyCodeData.code !== code) {
           return { 
             valid: false, 
             message: 'Invalid signup code for this email address.' 
