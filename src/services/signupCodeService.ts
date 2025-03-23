@@ -32,21 +32,22 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
 
     if (error || !data) {
       // Check if there's any code for this email at all
-      const { data: anyCodeData, error: anyCodeError } = await supabase
+      const anyCodeResult = await supabase
         .from('signup_codes' as any)
         .select()
         .eq('email', email)
         .single();
       
-      if (anyCodeData) {
-        if (anyCodeData.used) {
+      // Only access data properties if data exists (not error)
+      if (anyCodeResult.data) {
+        if (anyCodeResult.data.used) {
           return { 
             valid: false, 
             message: 'This signup code has already been used. Please contact support for assistance.' 
           };
         }
         
-        if (anyCodeData.code !== code) {
+        if (anyCodeResult.data.code !== code) {
           return { 
             valid: false, 
             message: 'Invalid signup code for this email address.' 
