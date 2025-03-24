@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { FileType, ProjectFile } from './FileItem';
 import { z } from 'zod';
@@ -160,7 +161,7 @@ export const bulkUploadFiles = async (
       
       if (!isImage && !isAudio) {
         toast(`${file.name} is not a supported file type.`, {
-          variant: 'destructive',
+          description: 'Only images and audio files are supported.'
         });
         continue;
       }
@@ -201,8 +202,8 @@ export const bulkUploadFiles = async (
       successCount++;
     } catch (error) {
       console.error(`Error processing file ${file.name}:`, error);
-      toast(`Failed to upload ${file.name}.`, {
-        variant: 'destructive',
+      toast(`Failed to upload ${file.name}`, {
+        description: 'There was an error processing the file.'
       });
     }
   }
