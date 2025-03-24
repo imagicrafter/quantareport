@@ -38,10 +38,10 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
   }, []);
 
   const menuItems = [
-    { name: 'Projects', icon: <FolderPlus size={20} />, path: '/dashboard/projects' },
-    { name: 'Images', icon: <Image size={20} />, path: '/dashboard/images' },
-    { name: 'Notes', icon: <FileText size={20} />, path: '/dashboard/notes' },
     { name: 'Templates', icon: <FileCheck size={20} />, path: '/dashboard/templates' },
+    { name: 'Projects', icon: <FolderPlus size={20} />, path: '/dashboard/projects' },
+    { name: 'Notes', icon: <FileText size={20} />, path: '/dashboard/notes' },
+    { name: 'Images', icon: <Image size={20} />, path: '/dashboard/images' },
     { name: 'Reports', icon: <FileArchive size={20} />, path: '/dashboard/reports' },
   ];
 

@@ -137,9 +137,9 @@ const ProjectsTable = ({ onRefresh }: ProjectsTableProps) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead className="w-[30%]">Name</TableHead>
                 <TableHead>Date Created</TableHead>
-                <TableHead>Template</TableHead>
+                <TableHead className="w-[20%]">Template</TableHead>
                 <TableHead>Images</TableHead>
                 <TableHead>Notes</TableHead>
                 <TableHead>Status</TableHead>
@@ -162,14 +162,14 @@ const ProjectsTable = ({ onRefresh }: ProjectsTableProps) => {
               ) : (
                 projects.map((project) => (
                   <TableRow key={project.id} className="border-b border-border hover:bg-secondary/40 transition-colors">
-                    <TableCell className="whitespace-nowrap">
-                      <div className="font-medium">{project.name}</div>
+                    <TableCell>
+                      <div className="font-medium break-words">{project.name}</div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
                       {new Date(project.date).toLocaleDateString()}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {project.template?.name || 'None'}
+                    <TableCell className="text-muted-foreground">
+                      <div className="break-words">{project.template?.name || 'None'}</div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
                       {project.imageCount}

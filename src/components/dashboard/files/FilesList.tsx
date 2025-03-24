@@ -42,6 +42,7 @@ const FilesList = ({ files, loading, onEditFile, onDeleteFile, onReorderFiles }:
                   >
                     <FileItem 
                       file={file} 
+                      index={index}
                       onEdit={onEditFile}
                       onDelete={onDeleteFile}
                       dragHandleProps={provided.dragHandleProps}

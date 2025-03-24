@@ -1,55 +1,48 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { FileType, ProjectFile } from '@/components/dashboard/files/FileItem';
+import { ProjectFile } from '@/components/dashboard/files/FileItem';
 
-/**
- * Updates the position of a file in the database
- */
-export const updateFilePosition = async (fileId: string, newPosition: number): Promise<boolean> => {
-  try {
-    const { error } = await supabase
-      .from('files')
-      .update({ position: newPosition })
-      .eq('id', fileId);
-
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    console.error('Error updating file position:', error);
-    return false;
-  }
-};
-
-/**
- * Reorders files after a drag and drop operation
- * @param files The current list of files
- * @param sourceIndex The original index of the dragged file
- * @param destinationIndex The target index where the file was dropped
- * @returns A promise that resolves to the reordered files array
- */
 export const reorderFiles = async (
   files: ProjectFile[],
   sourceIndex: number,
   destinationIndex: number
 ): Promise<ProjectFile[]> => {
-  if (sourceIndex === destinationIndex) return files;
-
-  const reorderedFiles = Array.from(files);
-  const [movedFile] = reorderedFiles.splice(sourceIndex, 1);
-  reorderedFiles.splice(destinationIndex, 0, movedFile);
-
-  // Update positions based on new order
+  // Create a new array to avoid mutating the original
+  const reorderedFiles = [...files];
+  // Remove the dragged item from the array
+  const [removedFile] = reorderedFiles.splice(sourceIndex, 1);
+  // Insert the dragged item at its new position
+  reorderedFiles.splice(destinationIndex, 0, removedFile);
+  
+  // Update positions in the reordered array
   const updatedFiles = reorderedFiles.map((file, index) => ({
     ...file,
     position: index + 1
   }));
-
-  // Update positions in the database
-  const updatePromises = updatedFiles.map(file => 
-    updateFilePosition(file.id, file.position)
-  );
   
-  await Promise.all(updatePromises);
+  // Update the positions in the database
+  for (const file of updatedFiles) {
+    try {
+      await supabase
+        .from('files')
+        .update({ position: file.position })
+        .eq('id', file.id);
+    } catch (error) {
+      console.error('Error updating file position:', error);
+      throw error;
+    }
+  }
   
   return updatedFiles;
+};
+
+// Format file size
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };

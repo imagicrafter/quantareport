@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import FilesSection from '@/components/dashboard/FilesSection';
+import StatCards from '@/components/dashboard/StatCards';
 
 interface ProjectWithImageCount {
   id: string;
@@ -17,6 +18,7 @@ interface ProjectWithImageCount {
 
 const Images = () => {
   const [projects, setProjects] = useState<ProjectWithImageCount[]>([]);
+  const [allProjects, setAllProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
@@ -36,7 +38,17 @@ const Images = () => {
         return;
       }
 
-      // Get all projects
+      // Get all projects for StatCards
+      const { data: allProjectsData, error: allProjectsError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', session.session.user.id);
+
+      if (!allProjectsError) {
+        setAllProjects(allProjectsData || []);
+      }
+
+      // Get all projects with images
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -124,6 +136,8 @@ const Images = () => {
       <DashboardHeader title="Images" toggleSidebar={() => {}} />
       
       <div className="container mx-auto py-8 space-y-8">
+        <StatCards projects={allProjects} />
+        
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Images</h1>
         </div>

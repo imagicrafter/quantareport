@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import NotesSection from '@/components/dashboard/NotesSection';
+import StatCards from '@/components/dashboard/StatCards';
 
 interface ProjectWithNotesCount {
   id: string;
@@ -17,6 +18,7 @@ interface ProjectWithNotesCount {
 
 const Notes = () => {
   const [projects, setProjects] = useState<ProjectWithNotesCount[]>([]);
+  const [allProjects, setAllProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
@@ -36,7 +38,17 @@ const Notes = () => {
         return;
       }
 
-      // Get all projects
+      // Get all projects for StatCards
+      const { data: allProjectsData, error: allProjectsError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', session.session.user.id);
+
+      if (!allProjectsError) {
+        setAllProjects(allProjectsData || []);
+      }
+
+      // Get all projects with notes
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -122,6 +134,8 @@ const Notes = () => {
       <DashboardHeader title="Notes" toggleSidebar={() => {}} />
       
       <div className="container mx-auto py-8 space-y-8">
+        <StatCards projects={allProjects} />
+        
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Notes</h1>
         </div>

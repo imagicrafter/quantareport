@@ -32,7 +32,7 @@ const SignUpStep1Form = ({
   return (
     <form onSubmit={handleNextStep} className="space-y-6">
       <div className="space-y-2">
-        <label htmlFor="email" className="text-sm font-medium">
+        <label htmlFor="email" className="text-sm font-medium block text-left">
           Email
         </label>
         <input
@@ -43,6 +43,23 @@ const SignUpStep1Form = ({
           className="w-full p-2 rounded-md border border-input bg-background"
           required
         />
+      </div>
+      
+      <div className="space-y-2">
+        <label htmlFor="password" className="text-sm font-medium">
+          Password
+        </label>
+        <input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full p-2 rounded-md border border-input bg-background"
+          required
+        />
+        <p className="text-xs text-muted-foreground">
+          Password must be at least 8 characters
+        </p>
       </div>
       
       <div className="space-y-2">
@@ -60,23 +77,6 @@ const SignUpStep1Form = ({
         />
         <p className="text-xs text-muted-foreground">
           A sign-up code is required to register
-        </p>
-      </div>
-      
-      <div className="space-y-2">
-        <label htmlFor="password" className="text-sm font-medium">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-2 rounded-md border border-input bg-background"
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          Password must be at least 8 characters
         </p>
       </div>
 

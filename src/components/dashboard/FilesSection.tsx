@@ -1,15 +1,24 @@
 
 import { useState, useEffect } from 'react';
 import { DropResult } from 'react-beautiful-dnd';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Upload } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Button from '../ui-elements/Button';
 import FilesList from './files/FilesList';
 import AddFileDialog from './files/AddFileDialog';
 import EditFileDialog from './files/EditFileDialog';
 import DeleteFileDialog from './files/DeleteFileDialog';
+import BulkUploadDialog from './files/BulkUploadDialog';
 import { ProjectFile } from './files/FileItem';
-import { fetchFiles, addFile, updateFile, deleteFile, FileFormValues } from './files/FileService';
+import { 
+  fetchFiles, 
+  addFile, 
+  updateFile, 
+  deleteFile, 
+  FileFormValues,
+  bulkUploadFiles,
+  loadFilesFromDriveLink
+} from './files/FileService';
 import { reorderFiles } from '@/utils/fileUtils';
 
 interface FilesSectionProps {
@@ -23,6 +32,7 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isBulkUploadDialogOpen, setIsBulkUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -155,17 +165,90 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
     }
   };
 
+  const handleBulkUploadFiles = async (files: File[]) => {
+    try {
+      setUploading(true);
+      const successCount = await bulkUploadFiles(files, projectId);
+      
+      if (successCount > 0) {
+        toast({
+          title: 'Success',
+          description: `${successCount} ${successCount === 1 ? 'file' : 'files'} uploaded successfully!`,
+        });
+        
+        setIsBulkUploadDialogOpen(false);
+        loadFiles();
+      } else {
+        toast({
+          title: 'No files uploaded',
+          description: 'No files were successfully uploaded. Please check file types and try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error with bulk upload:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload files. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadFromDriveLink = async (link: string) => {
+    try {
+      setUploading(true);
+      const successCount = await loadFilesFromDriveLink(link, projectId);
+      
+      if (successCount > 0) {
+        toast({
+          title: 'Success',
+          description: `${successCount} ${successCount === 1 ? 'file' : 'files'} loaded from Google Drive!`,
+        });
+        
+        setIsBulkUploadDialogOpen(false);
+        loadFiles();
+      } else {
+        toast({
+          title: 'Google Drive Integration',
+          description: 'This feature requires backend integration with Google Drive API. Please implement this in the backend.',
+        });
+      }
+    } catch (error) {
+      console.error('Error loading from Google Drive:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load files from Google Drive. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Project Files</h3>
-        <Button 
-          size="sm" 
-          onClick={() => setIsAddDialogOpen(true)}
-        >
-          <PlusCircle size={16} className="mr-2" />
-          Add File
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => setIsBulkUploadDialogOpen(true)}
+          >
+            <Upload size={16} className="mr-2" />
+            Bulk Upload
+          </Button>
+          <Button 
+            size="sm" 
+            onClick={() => setIsAddDialogOpen(true)}
+          >
+            <PlusCircle size={16} className="mr-2" />
+            Add File
+          </Button>
+        </div>
       </div>
 
       <FilesList 
@@ -201,6 +284,14 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onDelete={handleDeleteFile}
+        uploading={uploading}
+      />
+
+      <BulkUploadDialog
+        isOpen={isBulkUploadDialogOpen}
+        onClose={() => setIsBulkUploadDialogOpen(false)}
+        onUploadFiles={handleBulkUploadFiles}
+        onUploadFromLink={handleUploadFromDriveLink}
         uploading={uploading}
       />
     </div>

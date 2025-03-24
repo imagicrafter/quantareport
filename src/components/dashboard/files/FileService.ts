@@ -2,13 +2,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import { FileType, ProjectFile } from './FileItem';
 import { z } from 'zod';
+import { toast } from 'sonner';
 
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   description: z.string().optional(),
-  type: z.enum(['image', 'audio', 'folder']),
+  type: z.enum(['image', 'audio']),
   file: z.any().optional(),
-  folderLink: z.string().optional(),
 });
 
 export type FileFormValues = z.infer<typeof formSchema>;
@@ -39,17 +39,11 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
   }
 
   let filePath = '';
+  let fileSize = 0;
 
-  // For folder type, use the folderLink value
-  if (values.type === 'folder') {
-    if (!values.folderLink) {
-      throw new Error('You must provide a folder link.');
-    }
-    filePath = values.folderLink;
-  } 
-  // For image or audio, upload the file
-  else if (values.file && values.file.length > 0) {
+  if (values.file && values.file.length > 0) {
     const file = values.file[0];
+    fileSize = file.size;
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
     const bucketName = values.type === 'image' ? 'pub_images' : 'pub_audio';
@@ -63,17 +57,17 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
 
     if (uploadError) throw uploadError;
     
-    // Get the public URL
     const { data: urlData } = supabase.storage
       .from(bucketName)
       .getPublicUrl(`${projectId}/${fileName}`);
       
     filePath = urlData.publicUrl;
+  } else if (values.type === 'image') {
+    throw new Error('You must upload a file for image type.');
   } else {
-    throw new Error('You must upload a file.');
+    filePath = 'audio';
   }
 
-  // Get the max position for this project to place new file at the end
   const { data: posData, error: posError } = await supabase
     .from('files')
     .select('position')
@@ -85,7 +79,6 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
     ? posData[0].position + 1 
     : 1;
 
-  // Save file metadata to database
   const { error } = await supabase
     .from('files')
     .insert({
@@ -95,13 +88,14 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
       type: values.type,
       project_id: projectId,
       user_id: session.session.user.id,
-      position: nextPosition
+      position: nextPosition,
+      size: fileSize
     });
 
   if (error) throw error;
 };
 
-export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'file' | 'folderLink'>): Promise<void> => {
+export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'file'>): Promise<void> => {
   const { error } = await supabase
     .from('files')
     .update({
@@ -114,27 +108,123 @@ export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'f
 };
 
 export const deleteFile = async (file: ProjectFile): Promise<void> => {
-  // If the file is in storage (not a folder link), delete it first
-  if (file.type !== 'folder') {
+  if (file.file_path && file.file_path !== 'audio') {
     const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
     
-    // Extract the file path from the URL
-    const urlPath = new URL(file.file_path).pathname;
-    const storagePath = urlPath.split('/').slice(2).join('/');
-    
-    // Delete file from storage
-    const { error: storageError } = await supabase.storage
-      .from(bucketName)
-      .remove([storagePath]);
+    try {
+      const urlPath = new URL(file.file_path).pathname;
+      const storagePath = urlPath.split('/').slice(2).join('/');
       
-    if (storageError) console.error('Storage removal error:', storageError);
+      const { error: storageError } = await supabase.storage
+        .from(bucketName)
+        .remove([storagePath]);
+        
+      if (storageError) console.error('Storage removal error:', storageError);
+    } catch (error) {
+      console.error('Error parsing file path:', error);
+    }
   }
 
-  // Delete metadata
   const { error } = await supabase
     .from('files')
     .delete()
     .eq('id', file.id);
 
   if (error) throw error;
+};
+
+export const bulkUploadFiles = async (
+  files: File[], 
+  projectId: string
+): Promise<number> => {
+  const { data: session } = await supabase.auth.getSession();
+  
+  if (!session.session) {
+    throw new Error('User must be logged in to add files.');
+  }
+
+  let successCount = 0;
+  
+  const { data: posData } = await supabase
+    .from('files')
+    .select('position')
+    .eq('project_id', projectId)
+    .order('position', { ascending: false })
+    .limit(1);
+
+  let nextPosition = posData && posData.length > 0 && posData[0].position 
+    ? posData[0].position + 1 
+    : 1;
+
+  for (const file of files) {
+    try {
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+      const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExt);
+      const isAudio = ['mp3', 'wav', 'ogg', 'm4a'].includes(fileExt);
+      
+      if (!isImage && !isAudio) {
+        toast(`${file.name} is not a supported file type.`, {
+          description: 'Only images and audio files are supported.'
+        });
+        continue;
+      }
+      
+      const type: FileType = isImage ? 'image' : 'audio';
+      const bucketName = type === 'image' ? 'pub_images' : 'pub_audio';
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(`${projectId}/${fileName}`, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(`${projectId}/${fileName}`);
+        
+      const filePath = urlData.publicUrl;
+      
+      const { error } = await supabase
+        .from('files')
+        .insert({
+          name: file.name,
+          description: null,
+          file_path: filePath,
+          type,
+          project_id: projectId,
+          user_id: session.session.user.id,
+          position: nextPosition++,
+          size: file.size || 0
+        });
+
+      if (error) throw error;
+      
+      successCount++;
+    } catch (error) {
+      console.error(`Error processing file ${file.name}:`, error);
+      toast(`Failed to upload ${file.name}`, {
+        description: 'There was an error processing the file.'
+      });
+    }
+  }
+
+  return successCount;
+};
+
+export const loadFilesFromDriveLink = async (
+  driveLink: string,
+  projectId: string
+): Promise<number> => {
+  try {
+    toast('This feature requires backend integration with Google Drive API');
+    
+    return 0;
+  } catch (error) {
+    console.error('Error loading files from Google Drive:', error);
+    throw error;
+  }
 };
