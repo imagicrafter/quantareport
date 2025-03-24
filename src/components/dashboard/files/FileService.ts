@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { FileType, ProjectFile } from './FileItem';
 import { z } from 'zod';
@@ -40,7 +39,6 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
 
   let filePath = '';
 
-  // Handle file upload for both types if file is provided
   if (values.file && values.file.length > 0) {
     const file = values.file[0];
     const fileExt = file.name.split('.').pop();
@@ -56,21 +54,17 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
 
     if (uploadError) throw uploadError;
     
-    // Get the public URL
     const { data: urlData } = supabase.storage
       .from(bucketName)
       .getPublicUrl(`${projectId}/${fileName}`);
       
     filePath = urlData.publicUrl;
   } else if (values.type === 'image') {
-    // For image type, file upload is mandatory
     throw new Error('You must upload a file for image type.');
   } else {
-    // For audio type without file, use a placeholder
     filePath = 'audio';
   }
 
-  // Get the max position for this project to place new file at the end
   const { data: posData, error: posError } = await supabase
     .from('files')
     .select('position')
@@ -82,7 +76,6 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
     ? posData[0].position + 1 
     : 1;
 
-  // Save file metadata to database
   const { error } = await supabase
     .from('files')
     .insert({
@@ -111,16 +104,13 @@ export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'f
 };
 
 export const deleteFile = async (file: ProjectFile): Promise<void> => {
-  // If the file is a real file with a URL (not just a placeholder)
   if (file.file_path && file.file_path !== 'audio') {
     const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
     
     try {
-      // Extract the file path from the URL
       const urlPath = new URL(file.file_path).pathname;
       const storagePath = urlPath.split('/').slice(2).join('/');
       
-      // Delete file from storage
       const { error: storageError } = await supabase.storage
         .from(bucketName)
         .remove([storagePath]);
@@ -131,7 +121,6 @@ export const deleteFile = async (file: ProjectFile): Promise<void> => {
     }
   }
 
-  // Delete metadata
   const { error } = await supabase
     .from('files')
     .delete()
@@ -140,7 +129,6 @@ export const deleteFile = async (file: ProjectFile): Promise<void> => {
   if (error) throw error;
 };
 
-// Add a new function to handle bulk uploads
 export const bulkUploadFiles = async (
   files: File[], 
   projectId: string
@@ -153,7 +141,6 @@ export const bulkUploadFiles = async (
 
   let successCount = 0;
   
-  // Get the max position for this project to place new files at the end
   const { data: posData } = await supabase
     .from('files')
     .select('position')
@@ -165,17 +152,14 @@ export const bulkUploadFiles = async (
     ? posData[0].position + 1 
     : 1;
 
-  // Process each file
   for (const file of files) {
     try {
-      // Determine file type
       const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
       const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExt);
       const isAudio = ['mp3', 'wav', 'ogg', 'm4a'].includes(fileExt);
       
       if (!isImage && !isAudio) {
-        toast({
-          description: `${file.name} is not a supported file type.`,
+        toast(`${file.name} is not a supported file type.`, {
           variant: 'destructive',
         });
         continue;
@@ -185,7 +169,6 @@ export const bulkUploadFiles = async (
       const bucketName = type === 'image' ? 'pub_images' : 'pub_audio';
       const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       
-      // Upload file
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(`${projectId}/${fileName}`, file, {
@@ -195,18 +178,16 @@ export const bulkUploadFiles = async (
 
       if (uploadError) throw uploadError;
       
-      // Get the public URL
       const { data: urlData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(`${projectId}/${fileName}`);
         
       const filePath = urlData.publicUrl;
       
-      // Save file metadata
       const { error } = await supabase
         .from('files')
         .insert({
-          name: file.name, // Use file name as title
+          name: file.name,
           description: null,
           file_path: filePath,
           type,
@@ -220,8 +201,7 @@ export const bulkUploadFiles = async (
       successCount++;
     } catch (error) {
       console.error(`Error processing file ${file.name}:`, error);
-      toast({
-        description: `Failed to upload ${file.name}.`,
+      toast(`Failed to upload ${file.name}.`, {
         variant: 'destructive',
       });
     }
@@ -230,18 +210,12 @@ export const bulkUploadFiles = async (
   return successCount;
 };
 
-// Add new function to handle Google Drive links
 export const loadFilesFromDriveLink = async (
   driveLink: string,
   projectId: string
 ): Promise<number> => {
   try {
-    // This would normally be an API call to a backend service
-    // that would handle the Google Drive API integration
-    // For now we'll just show a toast message
-    toast({
-      description: 'This feature requires backend integration with Google Drive API',
-    });
+    toast('This feature requires backend integration with Google Drive API');
     
     return 0;
   } catch (error) {
