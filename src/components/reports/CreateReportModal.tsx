@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -367,16 +366,19 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       console.log('Webhook payload:', webhookPayload);
       
-      // Send webhook request (only one webhook now based on report type)
+      // Send webhook request with proper CORS handling
       try {
         console.log(`Sending webhook to: ${webhookUrl}`);
         
+        // Add mode: 'cors' and proper headers for CORS
         const postResponse = await fetch(webhookUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Origin': window.location.origin
           },
+          mode: 'cors', // Explicitly set CORS mode
           body: JSON.stringify(webhookPayload)
         });
         
@@ -394,8 +396,10 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           const getResponse = await fetch(getUrl.toString(), {
             method: 'GET',
             headers: {
-              'Accept': 'application/json'
-            }
+              'Accept': 'application/json',
+              'Origin': window.location.origin
+            },
+            mode: 'cors' // Explicitly set CORS mode
           });
           
           if (getResponse.ok) {
@@ -507,4 +511,3 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
 };
 
 export default CreateReportModal;
-
