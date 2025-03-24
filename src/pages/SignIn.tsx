@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import NavBar from '../components/layout/NavBar';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,19 @@ const SignIn = () => {
   } = useOAuth();
   
   const isSubmitting = isLoading || isOAuthLoading;
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        console.log('User already logged in, redirecting to dashboard');
+        navigate('/dashboard');
+      }
+    };
+    
+    checkSession();
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
