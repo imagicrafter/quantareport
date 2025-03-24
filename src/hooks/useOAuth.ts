@@ -34,8 +34,6 @@ export const useOAuth = () => {
       
       console.log('Google sign up initiated, URL received:', data?.url);
       
-      // CRITICAL: Always redirect using window.location.href to the URL from Supabase
-      // This ensures we're doing a full page redirect rather than any iframe approach
       if (data?.url) {
         // Force navigation to the top frame and clear the URL to prevent any caching issues
         window.top.location.href = data.url;
@@ -67,7 +65,6 @@ export const useOAuth = () => {
       
       console.log('Facebook sign up initiated:', data);
       
-      // CRITICAL: Always redirect using window.location.href
       if (data?.url) {
         // Force navigation to the top frame
         window.top.location.href = data.url;

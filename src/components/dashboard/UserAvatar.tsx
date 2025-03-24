@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -17,23 +17,32 @@ const UserAvatar = () => {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        // Get user metadata which might include avatar_url and full_name
-        const { avatar_url, full_name, email } = session.user.user_metadata || {};
-        setUserDetails({
-          avatar_url,
-          full_name,
-          email: email || session.user.email
-        });
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          console.log('UserAvatar: Session found, user is authenticated');
+          // Get user metadata which might include avatar_url and full_name
+          const { avatar_url, full_name, email } = session.user.user_metadata || {};
+          setUserDetails({
+            avatar_url,
+            full_name,
+            email: email || session.user.email
+          });
+        } else {
+          console.log('UserAvatar: No session found');
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
       }
     };
 
     fetchUserProfile();
     
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('UserAvatar: Auth state changed:', event);
+      
       if (session) {
         const { avatar_url, full_name, email } = session.user.user_metadata || {};
         setUserDetails({
