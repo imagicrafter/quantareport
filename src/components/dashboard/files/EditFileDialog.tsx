@@ -1,4 +1,5 @@
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -21,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Button from '../../ui-elements/Button';
 import { ProjectFile } from './FileItem';
+import AudioRecorder from './AudioRecorder';
 
 interface EditFileDialogProps {
   isOpen: boolean;
@@ -37,6 +39,8 @@ const formSchema = z.object({
 });
 
 const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }: EditFileDialogProps) => {
+  const [isRecording, setIsRecording] = useState(false);
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -54,6 +58,13 @@ const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }
       type: selectedFile.type,
     });
   }
+
+  const handleTranscriptionComplete = (text: string) => {
+    const currentDescription = form.getValues('description') || '';
+    const newDescription = currentDescription ? `${currentDescription}\n\n${text}` : text;
+    form.setValue('description', newDescription, { shouldValidate: true });
+    setIsRecording(false);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -82,14 +93,42 @@ const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description (optional)</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Enter description" 
-                      {...field} 
-                      value={field.value || ''}
-                    />
-                  </FormControl>
+                  <FormLabel>
+                    Description (optional)
+                    {!isRecording && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsRecording(true)}
+                        className="ml-2 h-6 px-2 text-xs"
+                      >
+                        Record Audio
+                      </Button>
+                    )}
+                  </FormLabel>
+                  {isRecording ? (
+                    <div className="mb-4">
+                      <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
+                      <Button 
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsRecording(false)}
+                        className="mt-2"
+                      >
+                        Cancel Recording
+                      </Button>
+                    </div>
+                  ) : (
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Enter description" 
+                        {...field} 
+                        value={field.value || ''}
+                      />
+                    </FormControl>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

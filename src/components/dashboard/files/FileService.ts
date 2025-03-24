@@ -39,9 +39,11 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
   }
 
   let filePath = '';
+  let fileSize = 0;
 
   if (values.file && values.file.length > 0) {
     const file = values.file[0];
+    fileSize = file.size;
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
     const bucketName = values.type === 'image' ? 'pub_images' : 'pub_audio';
@@ -86,7 +88,8 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
       type: values.type,
       project_id: projectId,
       user_id: session.session.user.id,
-      position: nextPosition
+      position: nextPosition,
+      size: fileSize
     });
 
   if (error) throw error;
@@ -194,7 +197,8 @@ export const bulkUploadFiles = async (
           type,
           project_id: projectId,
           user_id: session.session.user.id,
-          position: nextPosition++
+          position: nextPosition++,
+          size: file.size || 0
         });
 
       if (error) throw error;

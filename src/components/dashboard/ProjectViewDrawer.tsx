@@ -159,118 +159,124 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
 
   return (
     <Sheet open={open} onOpenChange={open => !open && onClose()}>
-      <SheetContent className="w-full sm:max-w-xl md:max-w-2xl overflow-y-auto">
-        <SheetHeader className="mb-6">
-          <SheetTitle>Project Details</SheetTitle>
-        </SheetHeader>
+      <SheetContent className="w-full sm:max-w-xl md:max-w-2xl flex flex-col h-full p-0">
+        <div className="flex-shrink-0 p-6 border-b">
+          <SheetHeader className="mb-0">
+            <SheetTitle>Project Details</SheetTitle>
+          </SheetHeader>
+        </div>
 
         {loading ? (
           <div className="py-8 text-center">Loading project data...</div>
         ) : (
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="mb-4 grid grid-cols-3 w-full">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="notes">Notes</TabsTrigger>
-              <TabsTrigger value="files">Files</TabsTrigger>
-            </TabsList>
+          <Tabs defaultValue="details" className="w-full flex flex-col h-full">
+            <div className="flex-shrink-0 px-6 pt-4">
+              <TabsList className="mb-4 grid grid-cols-3 w-full">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+                <TabsTrigger value="files">Files</TabsTrigger>
+              </TabsList>
+            </div>
 
-            <TabsContent value="details">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Project Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter project name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="template_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Report Template</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value}
-                        >
+            <div className="flex-grow overflow-y-auto px-6 pb-6">
+              <TabsContent value="details" className="mt-0 h-full">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Project Name</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select template" />
-                            </SelectTrigger>
+                            <Input placeholder="Enter project name" {...field} />
                           </FormControl>
-                          <SelectContent>
-                            {templates.length === 0 ? (
-                              <SelectItem value="none" disabled>No templates available</SelectItem>
-                            ) : (
-                              templates.map((template) => (
-                                <SelectItem key={template.id} value={template.id}>
-                                  {template.name}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="template_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Report Template</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select template" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {templates.length === 0 ? (
+                                <SelectItem value="none" disabled>No templates available</SelectItem>
+                              ) : (
+                                templates.map((template) => (
+                                  <SelectItem key={template.id} value={template.id}>
+                                    {template.name}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="draft">Draft</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="processing">Processing</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="processing">Processing</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <div className="pt-4">
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      isLoading={saving}
-                      className="w-full"
-                    >
-                      Save Changes
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </TabsContent>
+                    <div className="pt-4">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        isLoading={saving}
+                        className="w-full"
+                      >
+                        Save Changes
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </TabsContent>
 
-            <TabsContent value="notes">
-              <NotesSection projectId={projectId} />
-            </TabsContent>
+              <TabsContent value="notes" className="mt-0 h-full">
+                <NotesSection projectId={projectId} />
+              </TabsContent>
 
-            <TabsContent value="files">
-              <FilesSection projectId={projectId} />
-            </TabsContent>
+              <TabsContent value="files" className="mt-0 h-full">
+                <FilesSection projectId={projectId} />
+              </TabsContent>
+            </div>
           </Tabs>
         )}
       </SheetContent>

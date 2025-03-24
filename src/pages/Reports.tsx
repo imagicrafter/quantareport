@@ -9,9 +9,12 @@ import { Report } from '@/components/reports/ReportService';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import CreateReportModal from '@/components/reports/CreateReportModal';
 import ArchivedReportsModal from '@/components/reports/ArchivedReportsModal';
+import StatCards from '@/components/dashboard/StatCards';
+import { supabase } from '@/integrations/supabase/client';
 
 const Reports = () => {
   const [reports, setReports] = useState<Report[]>([]);
+  const [allProjects, setAllProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
@@ -19,6 +22,7 @@ const Reports = () => {
 
   useEffect(() => {
     loadReports();
+    fetchProjects();
 
     // Set up a periodic refresh to catch status changes
     const refreshInterval = setInterval(() => {
@@ -29,6 +33,27 @@ const Reports = () => {
       clearInterval(refreshInterval);
     };
   }, []);
+
+  const fetchProjects = async () => {
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (!session.session) {
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', session.session.user.id);
+
+      if (!error) {
+        setAllProjects(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
 
   const loadReports = async (showLoading = true) => {
     try {
@@ -63,6 +88,8 @@ const Reports = () => {
       <DashboardHeader title="Reports" toggleSidebar={() => {}} />
       
       <div className="container mx-auto py-8 space-y-8">
+        <StatCards projects={allProjects} />
+        
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Reports</h1>
           <Button onClick={handleCreateNewReport}>

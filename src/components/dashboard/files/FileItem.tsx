@@ -10,6 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
+import { formatFileSize } from '@/utils/fileUtils';
 
 export type FileType = 'image' | 'audio' | 'folder' | 'transcription';
 
@@ -23,6 +28,7 @@ export interface ProjectFile {
   user_id: string;
   created_at: string;
   position: number;
+  size?: number;
 }
 
 interface FileItemProps {
@@ -35,6 +41,7 @@ interface FileItemProps {
 
 const FileItem = ({ file, index, onEdit, onDelete, dragHandleProps }: FileItemProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const getFileIcon = (type: FileType) => {
     switch (type) {
@@ -68,7 +75,7 @@ const FileItem = ({ file, index, onEdit, onDelete, dragHandleProps }: FileItemPr
   const renderPreview = () => {
     if (file.type === 'image' && file.file_path) {
       return (
-        <div className="mb-2 flex justify-center">
+        <div className="mb-2 flex justify-center cursor-pointer" onClick={() => setIsImageModalOpen(true)}>
           <img 
             src={file.file_path} 
             alt={file.name} 
@@ -88,13 +95,10 @@ const FileItem = ({ file, index, onEdit, onDelete, dragHandleProps }: FileItemPr
     return null;
   };
 
-  const handleOpenFile = () => {
-    if (file.type === 'folder') {
-      window.open(file.file_path, '_blank');
-    } else if (file.type === 'image' || file.type === 'audio') {
+  const handleOpenAudio = () => {
+    if (file.type === 'audio' && file.file_path && file.file_path !== 'audio') {
       window.open(file.file_path, '_blank');
     }
-    // Transcription files don't have a file to open
   };
 
   return (
@@ -110,19 +114,10 @@ const FileItem = ({ file, index, onEdit, onDelete, dragHandleProps }: FileItemPr
               {getFileIcon(file.type)}
               <CardTitle className="text-sm">{file.name}</CardTitle>
             </div>
-            {file.type !== 'transcription' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleOpenFile}
-                className={`p-1 h-auto ${isHovered ? 'opacity-100' : 'opacity-0'}`}
-              >
-                Open
-              </Button>
-            )}
           </div>
-          <CardDescription className="text-xs">
-            {file.type === 'transcription' ? 'Transcription' : file.type.charAt(0).toUpperCase() + file.type.slice(1)} • {formatDate(file.created_at)}
+          <CardDescription className="text-xs flex justify-between">
+            <span>{file.type === 'transcription' ? 'Transcription' : file.type.charAt(0).toUpperCase() + file.type.slice(1)} • {formatDate(file.created_at)}</span>
+            {file.size && <span>{formatFileSize(file.size)}</span>}
           </CardDescription>
         </CardHeader>
         
@@ -136,6 +131,16 @@ const FileItem = ({ file, index, onEdit, onDelete, dragHandleProps }: FileItemPr
         </CardContent>
         
         <CardFooter className="flex justify-end space-x-1 py-2 px-3">
+          {file.type === 'audio' && file.file_path && file.file_path !== 'audio' && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleOpenAudio}
+              className="h-7 px-2 text-xs"
+            >
+              Play Audio
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             size="sm" 
@@ -156,6 +161,17 @@ const FileItem = ({ file, index, onEdit, onDelete, dragHandleProps }: FileItemPr
           </Button>
         </CardFooter>
       </Card>
+
+      {/* Image Modal */}
+      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto flex items-center justify-center p-1 sm:p-2">
+          <img 
+            src={file.file_path} 
+            alt={file.name} 
+            className="max-w-full max-h-[80vh] object-contain"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
