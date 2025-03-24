@@ -4,6 +4,6 @@ export const industries = [
   { id: 'insurance', name: 'Insurance' },
   { id: 'construction', name: 'Construction' },
   { id: 'appraisals', name: 'Appraisals' },
-  { id: 'small-business', name: 'Small Business' },
-  { id: 'other', name: 'Other' },
+  { id: 'realestate', name: 'Real Estate' },
+  { id: 'inspections', name: 'Inspections' }
 ];

@@ -35,8 +35,8 @@ interface CreateReportModalProps {
 }
 
 // Get n8n webhook URLs from environment variables with fallbacks for local development
-const DEV_WEBHOOK_URL = import.meta.env.VITE_N8N_DEV_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook-test/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0';
-const PROD_WEBHOOK_URL = import.meta.env.VITE_N8N_PROD_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0';
+const DEV_WEBHOOK_URL = import.meta.env.VITE_N8N_DEV_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook-test/62d6d438-48ae-47db-850e-5fc52f54e843';
+const PROD_WEBHOOK_URL = import.meta.env.VITE_N8N_PROD_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook-test/62d6d438-48ae-47db-850e-5fc52f54e843';
 
 const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   const [projects, setProjects] = useState<ProjectDetails[]>([]);
