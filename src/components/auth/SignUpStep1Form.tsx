@@ -32,7 +32,7 @@ const SignUpStep1Form = ({
   return (
     <form onSubmit={handleNextStep} className="space-y-6">
       <div className="space-y-2">
-        <label htmlFor="email" className="text-sm font-medium">
+        <label htmlFor="email" className="text-sm font-medium block text-left">
           Email
         </label>
         <input

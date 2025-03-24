@@ -51,7 +51,7 @@ const FileItem = ({ file, index, onEdit, onDelete, dragHandleProps }: FileItemPr
     }
   };
 
-  const truncateDescription = (text: string | null, maxLength: number = 100) => {
+  const truncateDescription = (text: string | null, maxLength: number = 80) => {
     if (!text) return 'No description';
     return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
   };
@@ -63,6 +63,29 @@ const FileItem = ({ file, index, onEdit, onDelete, dragHandleProps }: FileItemPr
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const renderPreview = () => {
+    if (file.type === 'image' && file.file_path) {
+      return (
+        <div className="mb-2 flex justify-center">
+          <img 
+            src={file.file_path} 
+            alt={file.name} 
+            className="h-20 object-cover rounded-md" 
+          />
+        </div>
+      );
+    } else if (file.type === 'audio' && file.file_path && file.file_path !== 'audio') {
+      return (
+        <div className="mb-2 flex justify-center">
+          <div className="flex items-center justify-center h-20 w-full bg-secondary/30 rounded-md">
+            <FileAudio className="h-8 w-8 text-purple-500" />
+          </div>
+        </div>
+      );
+    }
+    return null;
   };
 
   const handleOpenFile = () => {
@@ -80,51 +103,55 @@ const FileItem = ({ file, index, onEdit, onDelete, dragHandleProps }: FileItemPr
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Card className="mb-3 transition-shadow hover:shadow-md">
-        <CardHeader className="py-4">
+      <Card className="mb-2 transition-shadow hover:shadow-md">
+        <CardHeader className="py-2 px-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               {getFileIcon(file.type)}
-              <CardTitle className="text-base">{file.name}</CardTitle>
+              <CardTitle className="text-sm">{file.name}</CardTitle>
             </div>
             {file.type !== 'transcription' && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleOpenFile}
-                className={isHovered ? 'opacity-100' : 'opacity-0'}
+                className={`p-1 h-auto ${isHovered ? 'opacity-100' : 'opacity-0'}`}
               >
                 Open
               </Button>
             )}
           </div>
-          <CardDescription>
-            {file.type === 'transcription' ? 'Transcription' : file.type.charAt(0).toUpperCase() + file.type.slice(1)} • Added {formatDate(file.created_at)}
+          <CardDescription className="text-xs">
+            {file.type === 'transcription' ? 'Transcription' : file.type.charAt(0).toUpperCase() + file.type.slice(1)} • {formatDate(file.created_at)}
           </CardDescription>
         </CardHeader>
-        {file.description && (
-          <CardContent className="py-0">
-            <p className="text-sm text-muted-foreground">
+        
+        <CardContent className="py-0 px-3">
+          {renderPreview()}
+          {file.description && (
+            <p className="text-xs text-muted-foreground">
               {truncateDescription(file.description)}
             </p>
-          </CardContent>
-        )}
-        <CardFooter className="flex justify-end space-x-2 py-3">
+          )}
+        </CardContent>
+        
+        <CardFooter className="flex justify-end space-x-1 py-2 px-3">
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => onEdit(file)}
+            className="h-7 px-2 text-xs"
           >
-            <Edit className="h-4 w-4 mr-1" />
+            <Edit className="h-3 w-3 mr-1" />
             Edit
           </Button>
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => onDelete(file)}
-            className="text-destructive hover:text-destructive"
+            className="h-7 px-2 text-xs text-destructive hover:text-destructive"
           >
-            <Trash2 className="h-4 w-4 mr-1" />
+            <Trash2 className="h-3 w-3 mr-1" />
             Delete
           </Button>
         </CardFooter>

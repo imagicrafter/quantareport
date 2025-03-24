@@ -1,6 +1,8 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { FileType, ProjectFile } from './FileItem';
 import { z } from 'zod';
+import { toast } from 'sonner';
 
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
@@ -136,4 +138,117 @@ export const deleteFile = async (file: ProjectFile): Promise<void> => {
     .eq('id', file.id);
 
   if (error) throw error;
+};
+
+// Add a new function to handle bulk uploads
+export const bulkUploadFiles = async (
+  files: File[], 
+  projectId: string
+): Promise<number> => {
+  const { data: session } = await supabase.auth.getSession();
+  
+  if (!session.session) {
+    throw new Error('User must be logged in to add files.');
+  }
+
+  let successCount = 0;
+  
+  // Get the max position for this project to place new files at the end
+  const { data: posData } = await supabase
+    .from('files')
+    .select('position')
+    .eq('project_id', projectId)
+    .order('position', { ascending: false })
+    .limit(1);
+
+  let nextPosition = posData && posData.length > 0 && posData[0].position 
+    ? posData[0].position + 1 
+    : 1;
+
+  // Process each file
+  for (const file of files) {
+    try {
+      // Determine file type
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+      const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExt);
+      const isAudio = ['mp3', 'wav', 'ogg', 'm4a'].includes(fileExt);
+      
+      if (!isImage && !isAudio) {
+        toast({
+          title: 'File skipped',
+          description: `${file.name} is not a supported file type.`,
+          variant: 'destructive',
+        });
+        continue;
+      }
+      
+      const type: FileType = isImage ? 'image' : 'audio';
+      const bucketName = type === 'image' ? 'pub_images' : 'pub_audio';
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      
+      // Upload file
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(`${projectId}/${fileName}`, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+      
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(`${projectId}/${fileName}`);
+        
+      const filePath = urlData.publicUrl;
+      
+      // Save file metadata
+      const { error } = await supabase
+        .from('files')
+        .insert({
+          name: file.name, // Use file name as title
+          description: null,
+          file_path: filePath,
+          type,
+          project_id: projectId,
+          user_id: session.session.user.id,
+          position: nextPosition++
+        });
+
+      if (error) throw error;
+      
+      successCount++;
+    } catch (error) {
+      console.error(`Error processing file ${file.name}:`, error);
+      toast({
+        title: 'File upload failed',
+        description: `Failed to upload ${file.name}.`,
+        variant: 'destructive',
+      });
+    }
+  }
+
+  return successCount;
+};
+
+// Add new function to handle Google Drive links
+export const loadFilesFromDriveLink = async (
+  driveLink: string,
+  projectId: string
+): Promise<number> => {
+  try {
+    // This would normally be an API call to a backend service
+    // that would handle the Google Drive API integration
+    // For now we'll just show a toast message
+    toast({
+      title: 'Google Drive Integration',
+      description: 'This feature requires backend integration with Google Drive API',
+    });
+    
+    return 0;
+  } catch (error) {
+    console.error('Error loading files from Google Drive:', error);
+    throw error;
+  }
 };
