@@ -51,6 +51,7 @@ const BulkUploadDialog = ({
 }: BulkUploadDialogProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [activeTab, setActiveTab] = useState('files');
   
   const linkForm = useForm<z.infer<typeof driveLinkSchema>>({
     resolver: zodResolver(driveLinkSchema),
@@ -109,6 +110,10 @@ const BulkUploadDialog = ({
     onClose();
   };
 
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent className="sm:max-w-md md:max-w-xl">
@@ -116,7 +121,7 @@ const BulkUploadDialog = ({
           <DialogTitle>Bulk Upload Files</DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue="files" className="mt-4">
+        <Tabs defaultValue="files" className="mt-4" onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="files">Upload Files</TabsTrigger>
             <TabsTrigger value="drive">Google Drive Link</TabsTrigger>
@@ -228,29 +233,25 @@ const BulkUploadDialog = ({
             Cancel
           </Button>
           
-          <Tabs.Consumer>
-            {(value) => (
-              value === "files" ? (
-                <Button 
-                  type="button"
-                  isLoading={uploading}
-                  disabled={files.length === 0 || uploading}
-                  onClick={handleUploadFiles}
-                >
-                  Upload {files.length} Files
-                </Button>
-              ) : (
-                <Button 
-                  type="button"
-                  isLoading={uploading}
-                  disabled={!linkForm.formState.isValid || uploading}
-                  onClick={linkForm.handleSubmit(handleUploadFromLink)}
-                >
-                  Load Files
-                </Button>
-              )
-            )}
-          </Tabs.Consumer>
+          {activeTab === "files" ? (
+            <Button 
+              type="button"
+              isLoading={uploading}
+              disabled={files.length === 0 || uploading}
+              onClick={handleUploadFiles}
+            >
+              Upload {files.length} Files
+            </Button>
+          ) : (
+            <Button 
+              type="button"
+              isLoading={uploading}
+              disabled={!linkForm.formState.isValid || uploading}
+              onClick={linkForm.handleSubmit(handleUploadFromLink)}
+            >
+              Load Files
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

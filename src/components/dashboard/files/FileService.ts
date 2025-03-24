@@ -175,7 +175,6 @@ export const bulkUploadFiles = async (
       
       if (!isImage && !isAudio) {
         toast({
-          title: 'File skipped',
           description: `${file.name} is not a supported file type.`,
           variant: 'destructive',
         });
@@ -222,7 +221,6 @@ export const bulkUploadFiles = async (
     } catch (error) {
       console.error(`Error processing file ${file.name}:`, error);
       toast({
-        title: 'File upload failed',
         description: `Failed to upload ${file.name}.`,
         variant: 'destructive',
       });
@@ -242,7 +240,6 @@ export const loadFilesFromDriveLink = async (
     // that would handle the Google Drive API integration
     // For now we'll just show a toast message
     toast({
-      title: 'Google Drive Integration',
       description: 'This feature requires backend integration with Google Drive API',
     });
     
