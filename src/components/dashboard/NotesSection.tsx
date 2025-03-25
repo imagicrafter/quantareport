@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -432,68 +433,68 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
             <DialogTitle>Edit Note</DialogTitle>
           </DialogHeader>
           
-          <div className="flex-grow overflow-y-auto pr-2 py-2">
-            <Form {...editForm}>
-              <form onSubmit={editForm.handleSubmit(handleEditNote)} className="space-y-4">
-                <FormField
-                  control={editForm.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter note title" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={editForm.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex justify-between items-center">
-                        <FormLabel>Content (Optional)</FormLabel>
-                        <AudioRecorder onTranscriptionComplete={handleEditTranscriptionComplete} />
-                      </div>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Enter note content" 
-                          className="min-h-[70px]"
-                          rows={4}
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={editForm.control}
-                  name="analysis"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Analysis</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Enter analysis content" 
-                          className="min-h-[200px]"
-                          rows={10}
-                          {...field}
-                          value={field.value || ''}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {selectedNote && (
-                  <ScrollArea className="max-h-[200px]">
-                    <div className="space-y-4 pt-2">
+          <ScrollArea className="flex-grow overflow-hidden pr-2">
+            <div className="py-2">
+              <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(handleEditNote)} className="space-y-4">
+                  <FormField
+                    control={editForm.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter note title" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={editForm.control}
+                    name="content"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex justify-between items-center">
+                          <FormLabel>Content (Optional)</FormLabel>
+                          <AudioRecorder onTranscriptionComplete={handleEditTranscriptionComplete} />
+                        </div>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Enter note content" 
+                            className="min-h-[70px]"
+                            rows={4}
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={editForm.control}
+                    name="analysis"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Analysis</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Enter analysis content" 
+                            className="min-h-[200px]"
+                            rows={10}
+                            {...field}
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {selectedNote && (
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <h4 className="text-sm font-semibold">Related Files</h4>
                         <FilePicker 
@@ -502,7 +503,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                           onFileAdded={() => fetchFileRelationships(selectedNote.id)}
                         />
                       </div>
-                      <div>
+                      <div className="max-h-[200px] overflow-y-auto pr-2">
                         <RelatedFiles 
                           noteId={selectedNote.id} 
                           relationships={relatedFiles}
@@ -510,11 +511,11 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                         />
                       </div>
                     </div>
-                  </ScrollArea>
-                )}
-              </form>
-            </Form>
-          </div>
+                  )}
+                </form>
+              </Form>
+            </div>
+          </ScrollArea>
           
           <DialogFooter className="flex-shrink-0 pt-4 border-t mt-auto">
             <Button 
