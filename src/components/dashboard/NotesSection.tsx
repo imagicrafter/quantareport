@@ -29,6 +29,11 @@ import { NoteFileRelationship, fetchRelatedFiles } from '@/utils/noteFileRelatio
 import FilePicker from './notes/FilePicker';
 import RelatedFiles from './notes/RelatedFiles';
 import AudioRecorder from './files/AudioRecorder';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+interface ExtendedNote extends Note {
+  analysis?: string | null;
+}
 
 interface NotesSectionProps {
   projectId: string;
@@ -46,12 +51,12 @@ const editFormSchema = z.object({
 
 const NotesSection = ({ projectId }: NotesSectionProps) => {
   const { toast } = useToast();
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [notes, setNotes] = useState<ExtendedNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [selectedNote, setSelectedNote] = useState<ExtendedNote | null>(null);
   const [saving, setSaving] = useState(false);
   const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationship[]>([]);
 
@@ -465,30 +470,33 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                 {selectedNote && selectedNote.analysis && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Analysis</h4>
-                    <div className="p-3 bg-secondary/30 rounded-md text-sm">
-                      {selectedNote.analysis}
-                    </div>
+                    <div 
+                      className="p-3 bg-secondary/30 rounded-md text-sm prose prose-sm max-w-none" 
+                      dangerouslySetInnerHTML={{ __html: selectedNote.analysis }}
+                    />
                   </div>
                 )}
                 
                 {selectedNote && (
-                  <div className="space-y-4 pt-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold">Related Files</h4>
-                      <FilePicker 
-                        projectId={projectId} 
-                        noteId={selectedNote.id}
-                        onFileAdded={() => fetchFileRelationships(selectedNote.id)}
-                      />
+                  <ScrollArea className="max-h-[200px]">
+                    <div className="space-y-4 pt-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold">Related Files</h4>
+                        <FilePicker 
+                          projectId={projectId} 
+                          noteId={selectedNote.id}
+                          onFileAdded={() => fetchFileRelationships(selectedNote.id)}
+                        />
+                      </div>
+                      <div>
+                        <RelatedFiles 
+                          noteId={selectedNote.id} 
+                          relationships={relatedFiles}
+                          onRelationshipsChanged={() => fetchFileRelationships(selectedNote.id)}
+                        />
+                      </div>
                     </div>
-                    <div className="max-h-[200px] overflow-y-auto">
-                      <RelatedFiles 
-                        noteId={selectedNote.id} 
-                        relationships={relatedFiles}
-                        onRelationshipsChanged={() => fetchFileRelationships(selectedNote.id)}
-                      />
-                    </div>
-                  </div>
+                  </ScrollArea>
                 )}
               </form>
             </Form>
