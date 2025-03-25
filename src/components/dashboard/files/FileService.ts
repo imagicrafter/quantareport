@@ -198,10 +198,13 @@ export const bulkUploadFiles = async (
           project_id: projectId,
           user_id: session.session.user.id,
           position: nextPosition++,
-          size: file.size || 0
+          size: file.size
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
       
       successCount++;
     } catch (error) {

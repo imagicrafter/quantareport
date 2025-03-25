@@ -72,6 +72,7 @@ export type Database = {
           name: string
           position: number | null
           project_id: string
+          size: number | null
           type: string
           user_id: string
         }
@@ -84,6 +85,7 @@ export type Database = {
           name: string
           position?: number | null
           project_id: string
+          size?: number | null
           type: string
           user_id: string
         }
@@ -96,6 +98,7 @@ export type Database = {
           name?: string
           position?: number | null
           project_id?: string
+          size?: number | null
           type?: string
           user_id?: string
         }
@@ -647,9 +650,27 @@ export type Database = {
         }
         Relationships: []
       }
-      notes_with_image_relationships: {
+      project_images: {
         Row: {
-          content: string | null
+          file_path: string | null
+          files_id: string | null
+          image_description: Json | null
+          name: string | null
+          project_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_notes_with_image_relationships: {
+        Row: {
+          analysis: string | null
           group_name: string | null
           note_id: string | null
           project_id: string | null
@@ -664,24 +685,6 @@ export type Database = {
           },
           {
             foreignKeyName: "notes_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_images: {
-        Row: {
-          file_path: string | null
-          files_id: string | null
-          image_description: Json | null
-          name: string | null
-          project_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "files_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
