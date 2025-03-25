@@ -211,6 +211,7 @@ export type Database = {
       }
       notes: {
         Row: {
+          analysis: string | null
           content: string | null
           created_at: string | null
           id: string
@@ -221,6 +222,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          analysis?: string | null
           content?: string | null
           created_at?: string | null
           id?: string
@@ -231,6 +233,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          analysis?: string | null
           content?: string | null
           created_at?: string | null
           id?: string
@@ -618,12 +621,55 @@ export type Database = {
           },
         ]
       }
+      image_descriptions_related_to_note: {
+        Row: {
+          content: string | null
+          file_path: string | null
+          image_description: Json | null
+          name: string | null
+          note_id: string | null
+          title: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_report_error_count: {
         Row: {
           count: number | null
           job: string | null
         }
         Relationships: []
+      }
+      notes_with_image_relationships: {
+        Row: {
+          content: string | null
+          group_name: string | null
+          note_id: string | null
+          project_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_images: {
         Row: {

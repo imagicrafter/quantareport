@@ -377,11 +377,15 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                 name="content"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Content (Optional)</FormLabel>
+                    <div className="flex justify-between items-center">
+                      <FormLabel>Content (Optional)</FormLabel>
+                      <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
+                    </div>
                     <FormControl>
                       <Textarea 
                         placeholder="Enter note content" 
-                        className="min-h-[150px]"
+                        className="min-h-[70px]"
+                        rows={4}
                         {...field} 
                       />
                     </FormControl>
@@ -389,13 +393,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                   </FormItem>
                 )}
               />
-              
-              <div className="border-t pt-3">
-                <div className="mb-3 text-sm text-muted-foreground">
-                  Record audio to automatically transcribe for content:
-                </div>
-                <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
-              </div>
               
               <DialogFooter className="mt-6">
                 <Button 
@@ -421,86 +418,98 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         open={isEditDialogOpen} 
         onOpenChange={setIsEditDialogOpen}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Edit Note</DialogTitle>
           </DialogHeader>
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(handleEditNote)} className="space-y-4">
-              <FormField
-                control={editForm.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter note title" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editForm.control}
-                name="content"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Content (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Enter note content" 
-                        className="min-h-[150px]"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="border-t pt-3">
-                <div className="mb-3 text-sm text-muted-foreground">
-                  Record audio to automatically transcribe for content:
-                </div>
-                <AudioRecorder onTranscriptionComplete={handleEditTranscriptionComplete} />
-              </div>
-              
-              {selectedNote && (
-                <div className="space-y-4 pt-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold">Related Files</h4>
-                    <FilePicker 
-                      projectId={projectId} 
-                      noteId={selectedNote.id}
-                      onFileAdded={() => fetchFileRelationships(selectedNote.id)}
-                    />
+          
+          <div className="flex-grow overflow-y-auto pr-2 py-2">
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(handleEditNote)} className="space-y-4">
+                <FormField
+                  control={editForm.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter note title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex justify-between items-center">
+                        <FormLabel>Content (Optional)</FormLabel>
+                        <AudioRecorder onTranscriptionComplete={handleEditTranscriptionComplete} />
+                      </div>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter note content" 
+                          className="min-h-[70px]"
+                          rows={4}
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {selectedNote && selectedNote.analysis && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Analysis</h4>
+                    <div className="p-3 bg-secondary/30 rounded-md text-sm">
+                      {selectedNote.analysis}
+                    </div>
                   </div>
-                  <RelatedFiles 
-                    noteId={selectedNote.id} 
-                    relationships={relatedFiles}
-                    onRelationshipsChanged={() => fetchFileRelationships(selectedNote.id)}
-                  />
-                </div>
-              )}
-              
-              <DialogFooter className="mt-6">
-                <Button 
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setIsEditDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit"
-                  isLoading={saving}
-                >
-                  Save Changes
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+                )}
+                
+                {selectedNote && (
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold">Related Files</h4>
+                      <FilePicker 
+                        projectId={projectId} 
+                        noteId={selectedNote.id}
+                        onFileAdded={() => fetchFileRelationships(selectedNote.id)}
+                      />
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto">
+                      <RelatedFiles 
+                        noteId={selectedNote.id} 
+                        relationships={relatedFiles}
+                        onRelationshipsChanged={() => fetchFileRelationships(selectedNote.id)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </form>
+            </Form>
+          </div>
+          
+          <DialogFooter className="flex-shrink-0 pt-4 border-t mt-auto">
+            <Button 
+              type="button"
+              variant="ghost"
+              onClick={() => setIsEditDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button"
+              onClick={editForm.handleSubmit(handleEditNote)}
+              isLoading={saving}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -540,3 +549,4 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
 };
 
 export default NotesSection;
+
