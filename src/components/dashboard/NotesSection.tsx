@@ -47,6 +47,7 @@ const formSchema = z.object({
 const editFormSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   content: z.string().optional(),
+  analysis: z.string().optional(),
 });
 
 const NotesSection = ({ projectId }: NotesSectionProps) => {
@@ -73,6 +74,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     defaultValues: {
       title: '',
       content: '',
+      analysis: '',
     },
   });
 
@@ -173,6 +175,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         .update({
           title: values.title,
           content: values.content || '',
+          analysis: values.analysis || null,
         })
         .eq('id', selectedNote.id);
 
@@ -323,6 +326,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                                 editForm.reset({
                                   title: note.title,
                                   content: note.content,
+                                  analysis: note.analysis || '',
                                 });
                                 fetchFileRelationships(note.id);
                                 setIsEditDialogOpen(true);
@@ -467,15 +471,25 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                   )}
                 />
                 
-                {selectedNote && selectedNote.analysis && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium">Analysis</h4>
-                    <div 
-                      className="p-3 bg-secondary/30 rounded-md text-sm prose prose-sm max-w-none" 
-                      dangerouslySetInnerHTML={{ __html: selectedNote.analysis }}
-                    />
-                  </div>
-                )}
+                <FormField
+                  control={editForm.control}
+                  name="analysis"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Analysis</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter analysis content" 
+                          className="min-h-[200px]"
+                          rows={10}
+                          {...field}
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 
                 {selectedNote && (
                   <ScrollArea className="max-h-[200px]">
@@ -557,4 +571,3 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
 };
 
 export default NotesSection;
-
