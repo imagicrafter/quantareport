@@ -153,25 +153,4 @@
   .page-transition-exit-active {
     @apply opacity-0 transition-opacity duration-200;
   }
-
-  /* Additional styling for analysis HTML content */
-  .prose ol {
-    @apply list-decimal pl-5 my-2 space-y-2;
-  }
-  
-  .prose ul {
-    @apply list-disc pl-5 my-2 space-y-2;
-  }
-  
-  .prose li {
-    @apply pl-1;
-  }
-  
-  .prose p {
-    @apply my-2;
-  }
-  
-  .prose strong {
-    @apply font-bold;
-  }
 }

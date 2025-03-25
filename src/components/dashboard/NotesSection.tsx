@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -263,29 +262,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     editForm.setValue('content', text);
   };
 
-  // Function to convert markdown-like text to HTML
-  const formatAnalysisContent = (content: string): string => {
-    if (!content) return '';
-    
-    // Replace line breaks with paragraph tags
-    let formatted = content.split(/\n{2,}/).map(p => `<p>${p}</p>`).join('');
-    
-    // Format bold text (text between **)
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // Format numbered lists
-    formatted = formatted.replace(/(\d+)\.\s+(.*?)(?=(?:\n\d+\.|\n\n|$))/gs, (match, number, text) => {
-      return `<li>${text.trim()}</li>`;
-    });
-    
-    // Wrap lists in <ol> tags if they exist
-    if (formatted.includes('<li>')) {
-      formatted = formatted.replace(/(<li>.*?<\/li>)+/gs, '<ol>$&</ol>');
-    }
-    
-    return formatted;
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -495,10 +471,8 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Analysis</h4>
                     <div 
-                      className="p-3 bg-secondary/30 rounded-md text-sm prose prose-sm max-w-none overflow-auto" 
-                      dangerouslySetInnerHTML={{ 
-                        __html: selectedNote.analysis 
-                      }}
+                      className="p-3 bg-secondary/30 rounded-md text-sm prose prose-sm max-w-none" 
+                      dangerouslySetInnerHTML={{ __html: selectedNote.analysis }}
                     />
                   </div>
                 )}
@@ -583,3 +557,4 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
 };
 
 export default NotesSection;
+
