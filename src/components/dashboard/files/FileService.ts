@@ -108,29 +108,58 @@ export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'f
 };
 
 export const deleteFile = async (file: ProjectFile): Promise<void> => {
-  if (file.file_path && file.file_path !== 'audio') {
-    const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
-    
-    try {
-      const urlPath = new URL(file.file_path).pathname;
-      const storagePath = urlPath.split('/').slice(2).join('/');
-      
-      const { error: storageError } = await supabase.storage
-        .from(bucketName)
-        .remove([storagePath]);
-        
-      if (storageError) console.error('Storage removal error:', storageError);
-    } catch (error) {
-      console.error('Error parsing file path:', error);
+  // First, delete any associated image descriptions
+  try {
+    const { error: imageDescError } = await supabase
+      .from('image_descriptions')
+      .delete()
+      .eq('file_id', file.id);
+
+    if (imageDescError) {
+      console.error('Error deleting image descriptions:', imageDescError);
+      // Continue with file deletion even if there was an error with image descriptions
     }
+
+    // Next, delete any note_file_relationships
+    const { error: relationshipError } = await supabase
+      .from('note_file_relationships')
+      .delete()
+      .eq('file_id', file.id);
+
+    if (relationshipError) {
+      console.error('Error deleting note file relationships:', relationshipError);
+      // Continue with file deletion even if there was an error with relationships
+    }
+
+    // Now delete the actual file storage if it exists
+    if (file.file_path && file.file_path !== 'audio') {
+      const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
+      
+      try {
+        const urlPath = new URL(file.file_path).pathname;
+        const storagePath = urlPath.split('/').slice(2).join('/');
+        
+        const { error: storageError } = await supabase.storage
+          .from(bucketName)
+          .remove([storagePath]);
+          
+        if (storageError) console.error('Storage removal error:', storageError);
+      } catch (error) {
+        console.error('Error parsing file path:', error);
+      }
+    }
+
+    // Finally delete the file record
+    const { error } = await supabase
+      .from('files')
+      .delete()
+      .eq('id', file.id);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error in deleteFile function:', error);
+    throw error;
   }
-
-  const { error } = await supabase
-    .from('files')
-    .delete()
-    .eq('id', file.id);
-
-  if (error) throw error;
 };
 
 export const bulkUploadFiles = async (
