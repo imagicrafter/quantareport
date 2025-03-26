@@ -21,7 +21,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Button from '../../ui-elements/Button';
-import { ProjectFile } from './FileItem';
+import { ProjectFile, FileType } from './FileItem';
 import AudioRecorder from './AudioRecorder';
 
 interface EditFileDialogProps {

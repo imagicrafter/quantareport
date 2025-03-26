@@ -21,6 +21,7 @@ export interface Note {
   created_at: string;
   project_id: string;
   user_id: string;
+  analysis?: string | null;
 }
 
 // Title to camelCase conversion utility function
@@ -52,10 +53,16 @@ export const reorderNotes = async (notes: Note[], sourceIndex: number, destinati
       position: index + 1
     }));
     
-    // Update positions in database
+    // Update positions in database - fix the upsert call
+    // We need to only update the position field, but include all required fields for the update
     const updates = updatedNotes.map(note => ({
       id: note.id,
-      position: note.position
+      position: note.position,
+      // Include these required fields from the existing note
+      name: note.name,
+      title: note.title,
+      project_id: note.project_id,
+      user_id: note.user_id
     }));
     
     const { error } = await supabase
