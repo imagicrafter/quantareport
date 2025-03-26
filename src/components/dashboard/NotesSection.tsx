@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -127,7 +126,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   }, [projectId]);
 
   const fetchFileRelationships = async (noteId: string) => {
-    // Only fetch relationships if the note ID is a valid UUID
     if (noteId && !noteId.startsWith('temp-')) {
       const filesWithTypes = await fetchRelatedFiles(noteId);
       setRelatedFiles(filesWithTypes);
@@ -171,7 +169,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       if (error) throw error;
 
       if (data) {
-        // If we have temporary related files, create real relationships
         if (addNoteRelatedFiles.length > 0) {
           for (const relFile of addNoteRelatedFiles) {
             if (relFile.file_id) {
@@ -431,13 +428,9 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     };
   }, [pollingInterval]);
 
-  // Helper function to generate a unique temporary file relationship ID
-  const generateTempRelationshipId = () => `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-
-  // Add file to the temporary related files for the new note
-  const handleAddFileToNewNote = (fileId: string, fileType: string, filePath: string) => {
+  const handleAddNoteRelationshipChange = (fileId: string, fileType: string, filePath: string) => {
     const newRelationship: NoteFileRelationshipWithType = {
-      id: generateTempRelationshipId(),
+      id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       note_id: addNoteId || '',
       file_id: fileId,
       created_at: new Date().toISOString(),
@@ -630,11 +623,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                           projectId={projectId}
                           noteId={addNoteId}
                           onFileAdded={() => {
-                            if (addNoteId) {
-                              // For the Add Note modal, we'll manage temporary file relationships
-                              // until the note is actually created
-                              setAddNoteRelatedFiles([...addNoteRelatedFiles]);
-                            }
+                            setAddNoteRelatedFiles([...addNoteRelatedFiles]);
                           }}
                           relatedFiles={addNoteRelatedFiles}
                         />
@@ -646,10 +635,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                             projectId={projectId}
                             relationships={addNoteRelatedFiles}
                             onRelationshipsChanged={() => {
-                              if (addNoteId) {
-                                // For temporary relationships, just refresh the state
-                                setAddNoteRelatedFiles([...addNoteRelatedFiles]);
-                              }
+                              setAddNoteRelatedFiles([...addNoteRelatedFiles]);
                             }}
                           />
                         </div>
@@ -679,6 +665,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
               onClick={() => {
                 setIsAddDialogOpen(false);
                 setAddNoteId(null);
+                setAddNoteRelatedFiles([]);
               }}
             >
               Cancel

@@ -52,7 +52,7 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
         const files = await fetchAvailableFiles(projectId, noteId);
         setAvailableFiles(files);
       } else {
-        // For temporary notes, just fetch all project files
+        // For temporary notes, fetch all project files
         const { data: files, error } = await supabase
           .from('files')
           .select('*')
@@ -60,7 +60,14 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
           .order('position', { ascending: true });
           
         if (error) throw error;
-        setAvailableFiles(files as ProjectFile[]);
+        
+        // Filter out any files that are already in the relatedFiles array
+        const relatedFileIds = relatedFiles.map(rel => rel.file_id);
+        const filteredFiles = (files as ProjectFile[]).filter(
+          file => !relatedFileIds.includes(file.id)
+        );
+        
+        setAvailableFiles(filteredFiles);
       }
     } catch (error) {
       console.error('Error loading files:', error);
@@ -73,7 +80,7 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
     if (open) {
       loadFiles();
     }
-  }, [open, projectId, noteId]);
+  }, [open, projectId, noteId, relatedFiles]);
 
   // Prepare previewable images when related files change
   useEffect(() => {
@@ -90,7 +97,7 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
     setPreviewableImages(images);
   }, [relatedFiles, availableFiles]);
 
-  const handleFileSelect = async (fileId: string) => {
+  const handleFileSelect = async (fileId: string, selectedFile: ProjectFile) => {
     setAddingFileId(fileId);
     try {
       if (noteId && !noteId.startsWith('temp-')) {
@@ -100,12 +107,23 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
           loadFiles(); // Refresh available files
         }
       } else {
-        // For temporary notes, notify the parent component about the selected file
-        // The parent will handle adding it to temporary storage
-        onFileAdded();
+        // For temporary notes, we need to create a temporary relationship
+        // and pass it back to the parent
+        const tempRelationship: NoteFileRelationshipWithType = {
+          id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          note_id: noteId,
+          file_id: fileId,
+          created_at: new Date().toISOString(),
+          file: selectedFile,
+          file_type: selectedFile.type,
+          file_path: selectedFile.file_path
+        };
         
-        // Remove the file from the available files list
+        // Remove the file from the available files
         setAvailableFiles(prev => prev.filter(file => file.id !== fileId));
+        
+        // Notify the parent component about the file selection
+        onFileAdded();
       }
     } finally {
       setAddingFileId(null);
@@ -265,7 +283,7 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
                               size="sm"
                               className="ml-2 group"
                               disabled={addingFileId === file.id}
-                              onClick={() => handleFileSelect(file.id)}
+                              onClick={() => handleFileSelect(file.id, file)}
                             >
                               {addingFileId === file.id ? (
                                 <span className="h-4 w-4 block rounded-full border-2 border-t-transparent border-primary animate-spin" />
