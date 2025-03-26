@@ -72,7 +72,7 @@ const FilePicker = ({ projectId, noteId, onFileAdded }: FilePickerProps) => {
       <DialogTrigger asChild>
         <Button
           type="button"
-          variant="outline"
+          variant="primary"
           size="sm"
           className="flex items-center gap-1"
         >

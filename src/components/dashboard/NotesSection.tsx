@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { PlusCircle, Edit, Trash, GripVertical } from 'lucide-react';
+import { PlusCircle, Edit, Trash, GripVertical, ImageIcon } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Button from '../ui-elements/Button';
@@ -31,6 +31,7 @@ import FilePicker from './notes/FilePicker';
 import RelatedFiles from './notes/RelatedFiles';
 import AudioRecorder from './files/AudioRecorder';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 
 interface ExtendedNote extends Note {
   analysis?: string | null;
@@ -61,6 +62,8 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   const [selectedNote, setSelectedNote] = useState<ExtendedNote | null>(null);
   const [saving, setSaving] = useState(false);
   const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationship[]>([]);
+  const [analyzingImages, setAnalyzingImages] = useState(false);
+  const [projectName, setProjectName] = useState('');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -102,9 +105,25 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     }
   };
 
+  const fetchProjectName = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('name')
+        .eq('id', projectId)
+        .single();
+
+      if (error) throw error;
+      setProjectName(data?.name || '');
+    } catch (error) {
+      console.error('Error fetching project name:', error);
+    }
+  };
+
   useEffect(() => {
     if (projectId) {
       fetchNotes();
+      fetchProjectName();
     }
   }, [projectId]);
 
@@ -264,6 +283,85 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
 
   const handleEditTranscriptionComplete = (text: string) => {
     editForm.setValue('content', text);
+  };
+
+  const handleAnalyzeImages = async () => {
+    if (!selectedNote) return;
+    
+    setAnalyzingImages(true);
+    
+    try {
+      // Determine if we should use the test webhook based on project name
+      const isTestMode = projectName.toLowerCase().includes('test');
+      
+      // Get image files related to this note
+      const imageRelationships = relatedFiles.filter(rel => 
+        rel.file_type === 'image'
+      );
+      
+      if (imageRelationships.length === 0) {
+        toast.warning('No images available for analysis');
+        return;
+      }
+      
+      const imageUrls = imageRelationships.map(rel => rel.file_path);
+      
+      // Call the n8n webhook
+      const webhookUrl = isTestMode 
+        ? 'https://n8n.bespoken.io/webhook/analyze-images-test'
+        : 'https://n8n.bespoken.io/webhook/analyze-images-prod';
+        
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          noteId: selectedNote.id,
+          imageUrls: imageUrls,
+          projectId: projectId
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Webhook responded with status: ${response.status}`);
+      }
+      
+      toast.success('Image analysis started');
+      
+      // Wait a moment to let the n8n workflow update the database
+      setTimeout(async () => {
+        // Refresh the note data to get the updated analysis
+        const { data, error } = await supabase
+          .from('notes')
+          .select('*')
+          .eq('id', selectedNote.id)
+          .single();
+          
+        if (error) {
+          console.error('Error refreshing note data:', error);
+          return;
+        }
+        
+        if (data) {
+          // Update the form with the new analysis data
+          editForm.setValue('analysis', data.analysis || '');
+          
+          // Also update the selected note
+          setSelectedNote({
+            ...selectedNote,
+            analysis: data.analysis
+          });
+        }
+        
+        setAnalyzingImages(false);
+      }, 3000); // Wait 3 seconds before refreshing
+      
+    } catch (error) {
+      console.error('Error analyzing images:', error);
+      toast.error('Failed to analyze images');
+      setAnalyzingImages(false);
+    }
   };
 
   return (
@@ -478,7 +576,20 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                     name="analysis"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Analysis</FormLabel>
+                        <div className="flex justify-between items-center">
+                          <FormLabel>Analysis</FormLabel>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            onClick={handleAnalyzeImages}
+                            isLoading={analyzingImages}
+                            className="flex items-center gap-1"
+                          >
+                            <ImageIcon size={16} />
+                            <span>Analyze Images</span>
+                          </Button>
+                        </div>
                         <FormControl>
                           <Textarea 
                             placeholder="Enter analysis content" 
