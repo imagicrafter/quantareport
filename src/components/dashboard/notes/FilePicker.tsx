@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { File, Music, Folder, FileText, Plus, X } from 'lucide-react';
 import { ProjectFile } from '@/components/dashboard/files/FileItem';

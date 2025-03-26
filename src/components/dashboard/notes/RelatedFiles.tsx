@@ -58,52 +58,15 @@ const RelatedFiles = ({ noteId, projectId, relationships, onRelationshipsChanged
           No files associated with this note
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2">
-          {relationships.map((rel) => (
-            <div 
-              key={rel.id} 
-              className="flex items-center justify-between p-2 bg-secondary/30 rounded-md"
-            >
-              <div className="flex items-center space-x-2">
-                {rel.file_type === 'image' ? (
-                  <div className="h-10 w-10 rounded overflow-hidden bg-gray-200 flex-shrink-0">
-                    <img 
-                      src={rel.file_path} 
-                      alt={rel.file?.name || 'Image'} 
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = "/placeholder.svg";
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div className="h-10 w-10 flex items-center justify-center bg-secondary rounded">
-                    {getFileIcon(rel.file_type || 'file')}
-                  </div>
-                )}
-                <div className="truncate">
-                  <div className="text-sm font-medium truncate">{rel.file?.name || 'Unknown file'}</div>
-                  <div className="text-xs text-muted-foreground capitalize">{rel.file_type || 'file'}</div>
-                </div>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  handleRemoveFile(rel.id);
-                }}
-                className="p-1 text-muted-foreground hover:text-destructive rounded-full hover:bg-secondary"
-                title="Remove file"
-                disabled={removingFileId === rel.id}
-              >
-                {removingFileId === rel.id ? (
-                  <span className="h-4 w-4 block rounded-full border-2 border-t-transparent border-muted-foreground animate-spin" />
-                ) : (
-                  <X size={16} />
-                )}
-              </button>
+        <div className="bg-secondary/30 rounded-md p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 flex items-center justify-center bg-secondary rounded-full">
+              <File size={16} />
             </div>
-          ))}
+            <span className="text-sm font-medium">
+              {relationships.length} {relationships.length === 1 ? 'file' : 'files'} attached
+            </span>
+          </div>
         </div>
       )}
     </div>
