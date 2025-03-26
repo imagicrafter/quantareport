@@ -46,8 +46,23 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
   const loadFiles = async () => {
     setLoading(true);
     try {
-      const files = await fetchAvailableFiles(projectId, noteId);
-      setAvailableFiles(files);
+      // Only fetch available files if noteId is a valid UUID (not a temp ID)
+      if (noteId && !noteId.startsWith('temp-')) {
+        const files = await fetchAvailableFiles(projectId, noteId);
+        setAvailableFiles(files);
+      } else {
+        // For temporary notes, just fetch all project files
+        const { data: files, error } = await supabase
+          .from('files')
+          .select('*')
+          .eq('project_id', projectId)
+          .order('position', { ascending: true });
+          
+        if (error) throw error;
+        setAvailableFiles(files as ProjectFile[]);
+      }
+    } catch (error) {
+      console.error('Error loading files:', error);
     } finally {
       setLoading(false);
     }
@@ -77,10 +92,19 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
   const handleFileSelect = async (fileId: string) => {
     setAddingFileId(fileId);
     try {
-      const success = await addFileToNote(noteId, fileId);
-      if (success) {
+      if (noteId && !noteId.startsWith('temp-')) {
+        const success = await addFileToNote(noteId, fileId);
+        if (success) {
+          onFileAdded();
+          loadFiles(); // Refresh available files
+        }
+      } else {
+        // For temporary notes, notify the parent component about the selected file
+        // The parent will handle adding it to temporary storage
         onFileAdded();
-        loadFiles(); // Refresh available files
+        
+        // Remove the file from the available files list
+        setAvailableFiles(prev => prev.filter(file => file.id !== fileId));
       }
     } finally {
       setAddingFileId(null);
@@ -90,10 +114,15 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
   const handleRemoveFile = async (relationshipId: string) => {
     setRemovingFileId(relationshipId);
     try {
-      const success = await removeFileFromNote(relationshipId);
-      if (success) {
+      if (!relationshipId.startsWith('temp-')) {
+        const success = await removeFileFromNote(relationshipId);
+        if (success) {
+          onFileAdded();
+          loadFiles(); // Refresh available files after removal
+        }
+      } else {
+        // For temporary relationships, just notify the parent
         onFileAdded();
-        loadFiles(); // Refresh available files after removal
       }
     } finally {
       setRemovingFileId(null);

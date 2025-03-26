@@ -127,8 +127,11 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   }, [projectId]);
 
   const fetchFileRelationships = async (noteId: string) => {
-    const filesWithTypes = await fetchRelatedFiles(noteId);
-    setRelatedFiles(filesWithTypes);
+    // Only fetch relationships if the note ID is a valid UUID
+    if (noteId && !noteId.startsWith('temp-')) {
+      const filesWithTypes = await fetchRelatedFiles(noteId);
+      setRelatedFiles(filesWithTypes);
+    }
   };
 
   const handleAddNote = async (values: z.infer<typeof formSchema>) => {
@@ -168,7 +171,19 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       if (error) throw error;
 
       if (data) {
-        setAddNoteId(data.id);
+        // If we have temporary related files, create real relationships
+        if (addNoteRelatedFiles.length > 0) {
+          for (const relFile of addNoteRelatedFiles) {
+            if (relFile.file_id) {
+              await supabase
+                .from('note_file_relationships')
+                .insert({
+                  note_id: data.id,
+                  file_id: relFile.file_id
+                });
+            }
+          }
+        }
       }
 
       uiToast({
@@ -177,6 +192,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       });
 
       form.reset();
+      setAddNoteRelatedFiles([]);
       setIsAddDialogOpen(false);
       fetchNotes();
     } catch (error) {
@@ -415,6 +431,23 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     };
   }, [pollingInterval]);
 
+  // Helper function to generate a unique temporary file relationship ID
+  const generateTempRelationshipId = () => `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+  // Add file to the temporary related files for the new note
+  const handleAddFileToNewNote = (fileId: string, fileType: string, filePath: string) => {
+    const newRelationship: NoteFileRelationshipWithType = {
+      id: generateTempRelationshipId(),
+      note_id: addNoteId || '',
+      file_id: fileId,
+      created_at: new Date().toISOString(),
+      file_type: fileType,
+      file_path: filePath
+    };
+    
+    setAddNoteRelatedFiles(prev => [...prev, newRelationship]);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -598,9 +631,9 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                           noteId={addNoteId}
                           onFileAdded={() => {
                             if (addNoteId) {
-                              fetchRelatedFiles(addNoteId).then(files => {
-                                setAddNoteRelatedFiles(files);
-                              });
+                              // For the Add Note modal, we'll manage temporary file relationships
+                              // until the note is actually created
+                              setAddNoteRelatedFiles([...addNoteRelatedFiles]);
                             }
                           }}
                           relatedFiles={addNoteRelatedFiles}
@@ -614,9 +647,8 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                             relationships={addNoteRelatedFiles}
                             onRelationshipsChanged={() => {
                               if (addNoteId) {
-                                fetchRelatedFiles(addNoteId).then(files => {
-                                  setAddNoteRelatedFiles(files);
-                                });
+                                // For temporary relationships, just refresh the state
+                                setAddNoteRelatedFiles([...addNoteRelatedFiles]);
                               }
                             }}
                           />
