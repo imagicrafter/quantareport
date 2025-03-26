@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import Button from '@/components/ui-elements/Button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FilePickerProps {
   projectId: string;
