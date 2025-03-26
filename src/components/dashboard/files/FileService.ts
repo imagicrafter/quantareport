@@ -109,66 +109,120 @@ export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'f
 
 export const deleteFile = async (file: ProjectFile): Promise<void> => {
   try {
-    // Step 1: First check if there are any image descriptions for this file
-    const { data: imageDescData, error: imageDescQueryError } = await supabase
+    console.log('Starting deletion process for file:', file.id);
+    
+    // Step 1: Delete from image_descriptions with more explicit query
+    console.log('Checking for image descriptions...');
+    const { data: imageDescs, error: fetchImgDescError } = await supabase
       .from('image_descriptions')
       .select('id')
       .eq('file_id', file.id);
       
-    if (imageDescQueryError) {
-      console.error('Error checking image descriptions:', imageDescQueryError);
-      throw imageDescQueryError;
+    if (fetchImgDescError) {
+      console.error('Error fetching image descriptions:', fetchImgDescError);
+      throw fetchImgDescError;
     }
     
-    // Step 2: Delete any associated image descriptions if they exist
-    if (imageDescData && imageDescData.length > 0) {
-      console.log(`Found ${imageDescData.length} image descriptions to delete`);
+    if (imageDescs && imageDescs.length > 0) {
+      console.log(`Found ${imageDescs.length} image descriptions to delete`);
       
-      const { error: imageDescError } = await supabase
-        .from('image_descriptions')
-        .delete()
-        .eq('file_id', file.id);
-  
-      if (imageDescError) {
-        console.error('Error deleting image descriptions:', imageDescError);
-        throw imageDescError;
+      // Use a transaction to ensure all image descriptions are deleted
+      for (const desc of imageDescs) {
+        console.log(`Deleting image description with ID: ${desc.id}`);
+        const { error: deleteImgDescError } = await supabase
+          .from('image_descriptions')
+          .delete()
+          .eq('id', desc.id);
+          
+        if (deleteImgDescError) {
+          console.error(`Error deleting image description ${desc.id}:`, deleteImgDescError);
+          throw deleteImgDescError;
+        }
       }
+      
+      // Double-check that all image descriptions were deleted
+      const { data: remainingDescs, error: checkError } = await supabase
+        .from('image_descriptions')
+        .select('id')
+        .eq('file_id', file.id);
+        
+      if (checkError) {
+        console.error('Error checking remaining descriptions:', checkError);
+      } else if (remainingDescs && remainingDescs.length > 0) {
+        console.error(`Still have ${remainingDescs.length} image descriptions after deletion attempt`);
+        throw new Error('Failed to delete all image descriptions');
+      } else {
+        console.log('All image descriptions successfully deleted');
+      }
+    } else {
+      console.log('No image descriptions found for this file');
     }
 
-    // Step 3: Check for and delete any note_file_relationships
-    const { data: relationshipData, error: relationshipQueryError } = await supabase
+    // Step 2: Delete from note_file_relationships
+    console.log('Checking for note file relationships...');
+    const { data: relationships, error: fetchRelError } = await supabase
       .from('note_file_relationships')
       .select('id')
       .eq('file_id', file.id);
       
-    if (relationshipQueryError) {
-      console.error('Error checking note file relationships:', relationshipQueryError);
-      throw relationshipQueryError;
+    if (fetchRelError) {
+      console.error('Error fetching note file relationships:', fetchRelError);
+      throw fetchRelError;
     }
     
-    if (relationshipData && relationshipData.length > 0) {
-      console.log(`Found ${relationshipData.length} file relationships to delete`);
+    if (relationships && relationships.length > 0) {
+      console.log(`Found ${relationships.length} file relationships to delete`);
       
-      const { error: relationshipError } = await supabase
-        .from('note_file_relationships')
-        .delete()
-        .eq('file_id', file.id);
-  
-      if (relationshipError) {
-        console.error('Error deleting note file relationships:', relationshipError);
-        throw relationshipError;
+      for (const rel of relationships) {
+        console.log(`Deleting relationship with ID: ${rel.id}`);
+        const { error: deleteRelError } = await supabase
+          .from('note_file_relationships')
+          .delete()
+          .eq('id', rel.id);
+          
+        if (deleteRelError) {
+          console.error(`Error deleting relationship ${rel.id}:`, deleteRelError);
+          throw deleteRelError;
+        }
       }
+      console.log('All note file relationships successfully deleted');
+    } else {
+      console.log('No note file relationships found for this file');
     }
 
-    // Step 4: Now delete the actual file storage if it exists
-    if (file.file_path && file.file_path !== 'audio') {
-      const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
+    // Step 3: Check for and remove any other references in other tables
+    console.log('Checking for other references to this file...');
+    // Check for references in project_images table
+    const { data: projectImages, error: projectImagesError } = await supabase
+      .from('project_images')
+      .select('*')
+      .eq('files_id', file.id);
       
+    if (projectImagesError) {
+      console.error('Error checking project_images:', projectImagesError);
+    } else if (projectImages && projectImages.length > 0) {
+      console.log(`Found ${projectImages.length} references in project_images`);
+      
+      const { error: deleteProjectImagesError } = await supabase
+        .from('project_images')
+        .delete()
+        .eq('files_id', file.id);
+        
+      if (deleteProjectImagesError) {
+        console.error('Error deleting from project_images:', deleteProjectImagesError);
+        throw deleteProjectImagesError;
+      }
+      console.log('Successfully deleted project_images references');
+    }
+
+    // Step 4: Delete storage file if applicable
+    if (file.file_path && file.file_path !== 'audio') {
       try {
+        const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
         const urlPath = new URL(file.file_path).pathname;
         const storagePath = urlPath.split('/').slice(2).join('/');
         
-        console.log('Deleting file from storage:', storagePath);
+        console.log('Deleting file from storage:', storagePath, 'from bucket:', bucketName);
         
         const { error: storageError } = await supabase.storage
           .from(bucketName)
@@ -177,6 +231,8 @@ export const deleteFile = async (file: ProjectFile): Promise<void> => {
         if (storageError) {
           console.error('Storage removal error:', storageError);
           // Continue even if storage deletion fails
+        } else {
+          console.log('Storage file successfully deleted');
         }
       } catch (error) {
         console.error('Error parsing file path:', error);
@@ -184,19 +240,36 @@ export const deleteFile = async (file: ProjectFile): Promise<void> => {
       }
     }
 
-    // Step 5: Finally delete the file record
+    // Step 5: Final check before file record deletion
+    console.log('Performing final check for any remaining references...');
+    const { data: finalImageDescs, error: finalCheckError } = await supabase
+      .from('image_descriptions')
+      .select('id')
+      .eq('file_id', file.id);
+      
+    if (finalCheckError) {
+      console.error('Error in final image_descriptions check:', finalCheckError);
+    } else if (finalImageDescs && finalImageDescs.length > 0) {
+      console.error(`Still found ${finalImageDescs.length} image descriptions after deletion attempts`);
+      throw new Error('Failed to delete all image descriptions references');
+    } else {
+      console.log('Final check passed: No remaining image_descriptions references');
+    }
+
+    // Step 6: Finally delete the file record
     console.log('Deleting file record with ID:', file.id);
-    const { error } = await supabase
+    const { error: deleteFileError } = await supabase
       .from('files')
       .delete()
       .eq('id', file.id);
 
-    if (error) {
-      console.error('Error deleting file record:', error);
-      throw error;
+    if (deleteFileError) {
+      console.error('Error deleting file record:', deleteFileError);
+      throw deleteFileError;
     }
     
-    console.log('File successfully deleted');
+    console.log('File record successfully deleted');
+    
   } catch (error) {
     console.error('Error in deleteFile function:', error);
     throw error;
