@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,6 +31,7 @@ import RelatedFiles from './notes/RelatedFiles';
 import AudioRecorder from './files/AudioRecorder';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { NOTE_DEV_WEBHOOK_URL, NOTE_PROD_WEBHOOK_URL, NoteFileRelationshipWithType } from '@/utils/noteUtils';
 
 interface ExtendedNote extends Note {
   analysis?: string | null;
@@ -61,7 +61,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<ExtendedNote | null>(null);
   const [saving, setSaving] = useState(false);
-  const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationship[]>([]);
+  const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
   const [analyzingImages, setAnalyzingImages] = useState(false);
   const [projectName, setProjectName] = useState('');
 
@@ -291,40 +291,54 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     setAnalyzingImages(true);
     
     try {
-      // Determine if we should use the test webhook based on project name
-      const isTestMode = projectName.toLowerCase().includes('test');
-      
       // Get image files related to this note
       const imageRelationships = relatedFiles.filter(rel => 
         rel.file_type === 'image'
       );
       
       if (imageRelationships.length === 0) {
-        toast.warning('No images available for analysis');
+        toast('No images available for analysis', {
+          description: 'Add some images to analyze first'
+        });
         return;
       }
       
       const imageUrls = imageRelationships.map(rel => rel.file_path);
       
-      // Call the n8n webhook
-      const webhookUrl = isTestMode 
-        ? 'https://n8n.bespoken.io/webhook/analyze-images-test'
-        : 'https://n8n.bespoken.io/webhook/analyze-images-prod';
-        
+      // Determine if we should use the test webhook based on project name
+      const { data: project } = await supabase
+        .from('projects')
+        .select('name')
+        .eq('id', projectId)
+        .single();
+      
+      const isTestMode = project?.name.toLowerCase().includes('test');
+      
+      // Select the appropriate webhook URL based on project name
+      const webhookUrl = isTestMode ? NOTE_DEV_WEBHOOK_URL : NOTE_PROD_WEBHOOK_URL;
+      
+      console.log(`Using ${isTestMode ? 'TESTING' : 'PRODUCTION'} webhook URL: ${webhookUrl}`);
+      
+      const webhookPayload = {
+        note_id: selectedNote.id,
+        image_urls: imageUrls,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Send webhook request
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Origin': window.location.origin
         },
-        body: JSON.stringify({
-          noteId: selectedNote.id,
-          imageUrls: imageUrls,
-          projectId: projectId
-        }),
+        mode: 'cors',
+        body: JSON.stringify(webhookPayload)
       });
       
       if (!response.ok) {
-        throw new Error(`Webhook responded with status: ${response.status}`);
+        throw new Error(`Webhook request failed: ${response.statusText}`);
       }
       
       toast.success('Image analysis started');
@@ -355,7 +369,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         }
         
         setAnalyzingImages(false);
-      }, 3000); // Wait 3 seconds before refreshing
+      }, 3000);
       
     } catch (error) {
       console.error('Error analyzing images:', error);
@@ -580,8 +594,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                           <FormLabel>Analysis</FormLabel>
                           <Button
                             type="button"
-                            variant="primary"
-                            size="sm"
                             onClick={handleAnalyzeImages}
                             isLoading={analyzingImages}
                             className="flex items-center gap-1"
@@ -592,11 +604,10 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                         </div>
                         <FormControl>
                           <Textarea 
-                            placeholder="Enter analysis content" 
+                            placeholder="Analysis content"
                             className="min-h-[200px]"
-                            rows={10}
+                            rows={8}
                             {...field}
-                            value={field.value || ''}
                           />
                         </FormControl>
                         <FormMessage />
