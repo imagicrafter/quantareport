@@ -108,30 +108,59 @@ export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'f
 };
 
 export const deleteFile = async (file: ProjectFile): Promise<void> => {
-  // First, delete any associated image descriptions
   try {
-    const { error: imageDescError } = await supabase
+    // Step 1: First check if there are any image descriptions for this file
+    const { data: imageDescData, error: imageDescQueryError } = await supabase
       .from('image_descriptions')
-      .delete()
+      .select('id')
       .eq('file_id', file.id);
-
-    if (imageDescError) {
-      console.error('Error deleting image descriptions:', imageDescError);
-      // Continue with file deletion even if there was an error with image descriptions
+      
+    if (imageDescQueryError) {
+      console.error('Error checking image descriptions:', imageDescQueryError);
+      throw imageDescQueryError;
+    }
+    
+    // Step 2: Delete any associated image descriptions if they exist
+    if (imageDescData && imageDescData.length > 0) {
+      console.log(`Found ${imageDescData.length} image descriptions to delete`);
+      
+      const { error: imageDescError } = await supabase
+        .from('image_descriptions')
+        .delete()
+        .eq('file_id', file.id);
+  
+      if (imageDescError) {
+        console.error('Error deleting image descriptions:', imageDescError);
+        throw imageDescError;
+      }
     }
 
-    // Next, delete any note_file_relationships
-    const { error: relationshipError } = await supabase
+    // Step 3: Check for and delete any note_file_relationships
+    const { data: relationshipData, error: relationshipQueryError } = await supabase
       .from('note_file_relationships')
-      .delete()
+      .select('id')
       .eq('file_id', file.id);
-
-    if (relationshipError) {
-      console.error('Error deleting note file relationships:', relationshipError);
-      // Continue with file deletion even if there was an error with relationships
+      
+    if (relationshipQueryError) {
+      console.error('Error checking note file relationships:', relationshipQueryError);
+      throw relationshipQueryError;
+    }
+    
+    if (relationshipData && relationshipData.length > 0) {
+      console.log(`Found ${relationshipData.length} file relationships to delete`);
+      
+      const { error: relationshipError } = await supabase
+        .from('note_file_relationships')
+        .delete()
+        .eq('file_id', file.id);
+  
+      if (relationshipError) {
+        console.error('Error deleting note file relationships:', relationshipError);
+        throw relationshipError;
+      }
     }
 
-    // Now delete the actual file storage if it exists
+    // Step 4: Now delete the actual file storage if it exists
     if (file.file_path && file.file_path !== 'audio') {
       const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
       
@@ -139,23 +168,35 @@ export const deleteFile = async (file: ProjectFile): Promise<void> => {
         const urlPath = new URL(file.file_path).pathname;
         const storagePath = urlPath.split('/').slice(2).join('/');
         
+        console.log('Deleting file from storage:', storagePath);
+        
         const { error: storageError } = await supabase.storage
           .from(bucketName)
           .remove([storagePath]);
           
-        if (storageError) console.error('Storage removal error:', storageError);
+        if (storageError) {
+          console.error('Storage removal error:', storageError);
+          // Continue even if storage deletion fails
+        }
       } catch (error) {
         console.error('Error parsing file path:', error);
+        // Continue even if there's an error with the file path
       }
     }
 
-    // Finally delete the file record
+    // Step 5: Finally delete the file record
+    console.log('Deleting file record with ID:', file.id);
     const { error } = await supabase
       .from('files')
       .delete()
       .eq('id', file.id);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error deleting file record:', error);
+      throw error;
+    }
+    
+    console.log('File successfully deleted');
   } catch (error) {
     console.error('Error in deleteFile function:', error);
     throw error;
