@@ -43,11 +43,6 @@ interface NotesSectionProps {
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   content: z.string().optional(),
-});
-
-const editFormSchema = z.object({
-  title: z.string().min(2, 'Title must be at least 2 characters.'),
-  content: z.string().optional(),
   analysis: z.string().optional(),
 });
 
@@ -61,20 +56,23 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   const [selectedNote, setSelectedNote] = useState<ExtendedNote | null>(null);
   const [saving, setSaving] = useState(false);
   const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
+  const [addNoteRelatedFiles, setAddNoteRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
   const [analyzingImages, setAnalyzingImages] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [pollingInterval, setPollingInterval] = useState<number | null>(null);
+  const [addNoteId, setAddNoteId] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: '',
       content: '',
+      analysis: '',
     },
   });
 
-  const editForm = useForm<z.infer<typeof editFormSchema>>({
-    resolver: zodResolver(editFormSchema),
+  const editForm = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       title: '',
       content: '',
@@ -152,18 +150,25 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
 
       const name = titleToCamelCase(values.title);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('notes')
         .insert({
           title: values.title,
           name: name,
           content: values.content || '',
+          analysis: values.analysis || null,
           project_id: projectId,
           user_id: session.session.user.id,
           position: nextPosition
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      if (data) {
+        setAddNoteId(data.id);
+      }
 
       uiToast({
         title: 'Success',
@@ -182,10 +187,11 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       });
     } finally {
       setSaving(false);
+      setAddNoteId(null);
     }
   };
 
-  const handleEditNote = async (values: z.infer<typeof editFormSchema>) => {
+  const handleEditNote = async (values: z.infer<typeof formSchema>) => {
     if (!selectedNote) return;
 
     try {
@@ -310,7 +316,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     }
   };
 
-  const startPollingForAnalysisCompletion = (noteId: string) => {
+  const startPollingForAnalysisCompletion = (noteId: string, isAdd: boolean = false) => {
     if (pollingInterval !== null) {
       clearInterval(pollingInterval);
     }
@@ -336,8 +342,12 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
           .single();
           
         if (!error && data) {
-          editForm.setValue('analysis', data.analysis || '');
-          setSelectedNote(prevNote => prevNote ? { ...prevNote, analysis: data.analysis } : null);
+          if (isAdd) {
+            form.setValue('analysis', data.analysis || '');
+          } else {
+            editForm.setValue('analysis', data.analysis || '');
+            setSelectedNote(prevNote => prevNote ? { ...prevNote, analysis: data.analysis } : null);
+          }
           toast.success('Image analysis completed');
         }
       } else if (attempts >= maxAttempts) {
@@ -351,13 +361,14 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     setPollingInterval(intervalId);
   };
 
-  const handleAnalyzeImages = async () => {
-    if (!selectedNote) return;
+  const handleAnalyzeImages = async (isAdd: boolean = false) => {
+    const noteId = isAdd ? addNoteId : selectedNote?.id;
+    if (!noteId) return;
     
     setAnalyzingImages(true);
     
     try {
-      const imageRelationships = relatedFiles.filter(rel => 
+      const imageRelationships = (isAdd ? addNoteRelatedFiles : relatedFiles).filter(rel => 
         rel.file_type === 'image'
       );
       
@@ -375,7 +386,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project: ${projectName}`);
       
       const success = await submitImageAnalysis(
-        selectedNote.id,
+        noteId,
         projectId,
         imageUrls,
         isTestMode
@@ -386,7 +397,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       }
       
       toast.success('Image analysis started');
-      startPollingForAnalysisCompletion(selectedNote.id);
+      startPollingForAnalysisCompletion(noteId, isAdd);
       
     } catch (error) {
       console.error('Error analyzing images:', error);
@@ -412,6 +423,8 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
           onClick={() => {
             form.reset();
             setIsAddDialogOpen(true);
+            setAddNoteId(`temp-${Date.now()}`);
+            setAddNoteRelatedFiles([]);
           }}
         >
           <PlusCircle size={16} className="mr-2" />
@@ -499,65 +512,141 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         open={isAddDialogOpen} 
         onOpenChange={setIsAddDialogOpen}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[90vh] p-0 flex flex-col">
+          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
             <DialogTitle>Add Note</DialogTitle>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleAddNote)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter note title" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="content"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex justify-between items-center">
-                      <FormLabel>Content (Optional)</FormLabel>
-                      <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
+          
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleAddNote)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter note title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex justify-between items-center">
+                        <FormLabel>Content (Optional)</FormLabel>
+                        <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
+                      </div>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter note content" 
+                          className="min-h-[70px]"
+                          rows={4}
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="analysis"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex justify-between items-center">
+                        <FormLabel>Analysis</FormLabel>
+                        <Button
+                          type="button"
+                          onClick={() => handleAnalyzeImages(true)}
+                          isLoading={analyzingImages}
+                          disabled={!addNoteId || addNoteRelatedFiles.length === 0}
+                          className="flex items-center gap-1"
+                        >
+                          <ImageIcon size={16} />
+                          <span>Analyze Images</span>
+                        </Button>
+                      </div>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Analysis content"
+                          className="min-h-[100px]"
+                          rows={4}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {addNoteId && (
+                  <div className="space-y-4">
+                    <div className="rounded-lg border p-4">
+                      <div className="text-sm font-medium mb-2">Related Files</div>
+                      <div className="mb-2">
+                        <FilePicker
+                          projectId={projectId}
+                          noteId={addNoteId}
+                          onFileAdded={() => {
+                            if (addNoteId) {
+                              fetchRelatedFiles(addNoteId).then(files => {
+                                setAddNoteRelatedFiles(files);
+                              });
+                            }
+                          }}
+                          relatedFiles={addNoteRelatedFiles}
+                        />
+                      </div>
+                      {addNoteRelatedFiles.length > 0 && (
+                        <div className="mt-2">
+                          <RelatedFiles 
+                            noteId={addNoteId} 
+                            projectId={projectId}
+                            relationships={addNoteRelatedFiles}
+                            onRelationshipsChanged={() => {
+                              if (addNoteId) {
+                                fetchRelatedFiles(addNoteId).then(files => {
+                                  setAddNoteRelatedFiles(files);
+                                });
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Enter note content" 
-                        className="min-h-[70px]"
-                        rows={4}
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                  </div>
                 )}
-              />
-              
-              <DialogFooter className="mt-6">
-                <Button 
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setIsAddDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit"
-                  isLoading={saving}
-                >
-                  Add Note
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+              </form>
+            </Form>
+          </div>
+          
+          <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
+            <Button 
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setIsAddDialogOpen(false);
+                setAddNoteId(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button"
+              onClick={form.handleSubmit(handleAddNote)}
+              isLoading={saving}
+            >
+              Add Note
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -618,7 +707,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                         <FormLabel>Analysis</FormLabel>
                         <Button
                           type="button"
-                          onClick={handleAnalyzeImages}
+                          onClick={() => handleAnalyzeImages()}
                           isLoading={analyzingImages}
                           className="flex items-center gap-1"
                         >
