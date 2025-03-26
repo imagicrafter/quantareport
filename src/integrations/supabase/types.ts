@@ -671,6 +671,7 @@ export type Database = {
       v_notes_with_image_relationships: {
         Row: {
           analysis: string | null
+          content: string | null
           group_name: string | null
           note_id: string | null
           project_id: string | null
