@@ -3,8 +3,8 @@ import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
 
 // Get n8n webhook URLs from environment variables with fallbacks
-export const NOTE_DEV_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_DEV_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook-test/62d6d438-48ae-47db-850e-5fc52f54e843';
-export const NOTE_PROD_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_PROD_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook/62d6d438-48ae-47db-850e-5fc52f54e843';
+export const NOTE_DEV_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_DEV_WEBHOOK || 'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=dev';
+export const NOTE_PROD_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_PROD_WEBHOOK || 'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=prod';
 
 export interface NoteFileRelationshipWithType extends NoteFileRelationship {
   file_type: string;
@@ -75,5 +75,43 @@ export const reorderNotes = async (notes: Note[], sourceIndex: number, destinati
   } catch (error) {
     console.error('Error reordering notes:', error);
     throw error;
+  }
+};
+
+// Function to submit image analysis request
+export const submitImageAnalysis = async (
+  noteId: string, 
+  projectId: string, 
+  imageUrls: string[], 
+  isTestMode: boolean
+): Promise<boolean> => {
+  try {
+    const webhookUrl = isTestMode ? NOTE_DEV_WEBHOOK_URL : NOTE_PROD_WEBHOOK_URL;
+    
+    const payload = {
+      note_id: noteId,
+      project_id: projectId,
+      image_urls: imageUrls,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log(`Submitting analysis request to ${webhookUrl}`);
+    
+    const { error } = await supabase.functions.invoke('n8n-proxy', {
+      body: {
+        env: isTestMode ? 'dev' : 'prod',
+        payload
+      }
+    });
+    
+    if (error) {
+      console.error('Error invoking n8n-proxy function:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error submitting image analysis:', error);
+    return false;
   }
 };

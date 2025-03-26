@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { Note, reorderNotes, titleToCamelCase, NOTE_DEV_WEBHOOK_URL, NOTE_PROD_WEBHOOK_URL, NoteFileRelationshipWithType } from '@/utils/noteUtils';
+import { Note, reorderNotes, titleToCamelCase, submitImageAnalysis, NoteFileRelationshipWithType } from '@/utils/noteUtils';
 import { NoteFileRelationship, fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 import FilePicker from './notes/FilePicker';
 import RelatedFiles from './notes/RelatedFiles';
@@ -371,42 +371,21 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       
       const imageUrls = imageRelationships.map(rel => rel.file_path);
       
-      const { data: project } = await supabase
-        .from('projects')
-        .select('name')
-        .eq('id', projectId)
-        .single();
+      const isTestMode = projectName.toLowerCase().includes('test');
+      console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project: ${projectName}`);
       
-      const isTestMode = project?.name.toLowerCase().includes('test');
+      const success = await submitImageAnalysis(
+        selectedNote.id,
+        projectId,
+        imageUrls,
+        isTestMode
+      );
       
-      const webhookUrl = isTestMode ? NOTE_DEV_WEBHOOK_URL : NOTE_PROD_WEBHOOK_URL;
-      
-      console.log(`Using ${isTestMode ? 'TESTING' : 'PRODUCTION'} webhook URL: ${webhookUrl}`);
-      
-      const webhookPayload = {
-        note_id: selectedNote.id,
-        project_id: projectId,
-        image_urls: imageUrls,
-        timestamp: new Date().toISOString()
-      };
-      
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Origin": window.location.origin
-        },
-        mode: "cors",
-        body: JSON.stringify(webhookPayload)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Webhook request failed: ${response.statusText}`);
+      if (!success) {
+        throw new Error('Failed to submit image analysis request');
       }
       
       toast.success('Image analysis started');
-      
       startPollingForAnalysisCompletion(selectedNote.id);
       
     } catch (error) {

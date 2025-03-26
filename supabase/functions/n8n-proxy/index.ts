@@ -1,74 +1,78 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, origin',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// The actual webhook URLs
+const DEV_WEBHOOK_URL = "https://n8n-01.imagicrafterai.com/webhook-test/62d6d438-48ae-47db-850e-5fc52f54e843";
+const PROD_WEBHOOK_URL = "https://n8n-01.imagicrafterai.com/webhook/62d6d438-48ae-47db-850e-5fc52f54e843";
+
+// All Supabase Edge Functions need to handle OPTIONS request for CORS preflight
+function handleCors() {
+  return new Response(null, {
+    headers: CORS_HEADERS,
+    status: 204, // No content
+  });
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: corsHeaders
-    });
+  // Handle CORS preflight request
+  if (req.method === "OPTIONS") {
+    return handleCors();
   }
 
   try {
-    const url = new URL(req.url);
-    const targetUrl = url.searchParams.get('url');
-    
-    if (!targetUrl) {
-      return new Response(JSON.stringify({ error: 'No target URL provided' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Get method, either from query param or from request
-    const method = url.searchParams.get('method') || req.method;
-    
-    // Build headers for the target request, copying relevant headers from the incoming request
-    const headers = new Headers();
-    headers.set('Content-Type', 'application/json');
-    
-    // Parse and forward the body
-    let body = null;
-    if (method !== 'GET' && method !== 'HEAD') {
-      try {
-        const requestData = await req.json();
-        body = JSON.stringify(requestData);
-      } catch (e) {
-        // If parsing fails, try to get the text body
-        body = await req.text();
-      }
-    }
-    
-    // Forward the request to the target URL
-    const response = await fetch(targetUrl, {
-      method,
-      headers,
-      body,
-    });
-    
-    // Read the response from n8n
-    const responseData = await response.text();
-    
-    // Return the proxied response
-    return new Response(responseData, {
-      status: response.status,
+    // Extract the request body
+    const { env, payload } = await req.json();
+    console.log(`Request for ${env} environment with note_id ${payload.note_id}`);
+
+    // Determine which webhook URL to use
+    const webhookUrl = env === "dev" ? DEV_WEBHOOK_URL : PROD_WEBHOOK_URL;
+    console.log(`Using webhook URL: ${webhookUrl}`);
+
+    // Forward the request to the actual webhook URL
+    const response = await fetch(webhookUrl, {
+      method: "POST",
       headers: {
-        ...corsHeaders,
-        'Content-Type': response.headers.get('Content-Type') || 'application/json'
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error(`Error from webhook: ${response.status} ${response.statusText}`);
+      // Still return a success response to the client
+      return new Response(
+        JSON.stringify({ success: false, error: "Failed to process webhook request" }),
+        {
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          status: 200, // Still return 200 to the client
+        }
+      );
+    }
+
+    // Return success response
+    return new Response(
+      JSON.stringify({ success: true }),
+      {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        status: 200,
       }
-    });
+    );
   } catch (error) {
-    console.error('Error in n8n proxy:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    console.error(`Error processing request: ${error.message}`);
+    
+    // Return error response
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      {
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        status: 200, // Still return 200 to the client
+      }
+    );
   }
 });
