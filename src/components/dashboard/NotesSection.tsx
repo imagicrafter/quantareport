@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { PlusCircle, Edit, Trash, GripVertical, ImageIcon } from 'lucide-react';
+import { PlusCircle, Edit, Trash, GripVertical, ImageIcon, File } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Button from '../ui-elements/Button';
@@ -605,7 +606,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                           relatedFiles={addNoteRelatedFiles}
                         />
                       </div>
-                      {addNoteRelatedFiles.length > 0 && (
+                      {addNoteRelatedFiles.length > 0 ? (
                         <div className="mt-2">
                           <RelatedFiles 
                             noteId={addNoteId} 
@@ -619,6 +620,17 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                               }
                             }}
                           />
+                        </div>
+                      ) : (
+                        <div className="bg-secondary/30 rounded-md p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 flex items-center justify-center bg-secondary rounded-full">
+                              <File size={16} />
+                            </div>
+                            <span className="text-sm font-medium">
+                              0 files attached
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
