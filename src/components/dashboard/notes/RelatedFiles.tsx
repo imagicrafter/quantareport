@@ -19,9 +19,19 @@ const RelatedFiles = ({ noteId, projectId, relationships, onRelationshipsChanged
   const handleRemoveFile = async (relationshipId: string) => {
     try {
       setRemovingFileId(relationshipId);
-      const success = await removeFileFromNote(relationshipId);
-      if (success) {
+      
+      // Check if this is a temporary relationship (for new notes)
+      const isTemporaryRelationship = relationshipId.startsWith('temp-');
+      
+      if (isTemporaryRelationship) {
+        // For temporary relationships, just notify the parent to update the list
         onRelationshipsChanged();
+      } else {
+        // For permanent relationships, remove from database
+        const success = await removeFileFromNote(relationshipId);
+        if (success) {
+          onRelationshipsChanged();
+        }
       }
     } finally {
       setRemovingFileId(null);
@@ -58,15 +68,38 @@ const RelatedFiles = ({ noteId, projectId, relationships, onRelationshipsChanged
           No files associated with this note
         </div>
       ) : (
-        <div className="bg-secondary/30 rounded-md p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 flex items-center justify-center bg-secondary rounded-full">
-              <File size={16} />
+        <div className="space-y-2">
+          {relationships.map((rel) => (
+            <div 
+              key={rel.id} 
+              className="bg-secondary/30 rounded-md p-3 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 flex items-center justify-center bg-secondary rounded-full">
+                  {getFileIcon(rel.file_type || 'file')}
+                </div>
+                <div>
+                  <span className="text-sm font-medium">
+                    {rel.file?.name || 'Unknown file'}
+                  </span>
+                  <div className="text-xs text-muted-foreground capitalize">
+                    {rel.file_type || 'file'}
+                  </div>
+                </div>
+              </div>
+              <button
+                className="text-muted-foreground hover:text-destructive p-1 rounded-full"
+                onClick={() => handleRemoveFile(rel.id)}
+                disabled={removingFileId === rel.id}
+              >
+                {removingFileId === rel.id ? (
+                  <span className="h-4 w-4 block rounded-full border-2 border-t-transparent border-muted-foreground animate-spin" />
+                ) : (
+                  <X size={16} />
+                )}
+              </button>
             </div>
-            <span className="text-sm font-medium">
-              {relationships.length} {relationships.length === 1 ? 'file' : 'files'} attached
-            </span>
-          </div>
+          ))}
         </div>
       )}
     </div>

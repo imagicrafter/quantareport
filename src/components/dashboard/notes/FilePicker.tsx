@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { File, Music, Folder, FileText, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ProjectFile } from '@/components/dashboard/files/FileItem';
@@ -47,28 +46,22 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
   const loadFiles = async () => {
     setLoading(true);
     try {
-      // Only fetch available files if noteId is a valid UUID (not a temp ID)
-      if (noteId && !noteId.startsWith('temp-')) {
-        const files = await fetchAvailableFiles(projectId, noteId);
-        setAvailableFiles(files);
-      } else {
-        // For temporary notes, fetch all project files
-        const { data: files, error } = await supabase
-          .from('files')
-          .select('*')
-          .eq('project_id', projectId)
-          .order('position', { ascending: true });
-          
-        if (error) throw error;
+      // Fetch available files for this project
+      const { data: files, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('position', { ascending: true });
         
-        // Filter out any files that are already in the relatedFiles array
-        const relatedFileIds = relatedFiles.map(rel => rel.file_id);
-        const filteredFiles = (files as ProjectFile[]).filter(
-          file => !relatedFileIds.includes(file.id)
-        );
-        
-        setAvailableFiles(filteredFiles);
-      }
+      if (error) throw error;
+      
+      // Filter out any files that are already in the relatedFiles array
+      const relatedFileIds = relatedFiles.map(rel => rel.file_id);
+      const filteredFiles = (files as ProjectFile[]).filter(
+        file => !relatedFileIds.includes(file.id)
+      );
+      
+      setAvailableFiles(filteredFiles);
     } catch (error) {
       console.error('Error loading files:', error);
     } finally {
@@ -100,30 +93,49 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
   const handleFileSelect = async (fileId: string, selectedFile: ProjectFile) => {
     setAddingFileId(fileId);
     try {
-      if (noteId && !noteId.startsWith('temp-')) {
-        const success = await addFileToNote(noteId, fileId);
-        if (success) {
-          onFileAdded();
-          loadFiles(); // Refresh available files
-        }
-      } else {
-        // For temporary notes, create a temporary relationship
-        const tempRelationship: NoteFileRelationshipWithType = {
-          id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      // Create a temporary relationship object
+      const tempRelationship: NoteFileRelationshipWithType = {
+        id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        note_id: noteId,
+        file_id: fileId,
+        created_at: new Date().toISOString(),
+        file: selectedFile,
+        file_type: selectedFile.type,
+        file_path: selectedFile.file_path
+      };
+      
+      // Try to add the file to the note in the database
+      const { data, error } = await supabase
+        .from('note_file_relationships')
+        .insert({
           note_id: noteId,
-          file_id: fileId,
-          created_at: new Date().toISOString(),
+          file_id: fileId
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error adding file to note:', error);
+        // Even if there's an error, we can still use the temporary relationship
+        // in the UI while the user is working on the note
+        onFileAdded(tempRelationship);
+      } else if (data) {
+        // If successful, use the real relationship data
+        const realRelationship: NoteFileRelationshipWithType = {
+          id: data.id,
+          note_id: data.note_id,
+          file_id: data.file_id,
+          created_at: data.created_at,
           file: selectedFile,
           file_type: selectedFile.type,
           file_path: selectedFile.file_path
         };
-        
-        // Remove the file from the available files
-        setAvailableFiles(prev => prev.filter(file => file.id !== fileId));
-        
-        // Pass the new relationship to the parent component
-        onFileAdded(tempRelationship);
+        onFileAdded(realRelationship);
       }
+      
+      // Remove the file from available files
+      setAvailableFiles(prev => prev.filter(file => file.id !== fileId));
+      
     } finally {
       setAddingFileId(null);
     }
@@ -132,24 +144,26 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
   const handleRemoveFile = async (relationshipId: string) => {
     setRemovingFileId(relationshipId);
     try {
-      if (!relationshipId.startsWith('temp-')) {
-        const success = await removeFileFromNote(relationshipId);
-        if (success) {
-          onFileAdded();
-          loadFiles(); // Refresh available files after removal
+      // Find the relationship to get the file info
+      const relationship = relatedFiles.find(rel => rel.id === relationshipId);
+      
+      if (relationship) {
+        // Try to remove from database if it's not a temporary relationship
+        if (!relationshipId.startsWith('temp-')) {
+          await supabase
+            .from('note_file_relationships')
+            .delete()
+            .eq('id', relationshipId);
         }
-      } else {
-        // For temporary relationships, find the relationship and get the file
-        const relationship = relatedFiles.find(rel => rel.id === relationshipId);
-        if (relationship) {
-          // Add the file back to available files if it's not already there
-          const fileAlreadyAvailable = availableFiles.some(file => file.id === relationship.file_id);
-          if (!fileAlreadyAvailable && relationship.file) {
-            setAvailableFiles(prev => [...prev, relationship.file!]);
-          }
-          // Notify the parent component about the removal
-          onFileAdded();
+        
+        // Add the file back to available files if it's not already there
+        const fileAlreadyAvailable = availableFiles.some(file => file.id === relationship.file_id);
+        if (!fileAlreadyAvailable && relationship.file) {
+          setAvailableFiles(prev => [...prev, relationship.file!]);
         }
+        
+        // Notify the parent component about the removal
+        onFileAdded();
       }
     } finally {
       setRemovingFileId(null);

@@ -60,7 +60,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   const [analyzingImages, setAnalyzingImages] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [pollingInterval, setPollingInterval] = useState<number | null>(null);
-  const [addNoteId, setAddNoteId] = useState<string | null>(null);
+  const [tempNoteId, setTempNoteId] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -126,15 +126,14 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   }, [projectId]);
 
   const fetchFileRelationships = async (noteId: string) => {
-    if (noteId && !noteId.startsWith('temp-')) {
+    if (noteId) {
       const filesWithTypes = await fetchRelatedFiles(noteId);
       setRelatedFiles(filesWithTypes);
     }
   };
 
-  const handleAddNote = async (values: z.infer<typeof formSchema>) => {
+  const createTemporaryNote = async () => {
     try {
-      setSaving(true);
       const { data: session } = await supabase.auth.getSession();
       
       if (!session.session) {
@@ -143,22 +142,19 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
           description: 'You must be logged in to add notes.',
           variant: 'destructive',
         });
-        return;
+        return null;
       }
 
       const nextPosition = notes.length > 0 
         ? Math.max(...notes.map(note => note.position || 0)) + 1 
         : 1;
 
-      const name = titleToCamelCase(values.title);
-
       const { data, error } = await supabase
         .from('notes')
         .insert({
-          title: values.title,
-          name: name,
-          content: values.content || '',
-          analysis: values.analysis || null,
+          title: 'Temporary Note',
+          name: 'temporaryNote',
+          content: '',
           project_id: projectId,
           user_id: session.session.user.id,
           position: nextPosition
@@ -167,21 +163,52 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         .single();
 
       if (error) throw error;
+      return data.id;
+    } catch (error) {
+      console.error('Error creating temporary note:', error);
+      return null;
+    }
+  };
 
-      if (data) {
-        if (addNoteRelatedFiles.length > 0) {
-          for (const relFile of addNoteRelatedFiles) {
-            if (relFile.file_id) {
-              await supabase
-                .from('note_file_relationships')
-                .insert({
-                  note_id: data.id,
-                  file_id: relFile.file_id
-                });
-            }
-          }
-        }
+  const deleteTemporaryNote = async (noteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting temporary note:', error);
+    }
+  };
+
+  const handleAddNote = async (values: z.infer<typeof formSchema>) => {
+    try {
+      setSaving(true);
+      
+      if (!tempNoteId) {
+        uiToast({
+          title: 'Error',
+          description: 'No temporary note ID available.',
+          variant: 'destructive',
+        });
+        return;
       }
+
+      const name = titleToCamelCase(values.title);
+
+      const { error } = await supabase
+        .from('notes')
+        .update({
+          title: values.title,
+          name: name,
+          content: values.content || '',
+          analysis: values.analysis || null,
+        })
+        .eq('id', tempNoteId);
+
+      if (error) throw error;
 
       uiToast({
         title: 'Success',
@@ -201,7 +228,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       });
     } finally {
       setSaving(false);
-      setAddNoteId(null);
+      setTempNoteId(null);
     }
   };
 
@@ -428,17 +455,42 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     };
   }, [pollingInterval]);
 
-  const handleAddNoteRelationshipChange = (fileId: string, fileType: string, filePath: string) => {
-    const newRelationship: NoteFileRelationshipWithType = {
-      id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      note_id: addNoteId || '',
-      file_id: fileId,
-      created_at: new Date().toISOString(),
-      file_type: fileType,
-      file_path: filePath
-    };
-    
-    setAddNoteRelatedFiles(prev => [...prev, newRelationship]);
+  const handleAddNoteRelationshipChange = (newRelationship?: NoteFileRelationshipWithType) => {
+    if (newRelationship) {
+      setAddNoteRelatedFiles(prev => {
+        const exists = prev.some(rel => rel.id === newRelationship.id);
+        if (exists) {
+          return prev;
+        }
+        return [...prev, newRelationship];
+      });
+    } else {
+      if (tempNoteId) {
+        fetchFileRelationships(tempNoteId);
+      }
+    }
+  };
+
+  const handleRemoveRelationship = (relationshipId: string) => {
+    setAddNoteRelatedFiles(prev => prev.filter(rel => rel.id !== relationshipId));
+  };
+
+  const handleAddDialogOpenChange = async (open: boolean) => {
+    if (open) {
+      form.reset();
+      setAddNoteRelatedFiles([]);
+      const newTempNoteId = await createTemporaryNote();
+      if (newTempNoteId) {
+        setTempNoteId(newTempNoteId);
+      } else {
+        return;
+      }
+    } else if (tempNoteId && !saving) {
+      await deleteTemporaryNote(tempNoteId);
+      setTempNoteId(null);
+      setAddNoteRelatedFiles([]);
+    }
+    setIsAddDialogOpen(open);
   };
 
   return (
@@ -447,12 +499,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         <h3 className="text-lg font-medium">Project Notes</h3>
         <Button 
           size="sm" 
-          onClick={() => {
-            form.reset();
-            setIsAddDialogOpen(true);
-            setAddNoteId(`temp-${Date.now()}`);
-            setAddNoteRelatedFiles([]);
-          }}
+          onClick={() => handleAddDialogOpenChange(true)}
         >
           <PlusCircle size={16} className="mr-2" />
           Add Note
@@ -537,7 +584,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
 
       <Dialog 
         open={isAddDialogOpen} 
-        onOpenChange={setIsAddDialogOpen}
+        onOpenChange={handleAddDialogOpenChange}
       >
         <DialogContent className="sm:max-w-md max-h-[90vh] p-0 flex flex-col">
           <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
@@ -594,7 +641,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                           type="button"
                           onClick={() => handleAnalyzeImages(true)}
                           isLoading={analyzingImages}
-                          disabled={!addNoteId || addNoteRelatedFiles.length === 0}
+                          disabled={!tempNoteId || addNoteRelatedFiles.length === 0}
                           className="flex items-center gap-1"
                         >
                           <ImageIcon size={16} />
@@ -614,29 +661,25 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                   )}
                 />
                 
-                {addNoteId && (
+                {tempNoteId && (
                   <div className="space-y-4">
                     <div className="rounded-lg border p-4">
                       <div className="text-sm font-medium mb-2">Related Files</div>
                       <div className="mb-2">
                         <FilePicker
                           projectId={projectId}
-                          noteId={addNoteId}
-                          onFileAdded={() => {
-                            setAddNoteRelatedFiles([...addNoteRelatedFiles]);
-                          }}
+                          noteId={tempNoteId}
+                          onFileAdded={handleAddNoteRelationshipChange}
                           relatedFiles={addNoteRelatedFiles}
                         />
                       </div>
                       {addNoteRelatedFiles.length > 0 ? (
                         <div className="mt-2">
                           <RelatedFiles 
-                            noteId={addNoteId} 
+                            noteId={tempNoteId} 
                             projectId={projectId}
                             relationships={addNoteRelatedFiles}
-                            onRelationshipsChanged={() => {
-                              setAddNoteRelatedFiles([...addNoteRelatedFiles]);
-                            }}
+                            onRelationshipsChanged={handleAddNoteRelationshipChange}
                           />
                         </div>
                       ) : (
@@ -662,11 +705,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
             <Button 
               type="button"
               variant="ghost"
-              onClick={() => {
-                setIsAddDialogOpen(false);
-                setAddNoteId(null);
-                setAddNoteRelatedFiles([]);
-              }}
+              onClick={() => handleAddDialogOpenChange(false)}
             >
               Cancel
             </Button>
