@@ -290,7 +290,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     setAnalyzingImages(true);
     
     try {
-      // Get image files related to this note
       const imageRelationships = relatedFiles.filter(rel => 
         rel.file_type === 'image'
       );
@@ -304,7 +303,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       
       const imageUrls = imageRelationships.map(rel => rel.file_path);
       
-      // Determine if we should use the test webhook based on project name
       const { data: project } = await supabase
         .from('projects')
         .select('name')
@@ -313,7 +311,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       
       const isTestMode = project?.name.toLowerCase().includes('test');
       
-      // Select the appropriate webhook URL based on project name
       const webhookUrl = isTestMode ? NOTE_DEV_WEBHOOK_URL : NOTE_PROD_WEBHOOK_URL;
       
       console.log(`Using ${isTestMode ? 'TESTING' : 'PRODUCTION'} webhook URL: ${webhookUrl}`);
@@ -324,7 +321,6 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         timestamp: new Date().toISOString()
       };
       
-      // Send webhook request
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
@@ -342,9 +338,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       
       toast.success('Image analysis started');
       
-      // Wait a moment to let the n8n workflow update the database
       setTimeout(async () => {
-        // Refresh the note data to get the updated analysis
         const { data, error } = await supabase
           .from('notes')
           .select('*')
@@ -357,10 +351,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         }
         
         if (data) {
-          // Update the form with the new analysis data
           editForm.setValue('analysis', data.analysis || '');
-          
-          // Also update the selected note
           setSelectedNote({
             ...selectedNote,
             analysis: data.analysis
@@ -616,21 +607,12 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                   
                   {selectedNote && (
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold">Related Files</h4>
-                        <FilePicker 
-                          projectId={projectId} 
-                          noteId={selectedNote.id}
-                          onFileAdded={() => fetchFileRelationships(selectedNote.id)}
-                        />
-                      </div>
-                      <div className="max-h-[200px] overflow-y-auto pr-2">
-                        <RelatedFiles 
-                          noteId={selectedNote.id} 
-                          relationships={relatedFiles}
-                          onRelationshipsChanged={() => fetchFileRelationships(selectedNote.id)}
-                        />
-                      </div>
+                      <RelatedFiles 
+                        noteId={selectedNote.id} 
+                        projectId={projectId}
+                        relationships={relatedFiles}
+                        onRelationshipsChanged={() => fetchFileRelationships(selectedNote.id)}
+                      />
                     </div>
                   )}
                 </form>

@@ -67,7 +67,7 @@ export const reorderNotes = async (notes: Note[], sourceIndex: number, destinati
     
     const { error } = await supabase
       .from('notes')
-      .upsert(updates, { onConflict: 'id' });
+      .upsert(updates);
     
     if (error) throw error;
     
