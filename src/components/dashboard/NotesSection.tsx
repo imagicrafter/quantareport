@@ -63,6 +63,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
   const [analyzingImages, setAnalyzingImages] = useState(false);
   const [projectName, setProjectName] = useState('');
+  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -284,6 +285,72 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     editForm.setValue('content', text);
   };
 
+  const checkAnalysisStatus = async (noteId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('analysis')
+        .eq('id', noteId)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching note status:', error);
+        return false;
+      }
+      
+      if (data && data.analysis) {
+        console.log('Analysis completed:', data.analysis.substring(0, 50) + '...');
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error checking analysis status:', error);
+      return false;
+    }
+  };
+
+  const startPollingForAnalysisCompletion = (noteId: string) => {
+    if (pollingInterval !== null) {
+      clearInterval(pollingInterval);
+    }
+    
+    const maxAttempts = 30;
+    let attempts = 0;
+    
+    const intervalId = window.setInterval(async () => {
+      attempts++;
+      console.log(`Checking analysis status: attempt ${attempts}/${maxAttempts}`);
+      
+      const isComplete = await checkAnalysisStatus(noteId);
+      
+      if (isComplete) {
+        clearInterval(intervalId);
+        setPollingInterval(null);
+        setAnalyzingImages(false);
+        
+        const { data, error } = await supabase
+          .from('notes')
+          .select('*')
+          .eq('id', noteId)
+          .single();
+          
+        if (!error && data) {
+          editForm.setValue('analysis', data.analysis || '');
+          setSelectedNote(prevNote => prevNote ? { ...prevNote, analysis: data.analysis } : null);
+          toast.success('Image analysis completed');
+        }
+      } else if (attempts >= maxAttempts) {
+        clearInterval(intervalId);
+        setPollingInterval(null);
+        setAnalyzingImages(false);
+        toast.error('Analysis is taking longer than expected. Please check back later.');
+      }
+    }, 2000);
+    
+    setPollingInterval(intervalId);
+  };
+
   const handleAnalyzeImages = async () => {
     if (!selectedNote) return;
     
@@ -298,6 +365,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         toast('No images available for analysis', {
           description: 'Add some images to analyze first'
         });
+        setAnalyzingImages(false);
         return;
       }
       
@@ -323,13 +391,13 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       };
       
       const response = await fetch(webhookUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Origin': window.location.origin
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Origin": window.location.origin
         },
-        mode: 'cors',
+        mode: "cors",
         body: JSON.stringify(webhookPayload)
       });
       
@@ -339,28 +407,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       
       toast.success('Image analysis started');
       
-      setTimeout(async () => {
-        const { data, error } = await supabase
-          .from('notes')
-          .select('*')
-          .eq('id', selectedNote.id)
-          .single();
-          
-        if (error) {
-          console.error('Error refreshing note data:', error);
-          return;
-        }
-        
-        if (data) {
-          editForm.setValue('analysis', data.analysis || '');
-          setSelectedNote({
-            ...selectedNote,
-            analysis: data.analysis
-          });
-        }
-        
-        setAnalyzingImages(false);
-      }, 3000);
+      startPollingForAnalysisCompletion(selectedNote.id);
       
     } catch (error) {
       console.error('Error analyzing images:', error);
@@ -368,6 +415,14 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       setAnalyzingImages(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (pollingInterval !== null) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
 
   return (
     <div className="space-y-4">
