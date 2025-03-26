@@ -24,14 +24,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { Note, reorderNotes, titleToCamelCase } from '@/utils/noteUtils';
+import { Note, reorderNotes, titleToCamelCase, NOTE_DEV_WEBHOOK_URL, NOTE_PROD_WEBHOOK_URL, NoteFileRelationshipWithType } from '@/utils/noteUtils';
 import { NoteFileRelationship, fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 import FilePicker from './notes/FilePicker';
 import RelatedFiles from './notes/RelatedFiles';
 import AudioRecorder from './files/AudioRecorder';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { NOTE_DEV_WEBHOOK_URL, NOTE_PROD_WEBHOOK_URL, NoteFileRelationshipWithType } from '@/utils/noteUtils';
 
 interface ExtendedNote extends Note {
   analysis?: string | null;
@@ -53,7 +52,7 @@ const editFormSchema = z.object({
 });
 
 const NotesSection = ({ projectId }: NotesSectionProps) => {
-  const { toast } = useToast();
+  const { toast: uiToast } = useToast();
   const [notes, setNotes] = useState<ExtendedNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -95,7 +94,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       setNotes(data);
     } catch (error) {
       console.error('Error fetching notes:', error);
-      toast({
+      uiToast({
         title: 'Error',
         description: 'Failed to load notes. Please try again.',
         variant: 'destructive',
@@ -128,8 +127,8 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   }, [projectId]);
 
   const fetchFileRelationships = async (noteId: string) => {
-    const files = await fetchRelatedFiles(noteId);
-    setRelatedFiles(files);
+    const filesWithTypes = await fetchRelatedFiles(noteId);
+    setRelatedFiles(filesWithTypes);
   };
 
   const handleAddNote = async (values: z.infer<typeof formSchema>) => {
@@ -138,7 +137,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       const { data: session } = await supabase.auth.getSession();
       
       if (!session.session) {
-        toast({
+        uiToast({
           title: 'Error',
           description: 'You must be logged in to add notes.',
           variant: 'destructive',
@@ -165,7 +164,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
 
       if (error) throw error;
 
-      toast({
+      uiToast({
         title: 'Success',
         description: 'Note added successfully!',
       });
@@ -175,7 +174,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       fetchNotes();
     } catch (error) {
       console.error('Error adding note:', error);
-      toast({
+      uiToast({
         title: 'Error',
         description: 'Failed to add note. Please try again.',
         variant: 'destructive',
@@ -201,7 +200,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
 
       if (error) throw error;
 
-      toast({
+      uiToast({
         title: 'Success',
         description: 'Note updated successfully!',
       });
@@ -211,7 +210,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       fetchNotes();
     } catch (error) {
       console.error('Error updating note:', error);
-      toast({
+      uiToast({
         title: 'Error',
         description: 'Failed to update note. Please try again.',
         variant: 'destructive',
@@ -233,7 +232,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
 
       if (error) throw error;
 
-      toast({
+      uiToast({
         title: 'Success',
         description: 'Note deleted successfully!',
       });
@@ -242,7 +241,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       fetchNotes();
     } catch (error) {
       console.error('Error deleting note:', error);
-      toast({
+      uiToast({
         title: 'Error',
         description: 'Failed to delete note. Please try again.',
         variant: 'destructive',
@@ -264,12 +263,12 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       const updatedNotes = await reorderNotes(notes, sourceIndex, destinationIndex);
       setNotes(updatedNotes);
       
-      toast({
+      uiToast({
         description: "Note order updated",
       });
     } catch (error) {
       console.error('Error reordering notes:', error);
-      toast({
+      uiToast({
         title: 'Error',
         description: 'Failed to update note order',
         variant: 'destructive',
