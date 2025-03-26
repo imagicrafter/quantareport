@@ -352,7 +352,7 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
               <>
                 <Button 
                   variant="outline" 
-                  size="icon"
+                  size="sm"
                   className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-background/80 hover:bg-background"
                   onClick={handlePreviousImage}
                 >
@@ -360,7 +360,7 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
                 </Button>
                 <Button 
                   variant="outline" 
-                  size="icon"
+                  size="sm"
                   className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-background/80 hover:bg-background"
                   onClick={handleNextImage}
                 >
