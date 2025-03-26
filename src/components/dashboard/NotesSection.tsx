@@ -317,6 +317,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       
       const webhookPayload = {
         note_id: selectedNote.id,
+        project_id: projectId,
         image_urls: imageUrls,
         timestamp: new Date().toISOString()
       };
