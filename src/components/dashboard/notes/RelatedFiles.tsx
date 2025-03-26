@@ -10,7 +10,7 @@ interface RelatedFilesProps {
   noteId: string;
   projectId: string;
   relationships: NoteFileRelationshipWithType[];
-  onRelationshipsChanged: () => void;
+  onRelationshipsChanged: (newRelationship?: NoteFileRelationshipWithType) => void;
 }
 
 const RelatedFiles = ({ noteId, projectId, relationships, onRelationshipsChanged }: RelatedFilesProps) => {

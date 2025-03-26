@@ -27,7 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface FilePickerProps {
   projectId: string;
   noteId: string;
-  onFileAdded: () => void;
+  onFileAdded: (newRelationship?: NoteFileRelationshipWithType) => void;
   relatedFiles: NoteFileRelationshipWithType[];
 }
 
@@ -107,8 +107,7 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
           loadFiles(); // Refresh available files
         }
       } else {
-        // For temporary notes, we need to create a temporary relationship
-        // and pass it back to the parent
+        // For temporary notes, create a temporary relationship
         const tempRelationship: NoteFileRelationshipWithType = {
           id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           note_id: noteId,
@@ -122,8 +121,8 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
         // Remove the file from the available files
         setAvailableFiles(prev => prev.filter(file => file.id !== fileId));
         
-        // Notify the parent component about the file selection
-        onFileAdded();
+        // Pass the new relationship to the parent component
+        onFileAdded(tempRelationship);
       }
     } finally {
       setAddingFileId(null);
@@ -140,8 +139,17 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
           loadFiles(); // Refresh available files after removal
         }
       } else {
-        // For temporary relationships, just notify the parent
-        onFileAdded();
+        // For temporary relationships, find the relationship and get the file
+        const relationship = relatedFiles.find(rel => rel.id === relationshipId);
+        if (relationship) {
+          // Add the file back to available files if it's not already there
+          const fileAlreadyAvailable = availableFiles.some(file => file.id === relationship.file_id);
+          if (!fileAlreadyAvailable && relationship.file) {
+            setAvailableFiles(prev => [...prev, relationship.file!]);
+          }
+          // Notify the parent component about the removal
+          onFileAdded();
+        }
       }
     } finally {
       setRemovingFileId(null);
