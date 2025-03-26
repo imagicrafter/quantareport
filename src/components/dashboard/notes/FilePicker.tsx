@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { File, Music, Folder, FileText, Plus, X } from 'lucide-react';
 import { ProjectFile } from '@/components/dashboard/files/FileItem';
@@ -14,7 +13,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogTrigger
+  DialogTrigger,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -100,7 +100,6 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
     }
   };
 
-  // Display different button text based on whether there are related files
   const buttonText = relatedFiles.length > 0 ? "Manage Files" : "Add Files";
 
   return (
@@ -116,12 +115,12 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
           <span>{buttonText}</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] p-0 flex flex-col">
+        <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
           <DialogTitle>Manage Files</DialogTitle>
         </DialogHeader>
         
-        <div className="py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <Input
             placeholder="Search files..."
             value={searchTerm}
@@ -132,8 +131,7 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
           {loading ? (
             <div className="text-center py-8">Loading files...</div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
-              {/* Available Files Column */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="border rounded-md p-2">
                 <h3 className="text-sm font-medium mb-2">Available Files</h3>
                 {filteredAvailableFiles.length === 0 ? (
@@ -190,7 +188,6 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
                 )}
               </div>
               
-              {/* Related Files Column */}
               <div className="border rounded-md p-2">
                 <h3 className="text-sm font-medium mb-2">Related Files</h3>
                 {filteredRelatedFiles.length === 0 ? (
@@ -252,6 +249,16 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
             </div>
           )}
         </div>
+
+        <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => setOpen(false)}
+          >
+            Done
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

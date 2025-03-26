@@ -565,97 +565,95 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         open={isEditDialogOpen} 
         onOpenChange={setIsEditDialogOpen}
       >
-        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
+        <DialogContent className="sm:max-w-md max-h-[90vh] p-0 flex flex-col">
+          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
             <DialogTitle>Edit Note</DialogTitle>
           </DialogHeader>
           
-          <ScrollArea className="flex-grow overflow-hidden pr-2">
-            <div className="py-2">
-              <Form {...editForm}>
-                <form onSubmit={editForm.handleSubmit(handleEditNote)} className="space-y-4">
-                  <FormField
-                    control={editForm.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter note title" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={editForm.control}
-                    name="content"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex justify-between items-center">
-                          <FormLabel>Content (Optional)</FormLabel>
-                          <AudioRecorder onTranscriptionComplete={handleEditTranscriptionComplete} />
-                        </div>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Enter note content" 
-                            className="min-h-[70px]"
-                            rows={4}
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={editForm.control}
-                    name="analysis"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex justify-between items-center">
-                          <FormLabel>Analysis</FormLabel>
-                          <Button
-                            type="button"
-                            onClick={handleAnalyzeImages}
-                            isLoading={analyzingImages}
-                            className="flex items-center gap-1"
-                          >
-                            <ImageIcon size={16} />
-                            <span>Analyze Images</span>
-                          </Button>
-                        </div>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Analysis content"
-                            className="min-h-[200px]"
-                            rows={8}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {selectedNote && (
-                    <div className="space-y-4">
-                      <RelatedFiles 
-                        noteId={selectedNote.id} 
-                        projectId={projectId}
-                        relationships={relatedFiles}
-                        onRelationshipsChanged={() => fetchFileRelationships(selectedNote.id)}
-                      />
-                    </div>
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(handleEditNote)} className="space-y-4">
+                <FormField
+                  control={editForm.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter note title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </form>
-              </Form>
-            </div>
-          </ScrollArea>
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex justify-between items-center">
+                        <FormLabel>Content (Optional)</FormLabel>
+                        <AudioRecorder onTranscriptionComplete={handleEditTranscriptionComplete} />
+                      </div>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter note content" 
+                          className="min-h-[70px]"
+                          rows={4}
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="analysis"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex justify-between items-center">
+                        <FormLabel>Analysis</FormLabel>
+                        <Button
+                          type="button"
+                          onClick={handleAnalyzeImages}
+                          isLoading={analyzingImages}
+                          className="flex items-center gap-1"
+                        >
+                          <ImageIcon size={16} />
+                          <span>Analyze Images</span>
+                        </Button>
+                      </div>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Analysis content"
+                          className="min-h-[200px]"
+                          rows={8}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {selectedNote && (
+                  <div className="space-y-4">
+                    <RelatedFiles 
+                      noteId={selectedNote.id} 
+                      projectId={projectId}
+                      relationships={relatedFiles}
+                      onRelationshipsChanged={() => fetchFileRelationships(selectedNote.id)}
+                    />
+                  </div>
+                )}
+              </form>
+            </Form>
+          </div>
           
-          <DialogFooter className="flex-shrink-0 pt-4 border-t mt-auto">
+          <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
             <Button 
               type="button"
               variant="ghost"
