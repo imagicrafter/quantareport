@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ProjectFile } from '@/components/dashboard/files/FileItem';
+import { NoteFileRelationshipWithType } from './noteUtils';
 
 export interface NoteFileRelationship {
   id: string;
@@ -14,7 +15,7 @@ export interface NoteFileRelationship {
 /**
  * Fetches all files related to a specific note
  */
-export const fetchRelatedFiles = async (noteId: string): Promise<NoteFileRelationship[]> => {
+export const fetchRelatedFiles = async (noteId: string): Promise<NoteFileRelationshipWithType[]> => {
   try {
     const { data: relationships, error } = await supabase
       .from('note_file_relationships')
@@ -44,7 +45,9 @@ export const fetchRelatedFiles = async (noteId: string): Promise<NoteFileRelatio
       note_id: item.note_id,
       file_id: item.file_id,
       created_at: item.created_at,
-      file: item.files as ProjectFile
+      file: item.files as ProjectFile,
+      file_type: item.files?.type || '',
+      file_path: item.files?.file_path || ''
     }));
   } catch (error) {
     console.error('Error fetching related files:', error);

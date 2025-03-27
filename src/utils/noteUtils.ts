@@ -1,86 +1,117 @@
+
+import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
 
+// Get n8n webhook URLs from environment variables with fallbacks
+export const NOTE_DEV_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_DEV_WEBHOOK || 'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=dev';
+export const NOTE_PROD_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_PROD_WEBHOOK || 'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=prod';
+
+export interface NoteFileRelationshipWithType extends NoteFileRelationship {
+  file_type: string;
+  file_path: string;
+}
+
+// Define Note interface to fix missing export error
 export interface Note {
   id: string;
   title: string;
+  content: string | null;
   name: string;
-  content: string;
-  created_at: string;
   position: number;
+  created_at: string;
+  project_id: string;
+  user_id: string;
+  analysis?: string | null;
 }
 
-/**
- * Updates the position of a note in the database
- */
-export const updateNotePosition = async (noteId: string, newPosition: number): Promise<boolean> => {
+// Title to camelCase conversion utility function
+export const titleToCamelCase = (title: string): string => {
+  // Convert spaces to camelCase and remove special characters
+  return title
+    .trim()
+    .replace(/[^\w\s]/g, '')
+    .split(/\s+/)
+    .map((word, index) => {
+      if (index === 0) {
+        return word.toLowerCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join('');
+};
+
+// Function to reorder notes
+export const reorderNotes = async (notes: Note[], sourceIndex: number, destinationIndex: number): Promise<Note[]> => {
   try {
+    const reorderedNotes = [...notes];
+    const [removed] = reorderedNotes.splice(sourceIndex, 1);
+    reorderedNotes.splice(destinationIndex, 0, removed);
+    
+    // Update position values
+    const updatedNotes = reorderedNotes.map((note, index) => ({
+      ...note,
+      position: index + 1
+    }));
+    
+    // Update positions in database - fix the upsert call
+    // We need to only update the position field, but include all required fields for the update
+    const updates = updatedNotes.map(note => ({
+      id: note.id,
+      position: note.position,
+      // Include these required fields from the existing note
+      name: note.name,
+      title: note.title,
+      project_id: note.project_id,
+      user_id: note.user_id
+    }));
+    
     const { error } = await supabase
       .from('notes')
-      .update({ position: newPosition })
-      .eq('id', noteId);
-
+      .upsert(updates);
+    
     if (error) throw error;
+    
+    return updatedNotes;
+  } catch (error) {
+    console.error('Error reordering notes:', error);
+    throw error;
+  }
+};
+
+// Function to submit image analysis request
+export const submitImageAnalysis = async (
+  noteId: string, 
+  projectId: string, 
+  imageUrls: string[], 
+  isTestMode: boolean
+): Promise<boolean> => {
+  try {
+    const webhookUrl = isTestMode ? NOTE_DEV_WEBHOOK_URL : NOTE_PROD_WEBHOOK_URL;
+    
+    const payload = {
+      note_id: noteId,
+      project_id: projectId,
+      image_urls: imageUrls,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log(`Submitting analysis request to ${webhookUrl}`);
+    
+    const { error } = await supabase.functions.invoke('n8n-proxy', {
+      body: {
+        env: isTestMode ? 'dev' : 'prod',
+        payload
+      }
+    });
+    
+    if (error) {
+      console.error('Error invoking n8n-proxy function:', error);
+      return false;
+    }
+    
     return true;
   } catch (error) {
-    console.error('Error updating note position:', error);
+    console.error('Error submitting image analysis:', error);
     return false;
   }
-};
-
-/**
- * Reorders notes after a drag and drop operation
- * @param notes The current list of notes
- * @param sourceIndex The original index of the dragged note
- * @param destinationIndex The target index where the note was dropped
- * @returns A promise that resolves to the reordered notes array
- */
-export const reorderNotes = async (
-  notes: Note[],
-  sourceIndex: number,
-  destinationIndex: number
-): Promise<Note[]> => {
-  if (sourceIndex === destinationIndex) return notes;
-
-  const reorderedNotes = Array.from(notes);
-  const [movedNote] = reorderedNotes.splice(sourceIndex, 1);
-  reorderedNotes.splice(destinationIndex, 0, movedNote);
-
-  // Update positions based on new order
-  const updatedNotes = reorderedNotes.map((note, index) => ({
-    ...note,
-    position: index + 1
-  }));
-
-  // Update positions in the database
-  const updatePromises = updatedNotes.map(note => 
-    updateNotePosition(note.id, note.position)
-  );
-  
-  await Promise.all(updatePromises);
-  
-  return updatedNotes;
-};
-
-/**
- * Converts a title to camelCase for use as a note name
- * @param title The title to convert
- * @returns The title converted to camelCase
- */
-export const titleToCamelCase = (title: string): string => {
-  // Remove any non-alphanumeric characters and split by spaces
-  const words = title.replace(/[^\w\s]/g, '').split(/\s+/);
-  
-  if (words.length === 0) return '';
-  
-  // First word lowercase
-  let result = words[0].toLowerCase();
-  
-  // Rest of the words with first letter capitalized
-  for (let i = 1; i < words.length; i++) {
-    if (words[i]) {
-      result += words[i][0].toUpperCase() + words[i].substring(1).toLowerCase();
-    }
-  }
-  
-  return result;
 };

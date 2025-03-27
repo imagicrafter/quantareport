@@ -1,4 +1,4 @@
-
+// Update import to include titleToCamelCase from noteUtils
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -335,53 +335,55 @@ const UserTemplateEditForm = ({
         </form>
       </Form>
 
-      {/* Note Edit Dialog */}
+      {/* Note Edit Dialog - updated for better responsiveness */}
       <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] p-0 flex flex-col">
+          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
             <DialogTitle>Edit Note</DialogTitle>
           </DialogHeader>
           
-          <Form {...noteForm}>
-            <form onSubmit={noteForm.handleSubmit(saveNoteContent)} className="space-y-4 py-4">
-              <FormField
-                control={noteForm.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Note Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter note title" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={noteForm.control}
-                name="content"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Note Content</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        className="min-h-[200px]"
-                        placeholder="Enter note content here..."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button variant="outline" type="button" onClick={() => setNoteDialogOpen(false)}>Cancel</Button>
-                <Button type="submit">Save</Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          <div className="flex-1 overflow-y-auto p-6">
+            <Form {...noteForm}>
+              <form onSubmit={noteForm.handleSubmit(saveNoteContent)} className="space-y-4">
+                <FormField
+                  control={noteForm.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Note Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter note title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={noteForm.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Note Content</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          className="min-h-[200px]"
+                          placeholder="Enter note content here..."
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </form>
+            </Form>
+          </div>
+          
+          <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
+            <Button variant="outline" type="button" onClick={() => setNoteDialogOpen(false)}>Cancel</Button>
+            <Button type="button" onClick={noteForm.handleSubmit(saveNoteContent)}>Save</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

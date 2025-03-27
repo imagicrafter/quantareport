@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -78,7 +77,6 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
       
       setLoading(true);
       try {
-        // Fetch project details
         const { data: project, error: projectError } = await supabase
           .from('projects')
           .select('*')
@@ -87,7 +85,6 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
 
         if (projectError) throw projectError;
 
-        // Fetch available templates
         const { data: session } = await supabase.auth.getSession();
         
         if (!session.session) {
@@ -96,8 +93,6 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
 
         const userId = session.session.user.id;
 
-        // Modified query: Only fetch templates that belong to the current user
-        // (removed the public templates from the query)
         const { data: templateData, error: templateError } = await supabase
           .from('templates')
           .select('*')
@@ -106,7 +101,6 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
         if (templateError) throw templateError;
         setTemplates(templateData || []);
 
-        // Set form values
         form.reset({
           name: project.name,
           template_id: project.template_id || '',

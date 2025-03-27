@@ -21,7 +21,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Button from '../../ui-elements/Button';
-import { ProjectFile } from './FileItem';
+import { ProjectFile, FileType } from './FileItem';
 import AudioRecorder from './AudioRecorder';
 
 interface EditFileDialogProps {
@@ -32,10 +32,11 @@ interface EditFileDialogProps {
   uploading: boolean;
 }
 
+// Update the form schema to include 'other' as a valid file type
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   description: z.string().optional(),
-  type: z.enum(['image', 'audio', 'folder', 'transcription']),
+  type: z.enum(['image', 'audio', 'folder', 'transcription', 'other']),
 });
 
 const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }: EditFileDialogProps) => {
@@ -46,7 +47,7 @@ const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }
     defaultValues: {
       title: selectedFile?.name || '',
       description: selectedFile?.description || '',
-      type: selectedFile?.type || 'image',
+      type: (selectedFile?.type as any) || 'image',
     },
   });
 
@@ -55,7 +56,7 @@ const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }
     form.reset({
       title: selectedFile.name,
       description: selectedFile.description || '',
-      type: selectedFile.type,
+      type: (selectedFile.type as any),
     });
   }
 
@@ -68,89 +69,93 @@ const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] p-0 flex flex-col">
+        <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
           <DialogTitle>Edit File</DialogTitle>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onEditFile)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter file title" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Description (optional)
-                    {!isRecording && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsRecording(true)}
-                        className="ml-2 h-6 px-2 text-xs"
-                      >
-                        Record Audio
-                      </Button>
-                    )}
-                  </FormLabel>
-                  {isRecording ? (
-                    <div className="mb-4">
-                      <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
-                      <Button 
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsRecording(false)}
-                        className="mt-2"
-                      >
-                        Cancel Recording
-                      </Button>
-                    </div>
-                  ) : (
+        
+        <div className="flex-1 overflow-y-auto p-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onEditFile)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Enter description" 
-                        {...field} 
-                        value={field.value || ''}
-                      />
+                      <Input placeholder="Enter file title" {...field} />
                     </FormControl>
-                  )}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <DialogFooter className="mt-6">
-              <Button 
-                type="button"
-                variant="ghost"
-                onClick={() => onClose()}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit"
-                isLoading={uploading}
-              >
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Description (optional)
+                      {!isRecording && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsRecording(true)}
+                          className="ml-2 h-6 px-2 text-xs"
+                        >
+                          Record Audio
+                        </Button>
+                      )}
+                    </FormLabel>
+                    {isRecording ? (
+                      <div className="mb-4">
+                        <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
+                        <Button 
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsRecording(false)}
+                          className="mt-2"
+                        >
+                          Cancel Recording
+                        </Button>
+                      </div>
+                    ) : (
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter description" 
+                          {...field} 
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
+        </div>
+        
+        <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
+          <Button 
+            type="button"
+            variant="ghost"
+            onClick={() => onClose()}
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="submit"
+            onClick={form.handleSubmit(onEditFile)}
+            isLoading={uploading}
+          >
+            Save Changes
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

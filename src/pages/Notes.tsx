@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -182,17 +181,19 @@ const Notes = () => {
         </div>
       </div>
 
-      {/* Notes Modal */}
+      {/* Notes Modal - updated for better responsiveness */}
       <Dialog open={isNotesModalOpen} onOpenChange={setIsNotesModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl h-[90vh] p-0 flex flex-col">
           {selectedProjectId && (
             <>
-              <div className="mb-4">
+              <div className="p-6 border-b">
                 <h2 className="text-xl font-bold">
                   {projects.find(p => p.id === selectedProjectId)?.name} - Notes
                 </h2>
               </div>
-              <NotesSection projectId={selectedProjectId} />
+              <div className="flex-1 overflow-y-auto p-6">
+                <NotesSection projectId={selectedProjectId} />
+              </div>
             </>
           )}
         </DialogContent>

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { FileType, ProjectFile } from './FileItem';
 import { z } from 'zod';
@@ -108,29 +107,52 @@ export const updateFile = async (fileId: string, values: Omit<FileFormValues, 'f
 };
 
 export const deleteFile = async (file: ProjectFile): Promise<void> => {
-  if (file.file_path && file.file_path !== 'audio') {
-    const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
+  try {
+    console.log('Starting deletion process for file:', file.id);
     
-    try {
-      const urlPath = new URL(file.file_path).pathname;
-      const storagePath = urlPath.split('/').slice(2).join('/');
-      
-      const { error: storageError } = await supabase.storage
-        .from(bucketName)
-        .remove([storagePath]);
+    // First, delete the storage file if it exists
+    if (file.file_path && file.file_path !== 'audio') {
+      try {
+        const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
+        const urlPath = new URL(file.file_path).pathname;
+        const storagePath = urlPath.split('/').slice(2).join('/');
         
-      if (storageError) console.error('Storage removal error:', storageError);
-    } catch (error) {
-      console.error('Error parsing file path:', error);
+        console.log('Deleting file from storage:', storagePath, 'from bucket:', bucketName);
+        
+        const { error: storageError } = await supabase.storage
+          .from(bucketName)
+          .remove([storagePath]);
+          
+        if (storageError) {
+          console.error('Storage removal error:', storageError);
+          // Continue even if storage deletion fails
+        } else {
+          console.log('Storage file successfully deleted');
+        }
+      } catch (error) {
+        console.error('Error parsing file path:', error);
+        // Continue even if there's an error with the file path
+      }
     }
+
+    // Now delete the file record - all relational data will be cascade deleted automatically
+    console.log('Deleting file record with ID:', file.id);
+    const { error: deleteFileError } = await supabase
+      .from('files')
+      .delete()
+      .eq('id', file.id);
+
+    if (deleteFileError) {
+      console.error('Error deleting file record:', deleteFileError);
+      throw deleteFileError;
+    }
+    
+    console.log('File record successfully deleted');
+    
+  } catch (error) {
+    console.error('Error in deleteFile function:', error);
+    throw error;
   }
-
-  const { error } = await supabase
-    .from('files')
-    .delete()
-    .eq('id', file.id);
-
-  if (error) throw error;
 };
 
 export const bulkUploadFiles = async (
@@ -198,10 +220,13 @@ export const bulkUploadFiles = async (
           project_id: projectId,
           user_id: session.session.user.id,
           position: nextPosition++,
-          size: file.size || 0
+          size: file.size
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
       
       successCount++;
     } catch (error) {
