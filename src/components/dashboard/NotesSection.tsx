@@ -403,7 +403,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   };
 
   const handleAnalyzeImages = async (isAdd: boolean = false) => {
-    const noteId = isAdd ? addNoteId : selectedNote?.id;
+    const noteId = isAdd ? tempNoteId : selectedNote?.id;
     if (!noteId) return;
     
     setAnalyzingImages(true);
