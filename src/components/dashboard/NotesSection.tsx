@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -664,8 +665,8 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                 {tempNoteId && (
                   <div className="space-y-4">
                     <div className="rounded-lg border p-4">
-                      <div className="text-sm font-medium mb-2">Related Files</div>
-                      <div className="mb-2">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="text-sm font-medium">Related Files</div>
                         <FilePicker
                           projectId={projectId}
                           noteId={tempNoteId}
@@ -673,14 +674,17 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                           relatedFiles={addNoteRelatedFiles}
                         />
                       </div>
+                      
                       {addNoteRelatedFiles.length > 0 ? (
-                        <div className="mt-2">
-                          <RelatedFiles 
-                            noteId={tempNoteId} 
-                            projectId={projectId}
-                            relationships={addNoteRelatedFiles}
-                            onRelationshipsChanged={handleAddNoteRelationshipChange}
-                          />
+                        <div className="bg-secondary/30 rounded-md p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 flex items-center justify-center bg-secondary rounded-full">
+                              <File size={16} />
+                            </div>
+                            <span className="text-sm font-medium">
+                              {addNoteRelatedFiles.length} {addNoteRelatedFiles.length === 1 ? 'file' : 'files'} attached
+                            </span>
+                          </div>
                         </div>
                       ) : (
                         <div className="bg-secondary/30 rounded-md p-3 flex items-center justify-between">
@@ -800,12 +804,39 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
                 
                 {selectedNote && (
                   <div className="space-y-4">
-                    <RelatedFiles 
-                      noteId={selectedNote.id} 
-                      projectId={projectId}
-                      relationships={relatedFiles}
-                      onRelationshipsChanged={() => fetchFileRelationships(selectedNote.id)}
-                    />
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm font-medium">Related Files</div>
+                      <FilePicker 
+                        projectId={projectId} 
+                        noteId={selectedNote.id}
+                        onFileAdded={() => fetchFileRelationships(selectedNote.id)}
+                        relatedFiles={relatedFiles}
+                      />
+                    </div>
+                    
+                    {relatedFiles.length > 0 ? (
+                      <div className="bg-secondary/30 rounded-md p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 flex items-center justify-center bg-secondary rounded-full">
+                            <File size={16} />
+                          </div>
+                          <span className="text-sm font-medium">
+                            {relatedFiles.length} {relatedFiles.length === 1 ? 'file' : 'files'} attached
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-secondary/30 rounded-md p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 flex items-center justify-center bg-secondary rounded-full">
+                            <File size={16} />
+                          </div>
+                          <span className="text-sm font-medium">
+                            0 files attached
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </form>
