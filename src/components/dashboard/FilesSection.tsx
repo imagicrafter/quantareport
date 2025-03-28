@@ -8,7 +8,7 @@ import AddFileDialog from './files/AddFileDialog';
 import EditFileDialog from './files/EditFileDialog';
 import DeleteFileDialog from './files/DeleteFileDialog';
 import BulkUploadDialog from './files/BulkUploadDialog';
-import { ProjectFile } from './files/FileItem';
+import { ProjectFile, FileType } from './files/FileItem';
 import { 
   fetchFiles, 
   addFile, 
