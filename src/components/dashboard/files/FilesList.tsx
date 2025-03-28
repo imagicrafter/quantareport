@@ -5,7 +5,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { DropResult } from 'react-beautiful-dnd';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { reorderFiles } from '@/utils/fileUtils';
-import FileItem, { ProjectFile } from './FileItem';
+import FileItem, { ProjectFile, FileType } from './FileItem';
 
 export interface FilesListProps {
   projectId: string;
@@ -33,7 +33,14 @@ const FilesList = ({ projectId, refreshTrigger, onFileChange }: FilesListProps) 
 
       if (error) throw error;
       
-      setFiles(data || []);
+      // Convert the string type to FileType
+      if (data) {
+        const typedFiles: ProjectFile[] = data.map(file => ({
+          ...file,
+          type: file.type as FileType // Cast string to FileType
+        }));
+        setFiles(typedFiles);
+      }
     } catch (error) {
       console.error('Error fetching files:', error);
       toast({

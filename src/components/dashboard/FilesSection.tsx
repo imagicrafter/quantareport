@@ -7,6 +7,8 @@ import { PlusIcon, UploadIcon } from 'lucide-react';
 import FilesList from './files/FilesList';
 import AddFileDialog from './files/AddFileDialog';
 import BulkUploadDialog from './files/BulkUploadDialog';
+import { FileFormValues, addFile, bulkUploadFiles, loadFilesFromDriveLink } from './files/FileService';
+import { toast } from 'sonner';
 
 // Main component for backward compatibility
 const FilesSection = ({ projectId }: { projectId: string }) => {
@@ -22,6 +24,57 @@ const FilesSection = ({ projectId }: { projectId: string }) => {
 const Header = ({ projectId }: { projectId: string }) => {
   const [isAddFileDialogOpen, setIsAddFileDialogOpen] = useState(false);
   const [isBulkUploadDialogOpen, setIsBulkUploadDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleAddFile = async (values: FileFormValues) => {
+    try {
+      setUploading(true);
+      await addFile(values, projectId);
+      toast.success('File added successfully!');
+      setIsAddFileDialogOpen(false);
+    } catch (error) {
+      console.error('Error adding file:', error);
+      toast.error('Failed to add file. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleBulkUpload = async (files: File[]) => {
+    try {
+      setUploading(true);
+      const count = await bulkUploadFiles(files, projectId);
+      if (count > 0) {
+        toast.success(`Successfully uploaded ${count} files`);
+      } else {
+        toast.info('No files were uploaded');
+      }
+      setIsBulkUploadDialogOpen(false);
+    } catch (error) {
+      console.error('Error bulk uploading files:', error);
+      toast.error('Failed to upload files. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDriveUpload = async (driveLink: string) => {
+    try {
+      setUploading(true);
+      const count = await loadFilesFromDriveLink(driveLink, projectId);
+      if (count > 0) {
+        toast.success(`Successfully loaded ${count} files from Google Drive`);
+      } else {
+        toast.info('No files were loaded');
+      }
+      setIsBulkUploadDialogOpen(false);
+    } catch (error) {
+      console.error('Error loading files from Google Drive:', error);
+      toast.error('Failed to load files from Google Drive. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="w-full">
@@ -56,12 +109,17 @@ const Header = ({ projectId }: { projectId: string }) => {
         isOpen={isAddFileDialogOpen} 
         onClose={() => setIsAddFileDialogOpen(false)}
         projectId={projectId}
+        onAddFile={handleAddFile}
+        uploading={uploading}
       />
 
       <BulkUploadDialog 
         isOpen={isBulkUploadDialogOpen} 
         onClose={() => setIsBulkUploadDialogOpen(false)}
         projectId={projectId}
+        onUploadFiles={handleBulkUpload}
+        onUploadFromLink={handleDriveUpload}
+        uploading={uploading}
       />
     </div>
   );

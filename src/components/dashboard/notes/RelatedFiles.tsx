@@ -112,6 +112,7 @@ const RelatedFiles = ({ noteId, projectId, relationships: initialRelationships, 
           projectId={projectId}
           noteId={noteId}
           onFileAdded={handleFileAdded}
+          relatedFiles={relationships}
         />
       )}
     </div>
