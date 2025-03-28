@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useToast } from '@/components/ui/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { PlusCircle, Edit, Trash, GripVertical, ImageIcon, File } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Button from '../ui-elements/Button';
 import {
@@ -30,8 +29,6 @@ import { NoteFileRelationship, fetchRelatedFiles } from '@/utils/noteFileRelatio
 import FilePicker from './notes/FilePicker';
 import RelatedFiles from './notes/RelatedFiles';
 import AudioRecorder from './files/AudioRecorder';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { toast } from 'sonner';
 
 interface ExtendedNote extends Note {
   analysis?: string | null;
@@ -495,93 +492,99 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col h-full">
+      <div className="flex justify-between items-center sticky top-0 bg-background z-10 py-2">
         <h3 className="text-lg font-medium">Project Notes</h3>
-        <Button 
-          size="sm" 
-          onClick={() => handleAddDialogOpenChange(true)}
-        >
-          <PlusCircle size={16} className="mr-2" />
-          Add Note
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            size="sm" 
+            onClick={() => handleAddDialogOpenChange(true)}
+          >
+            <PlusCircle size={16} className="mr-2" />
+            Add Note
+          </Button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="py-8 text-center">Loading notes...</div>
-      ) : notes.length === 0 ? (
-        <div className="py-8 text-center text-muted-foreground border rounded-lg">
-          No notes added yet. Add your first note to get started.
-        </div>
-      ) : (
-        <DragDropContext onDragEnd={handleOnDragEnd}>
-          <Droppable droppableId="notes-list">
-            {(provided) => (
-              <div 
-                className="space-y-2" 
-                {...provided.droppableProps} 
-                ref={provided.innerRef}
-              >
-                {notes.map((note, index) => (
-                  <Draggable key={note.id} draggableId={note.id} index={index}>
-                    {(provided) => (
-                      <div 
-                        ref={provided.innerRef} 
-                        {...provided.draggableProps} 
-                        className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg"
-                      >
-                        <div className="flex items-center w-full">
+      <div className="flex-grow mt-4 overflow-hidden">
+        <ScrollArea className="h-[calc(100vh-250px)]">
+          {loading ? (
+            <div className="py-8 text-center">Loading notes...</div>
+          ) : notes.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground border rounded-lg">
+              No notes added yet. Add your first note to get started.
+            </div>
+          ) : (
+            <DragDropContext onDragEnd={handleOnDragEnd}>
+              <Droppable droppableId="notes-list">
+                {(provided) => (
+                  <div 
+                    className="space-y-2" 
+                    {...provided.droppableProps} 
+                    ref={provided.innerRef}
+                  >
+                    {notes.map((note, index) => (
+                      <Draggable key={note.id} draggableId={note.id} index={index}>
+                        {(provided) => (
                           <div 
-                            {...provided.dragHandleProps} 
-                            className="px-2 cursor-grab"
+                            ref={provided.innerRef} 
+                            {...provided.draggableProps} 
+                            className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg"
                           >
-                            <GripVertical size={16} className="text-muted-foreground" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium">{note.title}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {new Date(note.created_at).toLocaleDateString()}
+                            <div className="flex items-center w-full">
+                              <div 
+                                {...provided.dragHandleProps} 
+                                className="px-2 cursor-grab"
+                              >
+                                <GripVertical size={16} className="text-muted-foreground" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium">{note.title}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {new Date(note.created_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <div className="flex space-x-2 ml-4">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedNote(note);
+                                    editForm.reset({
+                                      title: note.title,
+                                      content: note.content,
+                                      analysis: note.analysis || '',
+                                    });
+                                    fetchFileRelationships(note.id);
+                                    setIsEditDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit size={16} />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedNote(note);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash size={16} />
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                          <div className="flex space-x-2 ml-4">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedNote(note);
-                                editForm.reset({
-                                  title: note.title,
-                                  content: note.content,
-                                  analysis: note.analysis || '',
-                                });
-                                fetchFileRelationships(note.id);
-                                setIsEditDialogOpen(true);
-                              }}
-                            >
-                              <Edit size={16} />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedNote(note);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash size={16} />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
-      )}
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+          )}
+        </ScrollArea>
+      </div>
 
       <Dialog 
         open={isAddDialogOpen} 

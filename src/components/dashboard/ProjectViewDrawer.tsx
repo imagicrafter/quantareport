@@ -173,7 +173,6 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
               </TabsList>
             </div>
 
-            {/* Details tab - no scrolling needed */}
             <TabsContent value="details" className="mt-0 px-6 pb-6 flex-grow overflow-auto">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -264,14 +263,12 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
               </Form>
             </TabsContent>
 
-            {/* Notes tab - fixed header with scrolling content area */}
             <TabsContent value="notes" className="mt-0 flex-grow flex flex-col overflow-hidden px-6 pb-6">
               <div className="flex-grow h-full overflow-hidden">
                 <NotesSection projectId={projectId} />
               </div>
             </TabsContent>
 
-            {/* Files tab - fixed header with scrolling content area */}
             <TabsContent value="files" className="mt-0 flex-grow flex flex-col overflow-hidden px-6 pb-6">
               <div className="flex-grow h-full overflow-hidden">
                 <FilesSection projectId={projectId} />
