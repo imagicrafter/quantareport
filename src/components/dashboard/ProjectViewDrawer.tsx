@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -173,7 +174,8 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
               </TabsList>
             </div>
 
-            <TabsContent value="details" className="mt-0 h-full px-6 pb-6 overflow-auto">
+            {/* Details tab - no scrolling needed */}
+            <TabsContent value="details" className="mt-0 px-6 pb-6 flex-grow">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <FormField
@@ -263,20 +265,18 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
               </Form>
             </TabsContent>
 
-            <TabsContent value="notes" className="mt-0 h-full flex flex-col flex-grow">
-              <ScrollArea className="flex-grow">
-                <div className="px-6 pb-6">
-                  <NotesSection projectId={projectId} />
-                </div>
-              </ScrollArea>
+            {/* Notes tab - full scrollable content with fixed header */}
+            <TabsContent value="notes" className="mt-0 flex flex-col flex-grow h-full">
+              <div className="px-6 pb-6 flex flex-col h-full">
+                <NotesSection projectId={projectId} />
+              </div>
             </TabsContent>
 
-            <TabsContent value="files" className="mt-0 h-full flex flex-col flex-grow">
-              <ScrollArea className="flex-grow">
-                <div className="px-6 pb-6">
-                  <FilesSection projectId={projectId} />
-                </div>
-              </ScrollArea>
+            {/* Files tab - full scrollable content with fixed header */}
+            <TabsContent value="files" className="mt-0 flex flex-col flex-grow h-full">
+              <div className="px-6 pb-6 flex flex-col h-full">
+                <FilesSection projectId={projectId} />
+              </div>
             </TabsContent>
           </Tabs>
         )}

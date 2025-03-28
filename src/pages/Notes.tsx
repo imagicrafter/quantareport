@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -180,16 +181,16 @@ const Notes = () => {
         <DialogContent className="max-w-4xl h-[90vh] p-0 flex flex-col">
           {selectedProjectId && (
             <>
-              <div className="p-6 border-b sticky top-0 bg-background z-10">
+              <div className="p-6 border-b sticky top-0 bg-background z-10 flex-shrink-0">
                 <h2 className="text-xl font-bold">
                   {projects.find(p => p.id === selectedProjectId)?.name} - Notes
                 </h2>
               </div>
-              <ScrollArea className="flex-1">
+              <div className="flex-1 overflow-auto">
                 <div className="p-6">
                   <NotesSection projectId={selectedProjectId} />
                 </div>
-              </ScrollArea>
+              </div>
             </>
           )}
         </DialogContent>
