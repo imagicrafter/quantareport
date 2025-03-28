@@ -16,8 +16,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { PlusIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import RelatedFiles from './notes/RelatedFiles';
+import { titleToCamelCase } from '@/utils/noteUtils';
 
-// Existing NotesSection logic for backward compatibility
 const NotesSection = ({ projectId }: { projectId: string }) => {
   return (
     <>
@@ -27,7 +27,6 @@ const NotesSection = ({ projectId }: { projectId: string }) => {
   );
 };
 
-// Header component with title and add note button
 const Header = ({ projectId }: { projectId: string }) => {
   const [isAddingNote, setIsAddingNote] = useState(false);
 
@@ -50,7 +49,6 @@ const Header = ({ projectId }: { projectId: string }) => {
   );
 };
 
-// Content component with notes list
 const Content = ({ projectId }: { projectId: string }) => {
   const [notes, setNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,13 +106,12 @@ const Content = ({ projectId }: { projectId: string }) => {
   return (
     <div className="space-y-6">
       {notes.map((note) => (
-        <NoteItem key={note.id} note={note} onUpdate={fetchNotes} />
+        <NoteItem key={note.id} note={note} onUpdate={fetchNotes} projectId={projectId} />
       ))}
     </div>
   );
 };
 
-// Add these to NotesSection for export
 NotesSection.Header = Header;
 NotesSection.Content = Content;
 
@@ -128,10 +125,11 @@ interface NoteItemProps {
       avatar_url: string | null;
     };
   };
+  projectId: string;
   onUpdate: () => void;
 }
 
-const NoteItem = ({ note, onUpdate }: NoteItemProps) => {
+const NoteItem = ({ note, projectId, onUpdate }: NoteItemProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
@@ -206,7 +204,7 @@ const NoteItem = ({ note, onUpdate }: NoteItemProps) => {
               </button>
             </div>
           </div>
-          <RelatedFiles noteId={note.id} />
+          <RelatedFiles noteId={note.id} projectId={projectId} />
         </>
       )}
     </div>
@@ -247,10 +245,16 @@ const AddNoteForm = ({ projectId, onComplete }: AddNoteFormProps) => {
         return;
       }
 
+      const firstLine = values.content.split('\n')[0].trim();
+      const title = firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine;
+      const name = titleToCamelCase(title);
+
       const { error } = await supabase
         .from('notes')
         .insert({
           content: values.content,
+          title: title,
+          name: name,
           project_id: projectId,
           user_id: session.session.user.id,
         });

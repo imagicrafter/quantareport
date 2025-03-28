@@ -53,14 +53,14 @@ const Header = ({ projectId }: { projectId: string }) => {
 
       {/* File Dialogs */}
       <AddFileDialog 
-        open={isAddFileDialogOpen} 
-        onOpenChange={setIsAddFileDialogOpen}
+        isOpen={isAddFileDialogOpen} 
+        onClose={() => setIsAddFileDialogOpen(false)}
         projectId={projectId}
       />
 
       <BulkUploadDialog 
-        open={isBulkUploadDialogOpen} 
-        onOpenChange={setIsBulkUploadDialogOpen}
+        isOpen={isBulkUploadDialogOpen} 
+        onClose={() => setIsBulkUploadDialogOpen(false)}
         projectId={projectId}
       />
     </div>
