@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -175,7 +174,7 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
             </div>
 
             {/* Details tab - no scrolling needed */}
-            <TabsContent value="details" className="mt-0 px-6 pb-6 flex-grow">
+            <TabsContent value="details" className="mt-0 px-6 pb-6 flex-grow overflow-auto">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <FormField
@@ -266,20 +265,16 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
             </TabsContent>
 
             {/* Notes tab - fixed header with scrolling content area */}
-            <TabsContent value="notes" className="mt-0 flex-grow flex flex-col overflow-hidden">
-              <div className="px-6 pb-6 flex flex-col h-full overflow-hidden">
-                <ScrollArea className="flex-grow">
-                  <NotesSection projectId={projectId} />
-                </ScrollArea>
+            <TabsContent value="notes" className="mt-0 flex-grow flex flex-col overflow-hidden px-6 pb-6">
+              <div className="flex-grow h-full overflow-hidden">
+                <NotesSection projectId={projectId} />
               </div>
             </TabsContent>
 
             {/* Files tab - fixed header with scrolling content area */}
-            <TabsContent value="files" className="mt-0 flex-grow flex flex-col overflow-hidden">
-              <div className="px-6 pb-6 flex flex-col h-full overflow-hidden">
-                <ScrollArea className="flex-grow">
-                  <FilesSection projectId={projectId} />
-                </ScrollArea>
+            <TabsContent value="files" className="mt-0 flex-grow flex flex-col overflow-hidden px-6 pb-6">
+              <div className="flex-grow h-full overflow-hidden">
+                <FilesSection projectId={projectId} />
               </div>
             </TabsContent>
           </Tabs>

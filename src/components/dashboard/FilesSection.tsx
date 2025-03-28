@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { DropResult } from 'react-beautiful-dnd';
 import { PlusCircle, Upload } from 'lucide-react';
@@ -19,6 +20,7 @@ import {
   loadFilesFromDriveLink
 } from './files/FileService';
 import { reorderFiles } from '@/utils/fileUtils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface FilesSectionProps {
   projectId: string;
@@ -240,8 +242,8 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col h-full">
+      <div className="flex justify-between items-center sticky top-0 bg-background z-10 py-2">
         <h3 className="text-lg font-medium">Project Files</h3>
         <div className="flex space-x-2">
           <Button 
@@ -262,19 +264,23 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
         </div>
       </div>
 
-      <FilesList 
-        files={files}
-        loading={loading}
-        onEditFile={(file) => {
-          setSelectedFile(file);
-          setIsEditDialogOpen(true);
-        }}
-        onDeleteFile={(file) => {
-          setSelectedFile(file);
-          setIsDeleteDialogOpen(true);
-        }}
-        onReorderFiles={handleReorderFiles}
-      />
+      <div className="flex-grow mt-4 overflow-hidden">
+        <ScrollArea className="h-[calc(100vh-250px)]">
+          <FilesList 
+            files={files}
+            loading={loading}
+            onEditFile={(file) => {
+              setSelectedFile(file);
+              setIsEditDialogOpen(true);
+            }}
+            onDeleteFile={(file) => {
+              setSelectedFile(file);
+              setIsDeleteDialogOpen(true);
+            }}
+            onReorderFiles={handleReorderFiles}
+          />
+        </ScrollArea>
+      </div>
 
       <AddFileDialog 
         isOpen={isAddDialogOpen}
