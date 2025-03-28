@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import NotesSection from '@/components/dashboard/NotesSection';
 import StatCards from '@/components/dashboard/StatCards';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ProjectWithNotesCount {
   id: string;
@@ -37,7 +38,6 @@ const Notes = () => {
         return;
       }
 
-      // Get all projects for StatCards
       const { data: allProjectsData, error: allProjectsError } = await supabase
         .from('projects')
         .select('*')
@@ -47,7 +47,6 @@ const Notes = () => {
         setAllProjects(allProjectsData || []);
       }
 
-      // Get all projects with notes
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -60,7 +59,6 @@ const Notes = () => {
 
       if (error) throw error;
 
-      // For each project, get the count of notes
       const projectsWithNotesCounts = await Promise.all(
         data.map(async (project) => {
           const { count, error: countError } = await supabase
@@ -78,7 +76,6 @@ const Notes = () => {
             };
           }
 
-          // Get last updated note for this project
           const { data: lastNoteData, error: lastNoteError } = await supabase
             .from('notes')
             .select('created_at')
@@ -99,7 +96,6 @@ const Notes = () => {
         })
       );
 
-      // Sort by last_updated descending and filter projects with notes
       const filteredProjects = projectsWithNotesCounts
         .filter(project => project.notes_count > 0)
         .sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
@@ -124,7 +120,6 @@ const Notes = () => {
 
   const handleCloseModal = () => {
     setIsNotesModalOpen(false);
-    // Refresh the projects list to update the note counts and last updated times
     fetchProjectsWithNotes();
   };
 
@@ -181,19 +176,20 @@ const Notes = () => {
         </div>
       </div>
 
-      {/* Notes Modal - updated for better responsiveness */}
       <Dialog open={isNotesModalOpen} onOpenChange={setIsNotesModalOpen}>
         <DialogContent className="max-w-4xl h-[90vh] p-0 flex flex-col">
           {selectedProjectId && (
             <>
-              <div className="p-6 border-b">
+              <div className="p-6 border-b sticky top-0 bg-background z-10">
                 <h2 className="text-xl font-bold">
                   {projects.find(p => p.id === selectedProjectId)?.name} - Notes
                 </h2>
               </div>
-              <div className="flex-1 overflow-y-auto p-6">
-                <NotesSection projectId={selectedProjectId} />
-              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-6">
+                  <NotesSection projectId={selectedProjectId} />
+                </div>
+              </ScrollArea>
             </>
           )}
         </DialogContent>
