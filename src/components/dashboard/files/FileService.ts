@@ -5,12 +5,11 @@ import { formatFileSize } from '@/utils/fileUtils';
 
 export interface FileFormValues {
   name: string;
+  title?: string;
   description?: string;
   file?: File;
   file_path?: string;
   type: FileType;
-  // Add title field to make it compatible with AddFileDialog
-  title?: string;
 }
 
 export const fetchFiles = async (projectId: string): Promise<ProjectFile[]> => {
@@ -46,7 +45,8 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
   // Upload file if provided
   if (values.file) {
     const file = values.file;
-    const fileExt = file.name.split('.').pop();
+    // Check if the filename exists before attempting to split it
+    const fileExt = file.name ? file.name.split('.').pop() : '';
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
     let bucketName = 'pub_documents';
     
@@ -128,7 +128,8 @@ export const updateFile = async (fileId: string, values: FileFormValues): Promis
     
     const projectId = existingFile.project_id;
     const file = values.file;
-    const fileExt = file.name.split('.').pop();
+    // Check if the filename exists before attempting to split it
+    const fileExt = file.name ? file.name.split('.').pop() : '';
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
     let bucketName = 'pub_documents';
     
