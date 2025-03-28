@@ -29,12 +29,11 @@ import Button from '../../ui-elements/Button';
 import { FileType } from './FileItem';
 import AudioRecorder from './AudioRecorder';
 
-export interface AddFileDialogProps {
+interface AddFileDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onAddFile: (values: z.infer<typeof formSchema>) => Promise<void>;
   uploading: boolean;
-  projectId: string; // Add projectId prop
 }
 
 const formSchema = z.object({

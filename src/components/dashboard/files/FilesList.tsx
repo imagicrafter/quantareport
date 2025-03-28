@@ -1,99 +1,21 @@
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
-import { DropResult } from 'react-beautiful-dnd';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { reorderFiles } from '@/utils/fileUtils';
-import FileItem, { ProjectFile, FileType } from './FileItem';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import FileItem, { ProjectFile } from './FileItem';
 
-export interface FilesListProps {
-  projectId: string;
-  refreshTrigger: number;
-  onFileChange: () => void;
+interface FilesListProps {
+  files: ProjectFile[];
+  loading: boolean;
+  onEditFile: (file: ProjectFile) => void;
+  onDeleteFile: (file: ProjectFile) => void;
+  onReorderFiles: (result: DropResult) => void;
 }
 
-const FilesList = ({ projectId, refreshTrigger, onFileChange }: FilesListProps) => {
-  const [files, setFiles] = useState<ProjectFile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    fetchFiles();
-  }, [projectId, refreshTrigger]);
-
-  const fetchFiles = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('files')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('position', { ascending: true });
-
-      if (error) throw error;
-      
-      // Convert the string type to FileType
-      if (data) {
-        const typedFiles: ProjectFile[] = data.map(file => ({
-          ...file,
-          type: file.type as FileType // Cast string to FileType
-        }));
-        setFiles(typedFiles);
-      }
-    } catch (error) {
-      console.error('Error fetching files:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load files. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditFile = (file: ProjectFile) => {
-    // This would be implemented when needed
-    console.log('Edit file:', file);
-  };
-
-  const handleDeleteFile = async (file: ProjectFile) => {
-    // This would be implemented when needed
-    console.log('Delete file:', file);
-  };
-
-  const handleReorderFiles = async (result: DropResult) => {
-    // Skip if dropped outside the list
-    if (!result.destination) return;
-    
-    // Skip if dropped in the same position
-    if (result.destination.index === result.source.index) return;
-    
-    try {
-      const reorderedFiles = await reorderFiles(
-        files, 
-        result.source.index, 
-        result.destination.index
-      );
-      
-      setFiles(reorderedFiles);
-      onFileChange();
-    } catch (error) {
-      console.error('Error reordering files:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to reorder files. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
-
+const FilesList = ({ files, loading, onEditFile, onDeleteFile, onReorderFiles }: FilesListProps) => {
   if (loading) {
     return <div className="py-8 text-center">Loading files...</div>;
   }
   
-  if (!files || files.length === 0) {
+  if (files.length === 0) {
     return (
       <div className="py-8 text-center text-muted-foreground border rounded-lg">
         No files added yet. Add your first file to get started.
@@ -102,7 +24,7 @@ const FilesList = ({ projectId, refreshTrigger, onFileChange }: FilesListProps) 
   }
 
   return (
-    <DragDropContext onDragEnd={handleReorderFiles}>
+    <DragDropContext onDragEnd={onReorderFiles}>
       <Droppable droppableId="files-list">
         {(provided) => (
           <div 
@@ -121,8 +43,8 @@ const FilesList = ({ projectId, refreshTrigger, onFileChange }: FilesListProps) 
                     <FileItem 
                       file={file} 
                       index={index}
-                      onEdit={handleEditFile}
-                      onDelete={handleDeleteFile}
+                      onEdit={onEditFile}
+                      onDelete={onDeleteFile}
                       dragHandleProps={provided.dragHandleProps}
                     />
                   </div>

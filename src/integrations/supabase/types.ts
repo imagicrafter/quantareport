@@ -305,49 +305,6 @@ export type Database = {
         }
         Relationships: []
       }
-      project_transcript_insights: {
-        Row: {
-          created_at: string
-          file_id: string
-          id: number
-          insights: string | null
-        }
-        Insert: {
-          created_at?: string
-          file_id: string
-          id?: never
-          insights?: string | null
-        }
-        Update: {
-          created_at?: string
-          file_id?: string
-          id?: never
-          insights?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_transcript_insights_file_id_fkey"
-            columns: ["file_id"]
-            isOneToOne: false
-            referencedRelation: "files"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_transcript_insights_file_id_fkey"
-            columns: ["file_id"]
-            isOneToOne: false
-            referencedRelation: "files_not_processed"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_transcript_insights_file_id_fkey"
-            columns: ["file_id"]
-            isOneToOne: false
-            referencedRelation: "project_images"
-            referencedColumns: ["files_id"]
-          },
-        ]
-      }
       projects: {
         Row: {
           created_at: string | null

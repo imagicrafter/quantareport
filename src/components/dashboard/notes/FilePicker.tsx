@@ -23,24 +23,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
 import { supabase } from '@/integrations/supabase/client';
 
-export interface FilePickerProps {
+interface FilePickerProps {
   projectId: string;
   noteId: string;
   onFileAdded: (newRelationship?: NoteFileRelationshipWithType) => void;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  relatedFiles?: NoteFileRelationshipWithType[];
+  relatedFiles: NoteFileRelationshipWithType[];
 }
 
-const FilePicker = ({ 
-  projectId, 
-  noteId, 
-  onFileAdded, 
-  open: externalOpen, 
-  onOpenChange: externalOnOpenChange,
-  relatedFiles: externalRelatedFiles 
-}: FilePickerProps) => {
-  const [open, setOpen] = useState(externalOpen || false);
+const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePickerProps) => {
+  const [open, setOpen] = useState(false);
   const [availableFiles, setAvailableFiles] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,29 +42,11 @@ const FilePicker = ({
   const [previewTitle, setPreviewTitle] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [previewableImages, setPreviewableImages] = useState<{path: string, title: string}[]>([]);
-  const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationshipWithType[]>(externalRelatedFiles || []);
-  
-  useEffect(() => {
-    if (externalOpen !== undefined) {
-      setOpen(externalOpen);
-    }
-  }, [externalOpen]);
-
-  useEffect(() => {
-    if (externalOnOpenChange) {
-      externalOnOpenChange(open);
-    }
-  }, [open, externalOnOpenChange]);
-
-  useEffect(() => {
-    if (externalRelatedFiles) {
-      setRelatedFiles(externalRelatedFiles);
-    }
-  }, [externalRelatedFiles]);
   
   const loadFiles = async () => {
     setLoading(true);
     try {
+      // Fetch available files for this project
       const { data: files, error } = await supabase
         .from('files')
         .select('*')
@@ -82,14 +55,8 @@ const FilePicker = ({
         
       if (error) throw error;
       
-      let currentRelatedFiles = relatedFiles;
-      if (!externalRelatedFiles || externalRelatedFiles.length === 0) {
-        const fetchedRelatedFiles = await fetchRelatedFiles(noteId);
-        setRelatedFiles(fetchedRelatedFiles);
-        currentRelatedFiles = fetchedRelatedFiles;
-      }
-      
-      const relatedFileIds = currentRelatedFiles.map(rel => rel.file_id);
+      // Filter out any files that are already in the relatedFiles array
+      const relatedFileIds = relatedFiles.map(rel => rel.file_id);
       const filteredFiles = (files as ProjectFile[]).filter(
         file => !relatedFileIds.includes(file.id)
       );
@@ -108,9 +75,25 @@ const FilePicker = ({
     }
   }, [open, projectId, noteId, relatedFiles]);
 
+  // Prepare previewable images when related files change
+  useEffect(() => {
+    const images = [
+      ...relatedFiles.filter(rel => rel.file_type === 'image').map(rel => ({
+        path: rel.file_path,
+        title: rel.file?.name || 'Image'
+      })),
+      ...availableFiles.filter(file => file.type === 'image').map(file => ({
+        path: file.file_path,
+        title: file.name
+      }))
+    ];
+    setPreviewableImages(images);
+  }, [relatedFiles, availableFiles]);
+
   const handleFileSelect = async (fileId: string, selectedFile: ProjectFile) => {
     setAddingFileId(fileId);
     try {
+      // Create a temporary relationship object
       const tempRelationship: NoteFileRelationshipWithType = {
         id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         note_id: noteId,
@@ -121,6 +104,7 @@ const FilePicker = ({
         file_path: selectedFile.file_path
       };
       
+      // Try to add the file to the note in the database
       const { data, error } = await supabase
         .from('note_file_relationships')
         .insert({
@@ -132,8 +116,11 @@ const FilePicker = ({
       
       if (error) {
         console.error('Error adding file to note:', error);
+        // Even if there's an error, we can still use the temporary relationship
+        // in the UI while the user is working on the note
         onFileAdded(tempRelationship);
       } else if (data) {
+        // If successful, use the real relationship data
         const realRelationship: NoteFileRelationshipWithType = {
           id: data.id,
           note_id: data.note_id,
@@ -146,7 +133,9 @@ const FilePicker = ({
         onFileAdded(realRelationship);
       }
       
+      // Remove the file from available files
       setAvailableFiles(prev => prev.filter(file => file.id !== fileId));
+      
     } finally {
       setAddingFileId(null);
     }
@@ -155,9 +144,11 @@ const FilePicker = ({
   const handleRemoveFile = async (relationshipId: string) => {
     setRemovingFileId(relationshipId);
     try {
+      // Find the relationship to get the file info
       const relationship = relatedFiles.find(rel => rel.id === relationshipId);
       
       if (relationship) {
+        // Try to remove from database if it's not a temporary relationship
         if (!relationshipId.startsWith('temp-')) {
           await supabase
             .from('note_file_relationships')
@@ -165,11 +156,13 @@ const FilePicker = ({
             .eq('id', relationshipId);
         }
         
+        // Add the file back to available files if it's not already there
         const fileAlreadyAvailable = availableFiles.some(file => file.id === relationship.file_id);
         if (!fileAlreadyAvailable && relationship.file) {
           setAvailableFiles(prev => [...prev, relationship.file!]);
         }
         
+        // Notify the parent component about the removal
         onFileAdded();
       }
     } finally {
@@ -181,6 +174,7 @@ const FilePicker = ({
     setPreviewImage(imagePath);
     setPreviewTitle(title);
     
+    // Find the index of this image in the previewable images array
     const index = previewableImages.findIndex(img => img.path === imagePath);
     if (index !== -1) {
       setCurrentImageIndex(index);
@@ -403,6 +397,7 @@ const FilePicker = ({
         </DialogContent>
       </Dialog>
 
+      {/* Image Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="sm:max-w-4xl p-0 flex flex-col max-h-[90vh] overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b flex-shrink-0">

@@ -26,13 +26,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import Button from '../../ui-elements/Button';
 import { FileFormValues } from './FileService';
 
-export interface BulkUploadDialogProps {
+interface BulkUploadDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onUploadFiles: (files: File[]) => Promise<void>;
   onUploadFromLink: (link: string) => Promise<void>;
   uploading: boolean;
-  projectId: string; // Add projectId prop
 }
 
 const driveLinkSchema = z.object({
