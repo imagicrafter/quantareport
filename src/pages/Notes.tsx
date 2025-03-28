@@ -186,10 +186,12 @@ const Notes = () => {
                   {projects.find(p => p.id === selectedProjectId)?.name} - Notes
                 </h2>
               </div>
-              <div className="flex-1 overflow-auto">
-                <div className="p-6">
-                  <NotesSection projectId={selectedProjectId} />
-                </div>
+              <div className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-6">
+                    <NotesSection projectId={selectedProjectId} />
+                  </div>
+                </ScrollArea>
               </div>
             </>
           )}

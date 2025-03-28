@@ -265,17 +265,21 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
               </Form>
             </TabsContent>
 
-            {/* Notes tab - full scrollable content with fixed header */}
-            <TabsContent value="notes" className="mt-0 flex flex-col flex-grow h-full">
-              <div className="px-6 pb-6 flex flex-col h-full">
-                <NotesSection projectId={projectId} />
+            {/* Notes tab - fixed header with scrolling content area */}
+            <TabsContent value="notes" className="mt-0 flex-grow flex flex-col overflow-hidden">
+              <div className="px-6 pb-6 flex flex-col h-full overflow-hidden">
+                <ScrollArea className="flex-grow">
+                  <NotesSection projectId={projectId} />
+                </ScrollArea>
               </div>
             </TabsContent>
 
-            {/* Files tab - full scrollable content with fixed header */}
-            <TabsContent value="files" className="mt-0 flex flex-col flex-grow h-full">
-              <div className="px-6 pb-6 flex flex-col h-full">
-                <FilesSection projectId={projectId} />
+            {/* Files tab - fixed header with scrolling content area */}
+            <TabsContent value="files" className="mt-0 flex-grow flex flex-col overflow-hidden">
+              <div className="px-6 pb-6 flex flex-col h-full overflow-hidden">
+                <ScrollArea className="flex-grow">
+                  <FilesSection projectId={projectId} />
+                </ScrollArea>
               </div>
             </TabsContent>
           </Tabs>
