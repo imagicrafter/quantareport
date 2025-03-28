@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,7 +14,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { UploadCloud, FileQuestion, Link } from 'lucide-react';
-import Button as CustomButton from '../../ui-elements/Button';
+import CustomButton from '../../ui-elements/Button';
 
 interface BulkUploadDialogProps {
   isOpen: boolean;
