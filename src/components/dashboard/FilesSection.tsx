@@ -1,301 +1,92 @@
 
-import { useState, useEffect } from 'react';
-import { DropResult } from 'react-beautiful-dnd';
-import { PlusCircle, Upload } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import Button from '../ui-elements/Button';
+import { Button } from '@/components/ui/button';
+import { PlusIcon, UploadIcon } from 'lucide-react';
 import FilesList from './files/FilesList';
 import AddFileDialog from './files/AddFileDialog';
-import EditFileDialog from './files/EditFileDialog';
-import DeleteFileDialog from './files/DeleteFileDialog';
 import BulkUploadDialog from './files/BulkUploadDialog';
-import { ProjectFile } from './files/FileItem';
-import { 
-  fetchFiles, 
-  addFile, 
-  updateFile, 
-  deleteFile, 
-  FileFormValues,
-  bulkUploadFiles,
-  loadFilesFromDriveLink
-} from './files/FileService';
-import { reorderFiles } from '@/utils/fileUtils';
 
-interface FilesSectionProps {
-  projectId: string;
-}
+// Main component for backward compatibility
+const FilesSection = ({ projectId }: { projectId: string }) => {
+  return (
+    <>
+      <Header projectId={projectId} />
+      <Content projectId={projectId} />
+    </>
+  );
+};
 
-const FilesSection = ({ projectId }: FilesSectionProps) => {
-  const { toast } = useToast();
-  const [files, setFiles] = useState<ProjectFile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+// Header component with title and action buttons
+const Header = ({ projectId }: { projectId: string }) => {
+  const [isAddFileDialogOpen, setIsAddFileDialogOpen] = useState(false);
   const [isBulkUploadDialogOpen, setIsBulkUploadDialogOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
-  const [uploading, setUploading] = useState(false);
-
-  const loadFiles = async () => {
-    try {
-      setLoading(true);
-      const data = await fetchFiles(projectId);
-      // Sort files by position
-      const sortedFiles = [...data].sort((a, b) => (a.position || 0) - (b.position || 0));
-      setFiles(sortedFiles);
-    } catch (error) {
-      console.error('Error fetching files:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load files. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (projectId) {
-      loadFiles();
-    }
-  }, [projectId]);
-
-  const handleAddFile = async (values: FileFormValues) => {
-    try {
-      setUploading(true);
-      await addFile(values, projectId);
-      
-      toast({
-        title: 'Success',
-        description: 'File added successfully!',
-      });
-
-      setIsAddDialogOpen(false);
-      loadFiles();
-    } catch (error) {
-      console.error('Error adding file:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add file. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleEditFile = async (values: FileFormValues) => {
-    if (!selectedFile) return;
-
-    try {
-      setUploading(true);
-      await updateFile(selectedFile.id, values);
-
-      toast({
-        title: 'Success',
-        description: 'File updated successfully!',
-      });
-
-      setIsEditDialogOpen(false);
-      loadFiles();
-    } catch (error) {
-      console.error('Error updating file:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update file. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDeleteFile = async () => {
-    if (!selectedFile) return;
-
-    try {
-      setUploading(true);
-      await deleteFile(selectedFile);
-
-      toast({
-        title: 'Success',
-        description: 'File deleted successfully!',
-      });
-
-      setIsDeleteDialogOpen(false);
-      loadFiles();
-    } catch (error) {
-      console.error('Error deleting file:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete file. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleReorderFiles = async (result: DropResult) => {
-    if (!result.destination) return;
-    
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
-    
-    if (sourceIndex === destinationIndex) return;
-    
-    try {
-      const reorderedFiles = await reorderFiles(files, sourceIndex, destinationIndex);
-      setFiles(reorderedFiles);
-      
-      toast({
-        title: 'Success',
-        description: 'File order updated successfully!',
-      });
-    } catch (error) {
-      console.error('Error reordering files:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to reorder files. Please try again.',
-        variant: 'destructive',
-      });
-      // Reload files to ensure UI is in sync with database
-      loadFiles();
-    }
-  };
-
-  const handleBulkUploadFiles = async (files: File[]) => {
-    try {
-      setUploading(true);
-      const successCount = await bulkUploadFiles(files, projectId);
-      
-      if (successCount > 0) {
-        toast({
-          title: 'Success',
-          description: `${successCount} ${successCount === 1 ? 'file' : 'files'} uploaded successfully!`,
-        });
-        
-        setIsBulkUploadDialogOpen(false);
-        loadFiles();
-      } else {
-        toast({
-          title: 'No files uploaded',
-          description: 'No files were successfully uploaded. Please check file types and try again.',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Error with bulk upload:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to upload files. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleUploadFromDriveLink = async (link: string) => {
-    try {
-      setUploading(true);
-      const successCount = await loadFilesFromDriveLink(link, projectId);
-      
-      if (successCount > 0) {
-        toast({
-          title: 'Success',
-          description: `${successCount} ${successCount === 1 ? 'file' : 'files'} loaded from Google Drive!`,
-        });
-        
-        setIsBulkUploadDialogOpen(false);
-        loadFiles();
-      } else {
-        toast({
-          title: 'Google Drive Integration',
-          description: 'This feature requires backend integration with Google Drive API. Please implement this in the backend.',
-        });
-      }
-    } catch (error) {
-      console.error('Error loading from Google Drive:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load files from Google Drive. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Project Files</h3>
-        <div className="flex space-x-2">
+    <div className="w-full">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+        <h2 className="text-xl font-semibold">Project Files</h2>
+        
+        <div className="flex gap-2">
           <Button 
-            size="sm" 
-            variant="outline"
             onClick={() => setIsBulkUploadDialogOpen(true)}
+            variant="outline" 
+            size="sm"
+            className="gap-1"
           >
-            <Upload size={16} className="mr-2" />
+            <UploadIcon className="h-4 w-4" />
             Bulk Upload
           </Button>
+          
           <Button 
-            size="sm" 
-            onClick={() => setIsAddDialogOpen(true)}
+            onClick={() => setIsAddFileDialogOpen(true)}
+            variant="outline" 
+            size="sm"
+            className="gap-1"
           >
-            <PlusCircle size={16} className="mr-2" />
+            <PlusIcon className="h-4 w-4" />
             Add File
           </Button>
         </div>
       </div>
 
-      <FilesList 
-        files={files}
-        loading={loading}
-        onEditFile={(file) => {
-          setSelectedFile(file);
-          setIsEditDialogOpen(true);
-        }}
-        onDeleteFile={(file) => {
-          setSelectedFile(file);
-          setIsDeleteDialogOpen(true);
-        }}
-        onReorderFiles={handleReorderFiles}
-      />
-
+      {/* File Dialogs */}
       <AddFileDialog 
-        isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
-        onAddFile={handleAddFile}
-        uploading={uploading}
+        open={isAddFileDialogOpen} 
+        onOpenChange={setIsAddFileDialogOpen}
+        projectId={projectId}
       />
 
-      <EditFileDialog 
-        isOpen={isEditDialogOpen}
-        onClose={() => setIsEditDialogOpen(false)}
-        onEditFile={handleEditFile}
-        selectedFile={selectedFile}
-        uploading={uploading}
-      />
-
-      <DeleteFileDialog 
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onDelete={handleDeleteFile}
-        uploading={uploading}
-      />
-
-      <BulkUploadDialog
-        isOpen={isBulkUploadDialogOpen}
-        onClose={() => setIsBulkUploadDialogOpen(false)}
-        onUploadFiles={handleBulkUploadFiles}
-        onUploadFromLink={handleUploadFromDriveLink}
-        uploading={uploading}
+      <BulkUploadDialog 
+        open={isBulkUploadDialogOpen} 
+        onOpenChange={setIsBulkUploadDialogOpen}
+        projectId={projectId}
       />
     </div>
   );
 };
+
+// Content component with the files list
+const Content = ({ projectId }: { projectId: string }) => {
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const { toast } = useToast();
+
+  const refreshFiles = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  return (
+    <FilesList 
+      projectId={projectId}
+      refreshTrigger={refreshTrigger}
+      onFileChange={refreshFiles}
+    />
+  );
+};
+
+// Add these to FilesSection for export
+FilesSection.Header = Header;
+FilesSection.Content = Content;
 
 export default FilesSection;

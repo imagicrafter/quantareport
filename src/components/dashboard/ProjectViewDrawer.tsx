@@ -268,8 +268,11 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
             {/* Notes tab - fixed header with scrolling content area */}
             <TabsContent value="notes" className="mt-0 flex-grow flex flex-col overflow-hidden">
               <div className="px-6 pb-6 flex flex-col h-full overflow-hidden">
+                <div className="flex-shrink-0 mb-4 sticky top-0 bg-background z-10">
+                  <NotesSection.Header projectId={projectId} />
+                </div>
                 <ScrollArea className="flex-grow">
-                  <NotesSection projectId={projectId} />
+                  <NotesSection.Content projectId={projectId} />
                 </ScrollArea>
               </div>
             </TabsContent>
@@ -277,8 +280,11 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
             {/* Files tab - fixed header with scrolling content area */}
             <TabsContent value="files" className="mt-0 flex-grow flex flex-col overflow-hidden">
               <div className="px-6 pb-6 flex flex-col h-full overflow-hidden">
+                <div className="flex-shrink-0 mb-4 sticky top-0 bg-background z-10">
+                  <FilesSection.Header projectId={projectId} />
+                </div>
                 <ScrollArea className="flex-grow">
-                  <FilesSection projectId={projectId} />
+                  <FilesSection.Content projectId={projectId} />
                 </ScrollArea>
               </div>
             </TabsContent>

@@ -1,100 +1,93 @@
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { PlusCircle, Edit, Trash, GripVertical, ImageIcon, File } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { supabase } from '@/integrations/supabase/client';
-import Button from '../ui-elements/Button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { Note, reorderNotes, titleToCamelCase, submitImageAnalysis, NoteFileRelationshipWithType } from '@/utils/noteUtils';
-import { NoteFileRelationship, fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
-import FilePicker from './notes/FilePicker';
+import { PlusIcon } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import RelatedFiles from './notes/RelatedFiles';
-import AudioRecorder from './files/AudioRecorder';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { toast } from 'sonner';
 
-interface ExtendedNote extends Note {
-  analysis?: string | null;
-}
+// Existing NotesSection logic for backward compatibility
+const NotesSection = ({ projectId }: { projectId: string }) => {
+  return (
+    <>
+      <Header projectId={projectId} />
+      <Content projectId={projectId} />
+    </>
+  );
+};
 
-interface NotesSectionProps {
-  projectId: string;
-}
+// Header component with title and add note button
+const Header = ({ projectId }: { projectId: string }) => {
+  const [isAddingNote, setIsAddingNote] = useState(false);
 
-const formSchema = z.object({
-  title: z.string().min(2, 'Title must be at least 2 characters.'),
-  content: z.string().optional(),
-  analysis: z.string().optional(),
-});
+  return (
+    <div className="w-full">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Project Notes</h2>
+        <Button 
+          onClick={() => setIsAddingNote(true)}
+          variant="outline" 
+          size="sm"
+          className="gap-1"
+        >
+          <PlusIcon className="h-4 w-4" />
+          Add Note
+        </Button>
+      </div>
+      {isAddingNote && <AddNoteForm projectId={projectId} onComplete={() => setIsAddingNote(false)} />}
+    </div>
+  );
+};
 
-const NotesSection = ({ projectId }: NotesSectionProps) => {
-  const { toast: uiToast } = useToast();
-  const [notes, setNotes] = useState<ExtendedNote[]>([]);
+// Content component with notes list
+const Content = ({ projectId }: { projectId: string }) => {
+  const [notes, setNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedNote, setSelectedNote] = useState<ExtendedNote | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
-  const [addNoteRelatedFiles, setAddNoteRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
-  const [analyzingImages, setAnalyzingImages] = useState(false);
-  const [projectName, setProjectName] = useState('');
-  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
-  const [tempNoteId, setTempNoteId] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      title: '',
-      content: '',
-      analysis: '',
-    },
-  });
-
-  const editForm = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      title: '',
-      content: '',
-      analysis: '',
-    },
-  });
+  useEffect(() => {
+    fetchNotes();
+  }, [projectId]);
 
   const fetchNotes = async () => {
     try {
       setLoading(true);
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (!session.session) {
+        return;
+      }
+
       const { data, error } = await supabase
         .from('notes')
-        .select('*')
+        .select(`
+          id, 
+          content, 
+          created_at, 
+          user_id, 
+          profiles(full_name, avatar_url)
+        `)
         .eq('project_id', projectId)
-        .order('position', { ascending: true });
+        .eq('user_id', session.session.user.id)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setNotes(data);
+
+      setNotes(data || []);
     } catch (error) {
       console.error('Error fetching notes:', error);
-      uiToast({
+      toast({
         title: 'Error',
         description: 'Failed to load notes. Please try again.',
         variant: 'destructive',
@@ -104,796 +97,307 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     }
   };
 
-  const fetchProjectName = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('name')
-        .eq('id', projectId)
-        .single();
+  if (loading) {
+    return <div className="py-4 text-center">Loading notes...</div>;
+  }
 
-      if (error) throw error;
-      setProjectName(data?.name || '');
-    } catch (error) {
-      console.error('Error fetching project name:', error);
-    }
+  if (notes.length === 0) {
+    return <div className="text-center py-8 text-muted-foreground">No notes yet. Add your first note!</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {notes.map((note) => (
+        <NoteItem key={note.id} note={note} onUpdate={fetchNotes} />
+      ))}
+    </div>
+  );
+};
+
+// Add these to NotesSection for export
+NotesSection.Header = Header;
+NotesSection.Content = Content;
+
+interface NoteItemProps {
+  note: {
+    id: string;
+    content: string;
+    created_at: string;
+    profiles: {
+      full_name: string;
+      avatar_url: string | null;
+    };
+  };
+  onUpdate: () => void;
+}
+
+const NoteItem = ({ note, onUpdate }: NoteItemProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { toast } = useToast();
+
+  const handleEdit = () => {
+    setIsEditing(true);
   };
 
-  useEffect(() => {
-    if (projectId) {
-      fetchNotes();
-      fetchProjectName();
-    }
-  }, [projectId]);
-
-  const fetchFileRelationships = async (noteId: string) => {
-    if (noteId) {
-      const filesWithTypes = await fetchRelatedFiles(noteId);
-      setRelatedFiles(filesWithTypes);
-    }
-  };
-
-  const createTemporaryNote = async () => {
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      
-      if (!session.session) {
-        uiToast({
-          title: 'Error',
-          description: 'You must be logged in to add notes.',
-          variant: 'destructive',
-        });
-        return null;
-      }
-
-      const nextPosition = notes.length > 0 
-        ? Math.max(...notes.map(note => note.position || 0)) + 1 
-        : 1;
-
-      const { data, error } = await supabase
-        .from('notes')
-        .insert({
-          title: 'Temporary Note',
-          name: 'temporaryNote',
-          content: '',
-          project_id: projectId,
-          user_id: session.session.user.id,
-          position: nextPosition
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data.id;
-    } catch (error) {
-      console.error('Error creating temporary note:', error);
-      return null;
-    }
-  };
-
-  const deleteTemporaryNote = async (noteId: string) => {
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this note?')) return;
+    
+    setIsDeleting(true);
     try {
       const { error } = await supabase
         .from('notes')
         .delete()
-        .eq('id', noteId);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error deleting temporary note:', error);
-    }
-  };
-
-  const handleAddNote = async (values: z.infer<typeof formSchema>) => {
-    try {
-      setSaving(true);
-      
-      if (!tempNoteId) {
-        uiToast({
-          title: 'Error',
-          description: 'No temporary note ID available.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const name = titleToCamelCase(values.title);
-
-      const { error } = await supabase
-        .from('notes')
-        .update({
-          title: values.title,
-          name: name,
-          content: values.content || '',
-          analysis: values.analysis || null,
-        })
-        .eq('id', tempNoteId);
+        .eq('id', note.id);
 
       if (error) throw error;
 
-      uiToast({
-        title: 'Success',
-        description: 'Note added successfully!',
-      });
-
-      form.reset();
-      setAddNoteRelatedFiles([]);
-      setIsAddDialogOpen(false);
-      fetchNotes();
-    } catch (error) {
-      console.error('Error adding note:', error);
-      uiToast({
-        title: 'Error',
-        description: 'Failed to add note. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSaving(false);
-      setTempNoteId(null);
-    }
-  };
-
-  const handleEditNote = async (values: z.infer<typeof formSchema>) => {
-    if (!selectedNote) return;
-
-    try {
-      setSaving(true);
-      const { error } = await supabase
-        .from('notes')
-        .update({
-          title: values.title,
-          content: values.content || '',
-          analysis: values.analysis || null,
-        })
-        .eq('id', selectedNote.id);
-
-      if (error) throw error;
-
-      uiToast({
-        title: 'Success',
-        description: 'Note updated successfully!',
-      });
-
-      editForm.reset();
-      setIsEditDialogOpen(false);
-      fetchNotes();
-    } catch (error) {
-      console.error('Error updating note:', error);
-      uiToast({
-        title: 'Error',
-        description: 'Failed to update note. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteNote = async () => {
-    if (!selectedNote) return;
-
-    try {
-      setSaving(true);
-      const { error } = await supabase
-        .from('notes')
-        .delete()
-        .eq('id', selectedNote.id);
-
-      if (error) throw error;
-
-      uiToast({
+      toast({
         title: 'Success',
         description: 'Note deleted successfully!',
       });
-
-      setIsDeleteDialogOpen(false);
-      fetchNotes();
+      onUpdate();
     } catch (error) {
       console.error('Error deleting note:', error);
-      uiToast({
+      toast({
         title: 'Error',
         description: 'Failed to delete note. Please try again.',
         variant: 'destructive',
       });
     } finally {
-      setSaving(false);
+      setIsDeleting(false);
     }
   };
 
-  const handleOnDragEnd = async (result: any) => {
-    if (!result.destination) return;
-    
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
-    
-    if (sourceIndex === destinationIndex) return;
-    
-    try {
-      const updatedNotes = await reorderNotes(notes, sourceIndex, destinationIndex);
-      setNotes(updatedNotes);
-      
-      uiToast({
-        description: "Note order updated",
-      });
-    } catch (error) {
-      console.error('Error reordering notes:', error);
-      uiToast({
-        title: 'Error',
-        description: 'Failed to update note order',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleTranscriptionComplete = (text: string) => {
-    form.setValue('content', text);
-  };
-
-  const handleEditTranscriptionComplete = (text: string) => {
-    editForm.setValue('content', text);
-  };
-
-  const checkAnalysisStatus = async (noteId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('notes')
-        .select('analysis')
-        .eq('id', noteId)
-        .single();
-        
-      if (error) {
-        console.error('Error fetching note status:', error);
-        return false;
-      }
-      
-      if (data && data.analysis) {
-        console.log('Analysis completed:', data.analysis.substring(0, 50) + '...');
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Error checking analysis status:', error);
-      return false;
-    }
-  };
-
-  const startPollingForAnalysisCompletion = (noteId: string, isAdd: boolean = false) => {
-    if (pollingInterval !== null) {
-      clearInterval(pollingInterval);
-    }
-    
-    const maxAttempts = 30;
-    let attempts = 0;
-    
-    const intervalId = window.setInterval(async () => {
-      attempts++;
-      console.log(`Checking analysis status: attempt ${attempts}/${maxAttempts}`);
-      
-      const isComplete = await checkAnalysisStatus(noteId);
-      
-      if (isComplete) {
-        clearInterval(intervalId);
-        setPollingInterval(null);
-        setAnalyzingImages(false);
-        
-        const { data, error } = await supabase
-          .from('notes')
-          .select('*')
-          .eq('id', noteId)
-          .single();
-          
-        if (!error && data) {
-          if (isAdd) {
-            form.setValue('analysis', data.analysis || '');
-          } else {
-            editForm.setValue('analysis', data.analysis || '');
-            setSelectedNote(prevNote => prevNote ? { ...prevNote, analysis: data.analysis } : null);
-          }
-          toast.success('Image analysis completed');
-        }
-      } else if (attempts >= maxAttempts) {
-        clearInterval(intervalId);
-        setPollingInterval(null);
-        setAnalyzingImages(false);
-        toast.error('Analysis is taking longer than expected. Please check back later.');
-      }
-    }, 2000);
-    
-    setPollingInterval(intervalId);
-  };
-
-  const handleAnalyzeImages = async (isAdd: boolean = false) => {
-    const noteId = isAdd ? tempNoteId : selectedNote?.id;
-    if (!noteId) return;
-    
-    setAnalyzingImages(true);
-    
-    try {
-      const imageRelationships = (isAdd ? addNoteRelatedFiles : relatedFiles).filter(rel => 
-        rel.file_type === 'image'
-      );
-      
-      if (imageRelationships.length === 0) {
-        toast('No images available for analysis', {
-          description: 'Add some images to analyze first'
-        });
-        setAnalyzingImages(false);
-        return;
-      }
-      
-      const imageUrls = imageRelationships.map(rel => rel.file_path);
-      
-      const isTestMode = projectName.toLowerCase().includes('test');
-      console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project: ${projectName}`);
-      
-      const success = await submitImageAnalysis(
-        noteId,
-        projectId,
-        imageUrls,
-        isTestMode
-      );
-      
-      if (!success) {
-        throw new Error('Failed to submit image analysis request');
-      }
-      
-      toast.success('Image analysis started');
-      startPollingForAnalysisCompletion(noteId, isAdd);
-      
-    } catch (error) {
-      console.error('Error analyzing images:', error);
-      toast.error('Failed to analyze images');
-      setAnalyzingImages(false);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (pollingInterval !== null) {
-        clearInterval(pollingInterval);
-      }
-    };
-  }, [pollingInterval]);
-
-  const handleAddNoteRelationshipChange = (newRelationship?: NoteFileRelationshipWithType) => {
-    if (newRelationship) {
-      setAddNoteRelatedFiles(prev => {
-        const exists = prev.some(rel => rel.id === newRelationship.id);
-        if (exists) {
-          return prev;
-        }
-        return [...prev, newRelationship];
-      });
-    } else {
-      if (tempNoteId) {
-        fetchFileRelationships(tempNoteId);
-      }
-    }
-  };
-
-  const handleRemoveRelationship = (relationshipId: string) => {
-    setAddNoteRelatedFiles(prev => prev.filter(rel => rel.id !== relationshipId));
-  };
-
-  const handleAddDialogOpenChange = async (open: boolean) => {
-    if (open) {
-      form.reset();
-      setAddNoteRelatedFiles([]);
-      const newTempNoteId = await createTemporaryNote();
-      if (newTempNoteId) {
-        setTempNoteId(newTempNoteId);
-      } else {
-        return;
-      }
-    } else if (tempNoteId && !saving) {
-      await deleteTemporaryNote(tempNoteId);
-      setTempNoteId(null);
-      setAddNoteRelatedFiles([]);
-    }
-    setIsAddDialogOpen(open);
+  const handleEditComplete = () => {
+    setIsEditing(false);
+    onUpdate();
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Project Notes</h3>
-        <Button 
-          size="sm" 
-          onClick={() => handleAddDialogOpenChange(true)}
-        >
-          <PlusCircle size={16} className="mr-2" />
-          Add Note
-        </Button>
-      </div>
-
-      {loading ? (
-        <div className="py-8 text-center">Loading notes...</div>
-      ) : notes.length === 0 ? (
-        <div className="py-8 text-center text-muted-foreground border rounded-lg">
-          No notes added yet. Add your first note to get started.
-        </div>
+    <div className="border rounded-lg p-4 bg-card">
+      {isEditing ? (
+        <EditNoteForm 
+          noteId={note.id} 
+          initialContent={note.content} 
+          onComplete={handleEditComplete} 
+          onCancel={() => setIsEditing(false)}
+        />
       ) : (
-        <DragDropContext onDragEnd={handleOnDragEnd}>
-          <Droppable droppableId="notes-list">
-            {(provided) => (
-              <div 
-                className="space-y-2" 
-                {...provided.droppableProps} 
-                ref={provided.innerRef}
+        <>
+          <div className="whitespace-pre-wrap mb-3">{note.content}</div>
+          <div className="flex justify-between items-center text-sm text-muted-foreground mt-2">
+            <div>
+              {note.profiles?.full_name || 'Unknown user'} • {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={handleEdit}
+                className="text-xs hover:underline"
               >
-                {notes.map((note, index) => (
-                  <Draggable key={note.id} draggableId={note.id} index={index}>
-                    {(provided) => (
-                      <div 
-                        ref={provided.innerRef} 
-                        {...provided.draggableProps} 
-                        className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg"
-                      >
-                        <div className="flex items-center w-full">
-                          <div 
-                            {...provided.dragHandleProps} 
-                            className="px-2 cursor-grab"
-                          >
-                            <GripVertical size={16} className="text-muted-foreground" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium">{note.title}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {new Date(note.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="flex space-x-2 ml-4">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedNote(note);
-                                editForm.reset({
-                                  title: note.title,
-                                  content: note.content,
-                                  analysis: note.analysis || '',
-                                });
-                                fetchFileRelationships(note.id);
-                                setIsEditDialogOpen(true);
-                              }}
-                            >
-                              <Edit size={16} />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedNote(note);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash size={16} />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
+                Edit
+              </button>
+              <button 
+                onClick={handleDelete}
+                className="text-xs text-destructive hover:underline"
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+          <RelatedFiles noteId={note.id} />
+        </>
       )}
-
-      <Dialog 
-        open={isAddDialogOpen} 
-        onOpenChange={handleAddDialogOpenChange}
-      >
-        <DialogContent className="sm:max-w-md max-h-[90vh] p-0 flex flex-col">
-          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
-            <DialogTitle>Add Note</DialogTitle>
-          </DialogHeader>
-          
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleAddNote)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter note title" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex justify-between items-center">
-                        <FormLabel>Content (Optional)</FormLabel>
-                        <AudioRecorder onTranscriptionComplete={handleTranscriptionComplete} />
-                      </div>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Enter note content" 
-                          className="min-h-[70px]"
-                          rows={4}
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="analysis"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex justify-between items-center">
-                        <FormLabel>Analysis</FormLabel>
-                        <Button
-                          type="button"
-                          onClick={() => handleAnalyzeImages(true)}
-                          isLoading={analyzingImages}
-                          disabled={!tempNoteId || addNoteRelatedFiles.length === 0}
-                          className="flex items-center gap-1"
-                        >
-                          <ImageIcon size={16} />
-                          <span>Analyze Images</span>
-                        </Button>
-                      </div>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Analysis content"
-                          className="min-h-[100px]"
-                          rows={4}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {tempNoteId && (
-                  <div className="space-y-4">
-                    <div className="rounded-lg border p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="text-sm font-medium">Related Files</div>
-                        <FilePicker
-                          projectId={projectId}
-                          noteId={tempNoteId}
-                          onFileAdded={handleAddNoteRelationshipChange}
-                          relatedFiles={addNoteRelatedFiles}
-                        />
-                      </div>
-                      
-                      {addNoteRelatedFiles.length > 0 ? (
-                        <div className="bg-secondary/30 rounded-md p-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 flex items-center justify-center bg-secondary rounded-full">
-                              <File size={16} />
-                            </div>
-                            <span className="text-sm font-medium">
-                              {addNoteRelatedFiles.length} {addNoteRelatedFiles.length === 1 ? 'file' : 'files'} attached
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="bg-secondary/30 rounded-md p-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 flex items-center justify-center bg-secondary rounded-full">
-                              <File size={16} />
-                            </div>
-                            <span className="text-sm font-medium">
-                              0 files attached
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </form>
-            </Form>
-          </div>
-          
-          <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
-            <Button 
-              type="button"
-              variant="ghost"
-              onClick={() => handleAddDialogOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="button"
-              onClick={form.handleSubmit(handleAddNote)}
-              isLoading={saving}
-            >
-              Add Note
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog 
-        open={isEditDialogOpen} 
-        onOpenChange={setIsEditDialogOpen}
-      >
-        <DialogContent className="sm:max-w-md max-h-[90vh] p-0 flex flex-col">
-          <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
-            <DialogTitle>Edit Note</DialogTitle>
-          </DialogHeader>
-          
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            <Form {...editForm}>
-              <form onSubmit={editForm.handleSubmit(handleEditNote)} className="space-y-4">
-                <FormField
-                  control={editForm.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter note title" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={editForm.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex justify-between items-center">
-                        <FormLabel>Content (Optional)</FormLabel>
-                        <AudioRecorder onTranscriptionComplete={handleEditTranscriptionComplete} />
-                      </div>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Enter note content" 
-                          className="min-h-[70px]"
-                          rows={4}
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={editForm.control}
-                  name="analysis"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex justify-between items-center">
-                        <FormLabel>Analysis</FormLabel>
-                        <Button
-                          type="button"
-                          onClick={() => handleAnalyzeImages()}
-                          isLoading={analyzingImages}
-                          className="flex items-center gap-1"
-                        >
-                          <ImageIcon size={16} />
-                          <span>Analyze Images</span>
-                        </Button>
-                      </div>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Analysis content"
-                          className="min-h-[200px]"
-                          rows={8}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {selectedNote && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div className="text-sm font-medium">Related Files</div>
-                      <FilePicker 
-                        projectId={projectId} 
-                        noteId={selectedNote.id}
-                        onFileAdded={() => fetchFileRelationships(selectedNote.id)}
-                        relatedFiles={relatedFiles}
-                      />
-                    </div>
-                    
-                    {relatedFiles.length > 0 ? (
-                      <div className="bg-secondary/30 rounded-md p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 flex items-center justify-center bg-secondary rounded-full">
-                            <File size={16} />
-                          </div>
-                          <span className="text-sm font-medium">
-                            {relatedFiles.length} {relatedFiles.length === 1 ? 'file' : 'files'} attached
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-secondary/30 rounded-md p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 flex items-center justify-center bg-secondary rounded-full">
-                            <File size={16} />
-                          </div>
-                          <span className="text-sm font-medium">
-                            0 files attached
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </form>
-            </Form>
-          </div>
-          
-          <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
-            <Button 
-              type="button"
-              variant="ghost"
-              onClick={() => setIsEditDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="button"
-              onClick={editForm.handleSubmit(handleEditNote)}
-              isLoading={saving}
-            >
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog 
-        open={isDeleteDialogOpen} 
-        onOpenChange={setIsDeleteDialogOpen}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete Note</DialogTitle>
-          </DialogHeader>
-          <div className="py-3">
-            <p>Are you sure you want to delete this note? This action cannot be undone.</p>
-          </div>
-          <DialogFooter>
-            <Button 
-              type="button"
-              variant="ghost"
-              onClick={() => setIsDeleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="button"
-              variant="primary"
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleDeleteNote}
-              isLoading={saving}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
+  );
+};
+
+const noteFormSchema = z.object({
+  content: z.string().min(1, 'Note content is required'),
+});
+
+interface AddNoteFormProps {
+  projectId: string;
+  onComplete: () => void;
+}
+
+const AddNoteForm = ({ projectId, onComplete }: AddNoteFormProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  
+  const form = useForm<z.infer<typeof noteFormSchema>>({
+    resolver: zodResolver(noteFormSchema),
+    defaultValues: {
+      content: '',
+    },
+  });
+
+  const onSubmit = async (values: z.infer<typeof noteFormSchema>) => {
+    setIsSubmitting(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (!session.session) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to add notes.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('notes')
+        .insert({
+          content: values.content,
+          project_id: projectId,
+          user_id: session.session.user.id,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Note added successfully!',
+      });
+      form.reset();
+      onComplete();
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add note. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="border rounded-lg p-4 mb-6 bg-card">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="content"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Textarea 
+                    placeholder="Write your note here..." 
+                    className="min-h-[100px]" 
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="flex justify-end gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onComplete}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Adding...' : 'Add Note'}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+};
+
+interface EditNoteFormProps {
+  noteId: string;
+  initialContent: string;
+  onComplete: () => void;
+  onCancel: () => void;
+}
+
+const EditNoteForm = ({ noteId, initialContent, onComplete, onCancel }: EditNoteFormProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  
+  const form = useForm<z.infer<typeof noteFormSchema>>({
+    resolver: zodResolver(noteFormSchema),
+    defaultValues: {
+      content: initialContent,
+    },
+  });
+
+  const onSubmit = async (values: z.infer<typeof noteFormSchema>) => {
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .update({ content: values.content })
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Note updated successfully!',
+      });
+      onComplete();
+    } catch (error) {
+      console.error('Error updating note:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update note. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="content"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <Textarea 
+                  className="min-h-[100px]" 
+                  {...field} 
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="flex justify-end gap-2">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 };
 
