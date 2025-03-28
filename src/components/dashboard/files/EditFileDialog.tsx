@@ -32,11 +32,11 @@ interface EditFileDialogProps {
   uploading: boolean;
 }
 
-// Update the form schema to include 'other' as a valid file type
+// Update the form schema to include 'text' as a valid file type
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   description: z.string().optional(),
-  type: z.enum(['image', 'audio', 'folder', 'transcription', 'other']),
+  type: z.enum(['image', 'audio', 'text', 'folder', 'transcription', 'other']),
 });
 
 const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }: EditFileDialogProps) => {

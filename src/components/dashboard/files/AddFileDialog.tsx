@@ -34,13 +34,13 @@ interface AddFileDialogProps {
   onClose: () => void;
   onAddFile: (values: z.infer<typeof formSchema>) => Promise<void>;
   uploading: boolean;
-  projectId: string; // Add projectId prop
+  projectId: string;
 }
 
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   description: z.string().optional(),
-  type: z.enum(['image', 'audio', 'text']), // Add text type option
+  type: z.enum(['image', 'audio', 'text']),
   file: z.any().optional(),
 });
 

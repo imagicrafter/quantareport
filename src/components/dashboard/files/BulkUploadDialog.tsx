@@ -1,30 +1,21 @@
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Upload, Link as LinkIcon, Info } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import { GhostButton } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { UploadCloud, FileQuestion, Link } from 'lucide-react';
 import Button from '../../ui-elements/Button';
-import { FileFormValues } from './FileService';
 
 interface BulkUploadDialogProps {
   isOpen: boolean;
@@ -32,229 +23,202 @@ interface BulkUploadDialogProps {
   onUploadFiles: (files: File[]) => Promise<void>;
   onUploadFromLink: (link: string) => Promise<void>;
   uploading: boolean;
-  projectId: string; // Add projectId prop
+  projectId: string;
 }
 
-const driveLinkSchema = z.object({
-  link: z.string()
-    .url('Please enter a valid URL')
-    .refine(url => url.includes('drive.google.com'), {
-      message: 'Please enter a valid Google Drive link',
-    }),
-});
-
-const BulkUploadDialog = ({ 
-  isOpen, 
-  onClose, 
+const BulkUploadDialog = ({
+  isOpen,
+  onClose,
   onUploadFiles,
   onUploadFromLink,
   uploading,
   projectId
 }: BulkUploadDialogProps) => {
+  const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
-  const [dragActive, setDragActive] = useState(false);
-  const [activeTab, setActiveTab] = useState('files');
-  
-  const linkForm = useForm<z.infer<typeof driveLinkSchema>>({
-    resolver: zodResolver(driveLinkSchema),
-    defaultValues: {
-      link: '',
-    },
-  });
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const filesArray = Array.from(e.dataTransfer.files);
-      setFiles(prev => [...prev, ...filesArray]);
-    }
-  };
+  const [driveLink, setDriveLink] = useState('');
+  const [activeTab, setActiveTab] = useState('upload');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const filesArray = Array.from(e.target.files);
-      setFiles(prev => [...prev, ...filesArray]);
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files));
     }
   };
 
-  const handleRemoveFile = (index: number) => {
-    setFiles(files.filter((_, i) => i !== index));
+  const handleUpload = async () => {
+    if (activeTab === 'upload') {
+      if (files.length === 0) {
+        toast({
+          title: 'No files selected',
+          description: 'Please select files to upload.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      await onUploadFiles(files);
+      setFiles([]);
+    } else {
+      if (!driveLink.trim()) {
+        toast({
+          title: 'No link provided',
+          description: 'Please enter a Google Drive link.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      await onUploadFromLink(driveLink);
+      setDriveLink('');
+    }
   };
 
-  const handleUploadFiles = async () => {
-    if (files.length === 0) return;
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     
-    await onUploadFiles(files);
-    setFiles([]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setFiles(Array.from(e.dataTransfer.files));
+      setActiveTab('upload');
+    }
   };
 
-  const handleUploadFromLink = async (values: z.infer<typeof driveLinkSchema>) => {
-    await onUploadFromLink(values.link);
-    linkForm.reset();
-  };
-
-  const handleDialogClose = () => {
-    setFiles([]);
-    linkForm.reset();
-    onClose();
-  };
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
+  const getFileTypeInfo = (file: File) => {
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension)) {
+      return { type: 'image', color: 'blue' };
+    } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(extension)) {
+      return { type: 'audio', color: 'purple' };
+    } else if (['txt', 'md', 'doc', 'docx'].includes(extension)) {
+      return { type: 'document', color: 'green' };
+    } else {
+      return { type: 'other', color: 'gray' };
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
-      <DialogContent className="sm:max-w-md md:max-w-xl">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md" onDragOver={handleDragOver} onDrop={handleDrop}>
         <DialogHeader>
           <DialogTitle>Bulk Upload Files</DialogTitle>
+          <DialogDescription>
+            Upload multiple files at once to your project.
+          </DialogDescription>
         </DialogHeader>
         
-        <Tabs defaultValue="files" className="mt-4" onValueChange={handleTabChange}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="files">Upload Files</TabsTrigger>
-            <TabsTrigger value="drive">Google Drive Link</TabsTrigger>
+            <TabsTrigger value="upload">Upload Files</TabsTrigger>
+            <TabsTrigger value="drive">Google Drive</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="files" className="mt-4">
-            <div
-              className={`border-2 border-dashed rounded-md p-8 text-center transition-colors ${
-                dragActive ? 'border-primary bg-primary/5' : 'border-border'
-              }`}
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-            >
-              <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
-              <p className="mb-1 font-medium">Drag and drop files</p>
-              <p className="text-sm text-muted-foreground mb-4">or click to browse</p>
-              
-              <Input
-                id="file-upload"
-                type="file"
-                onChange={handleFileChange}
-                multiple
-                accept="image/*,audio/*,.txt,.md,.doc,.docx"
-                className="hidden"
-              />
-              <Button 
-                type="button" 
-                variant="outline"
-                onClick={() => document.getElementById('file-upload')?.click()}
-              >
-                Select Files
-              </Button>
+          <TabsContent value="upload" className="py-4">
+            <div className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-secondary/30 transition-colors">
+              <Label htmlFor="multiple-files" className="cursor-pointer">
+                <div className="flex flex-col items-center gap-2">
+                  <UploadCloud className="h-10 w-10 text-muted-foreground" />
+                  <p className="font-medium">Click or drag and drop to upload</p>
+                  <p className="text-sm text-muted-foreground">
+                    Supports images, audio files, and text documents
+                  </p>
+                </div>
+                <Input
+                  id="multiple-files"
+                  type="file"
+                  multiple
+                  accept="image/*,audio/*,.txt,.md,.doc,.docx"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </Label>
             </div>
             
             {files.length > 0 && (
-              <div className="mt-4 space-y-2 max-h-40 overflow-y-auto">
-                <p className="text-sm font-medium mb-2">Selected Files ({files.length})</p>
-                {files.map((file, index) => (
-                  <Card key={index} className="p-2 flex justify-between items-center">
-                    <div className="text-sm truncate mr-2 max-w-[calc(100%-80px)]">
-                      {file.name}
-                    </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleRemoveFile(index)}
-                      className="h-6 px-2"
-                    >
-                      Remove
-                    </Button>
-                  </Card>
-                ))}
+              <div className="mt-4">
+                <h4 className="text-sm font-medium mb-2">Selected Files</h4>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                  {files.map((file, index) => {
+                    const { type, color } = getFileTypeInfo(file);
+                    return (
+                      <div 
+                        key={index} 
+                        className="flex items-center justify-between p-2 bg-secondary rounded-md"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`text-${color}-500`}>
+                            <FileQuestion size={16} />
+                          </div>
+                          <span className="text-sm truncate max-w-[200px]">{file.name}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {(file.size / 1024).toFixed(1)} KB
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 text-right">
+                  <GhostButton onClick={() => setFiles([])}>Clear All</GhostButton>
+                </div>
               </div>
             )}
           </TabsContent>
           
-          <TabsContent value="drive" className="mt-4">
-            <Alert className="mb-4">
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                <p className="text-sm mb-2">To share a Google Drive folder or file:</p>
-                <ol className="text-xs list-decimal pl-4 space-y-1">
-                  <li>Open the folder or file in Google Drive</li>
-                  <li>Click the "Share" button</li>
-                  <li>Click "Get link"</li>
-                  <li>Change the access to "Anyone with the link"</li>
-                  <li>Copy the link and paste it below</li>
-                </ol>
-              </AlertDescription>
-            </Alert>
-
-            <Form {...linkForm}>
-              <form onSubmit={linkForm.handleSubmit(handleUploadFromLink)} className="space-y-4">
-                <FormField
-                  control={linkForm.control}
-                  name="link"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Google Drive Link</FormLabel>
-                      <FormControl>
-                        <div className="flex">
-                          <div className="relative flex-grow">
-                            <LinkIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              placeholder="https://drive.google.com/drive/folders/..." 
-                              className="pl-8" 
-                              {...field} 
-                            />
-                          </div>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </form>
-            </Form>
+          <TabsContent value="drive" className="py-4">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="drive-link">Google Drive Link</Label>
+                <div className="flex items-center mt-2">
+                  <div className="p-2 bg-secondary rounded-l-md border-y border-l">
+                    <Link size={18} className="text-muted-foreground" />
+                  </div>
+                  <Input
+                    id="drive-link"
+                    placeholder="https://drive.google.com/folder/..."
+                    className="rounded-l-none"
+                    value={driveLink}
+                    onChange={(e) => setDriveLink(e.target.value)}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Enter the link to a shared Google Drive folder.
+                </p>
+              </div>
+              
+              <Separator />
+              
+              <div className="text-sm text-muted-foreground">
+                <p>This feature requires:</p>
+                <ul className="list-disc list-inside ml-2 mt-1">
+                  <li>A shared Google Drive folder with public access</li>
+                  <li>Only images, audio files, and text documents will be imported</li>
+                </ul>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
         
-        <DialogFooter className="mt-6">
+        <DialogFooter className="mt-4">
           <Button 
             type="button"
             variant="ghost"
-            onClick={handleDialogClose}
+            onClick={onClose}
           >
             Cancel
           </Button>
-          
-          {activeTab === "files" ? (
-            <Button 
-              type="button"
-              isLoading={uploading}
-              disabled={files.length === 0 || uploading}
-              onClick={handleUploadFiles}
-            >
-              Upload {files.length} Files
-            </Button>
-          ) : (
-            <Button 
-              type="button"
-              isLoading={uploading}
-              disabled={!linkForm.formState.isValid || uploading}
-              onClick={linkForm.handleSubmit(handleUploadFromLink)}
-            >
-              Load Files
-            </Button>
-          )}
+          <Button 
+            type="button"
+            onClick={handleUpload}
+            isLoading={uploading}
+          >
+            {activeTab === 'upload' ? 'Upload Files' : 'Import from Drive'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

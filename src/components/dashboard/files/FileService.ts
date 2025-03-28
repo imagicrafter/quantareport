@@ -125,7 +125,18 @@ export const deleteFile = async (file: ProjectFile): Promise<void> => {
     // First, delete the storage file if it exists
     if (file.file_path && file.file_path !== 'audio') {
       try {
-        const bucketName = file.type === 'image' ? 'pub_images' : 'pub_audio';
+        // Determine the appropriate bucket based on file type
+        let bucketName;
+        if (file.type === 'image') {
+          bucketName = 'pub_images';
+        } else if (file.type === 'audio') {
+          bucketName = 'pub_audio';
+        } else if (file.type === 'text') {
+          bucketName = 'pub_documents';
+        } else {
+          bucketName = 'pub_images'; // Default to images bucket
+        }
+        
         const urlPath = new URL(file.file_path).pathname;
         const storagePath = urlPath.split('/').slice(2).join('/');
         
