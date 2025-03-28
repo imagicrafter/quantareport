@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { GhostButton } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { UploadCloud, FileQuestion, Link } from 'lucide-react';
-import Button from '../../ui-elements/Button';
+import Button as CustomButton from '../../ui-elements/Button';
 
 interface BulkUploadDialogProps {
   isOpen: boolean;
@@ -164,7 +164,7 @@ const BulkUploadDialog = ({
                   })}
                 </div>
                 <div className="mt-2 text-right">
-                  <GhostButton onClick={() => setFiles([])}>Clear All</GhostButton>
+                  <Button variant="ghost" onClick={() => setFiles([])}>Clear All</Button>
                 </div>
               </div>
             )}
@@ -205,20 +205,20 @@ const BulkUploadDialog = ({
         </Tabs>
         
         <DialogFooter className="mt-4">
-          <Button 
+          <CustomButton 
             type="button"
             variant="ghost"
             onClick={onClose}
           >
             Cancel
-          </Button>
-          <Button 
+          </CustomButton>
+          <CustomButton 
             type="button"
             onClick={handleUpload}
             isLoading={uploading}
           >
             {activeTab === 'upload' ? 'Upload Files' : 'Import from Drive'}
-          </Button>
+          </CustomButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
