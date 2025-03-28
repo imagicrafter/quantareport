@@ -32,6 +32,7 @@ interface BulkUploadDialogProps {
   onUploadFiles: (files: File[]) => Promise<void>;
   onUploadFromLink: (link: string) => Promise<void>;
   uploading: boolean;
+  projectId: string; // Add projectId prop
 }
 
 const driveLinkSchema = z.object({
@@ -47,7 +48,8 @@ const BulkUploadDialog = ({
   onClose, 
   onUploadFiles,
   onUploadFromLink,
-  uploading 
+  uploading,
+  projectId
 }: BulkUploadDialogProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -146,6 +148,7 @@ const BulkUploadDialog = ({
                 type="file"
                 onChange={handleFileChange}
                 multiple
+                accept="image/*,audio/*,.txt,.md,.doc,.docx"
                 className="hidden"
               />
               <Button 

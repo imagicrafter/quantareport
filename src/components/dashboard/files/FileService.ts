@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { FileType, ProjectFile } from './FileItem';
 import { z } from 'zod';
@@ -6,7 +7,7 @@ import { toast } from 'sonner';
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   description: z.string().optional(),
-  type: z.enum(['image', 'audio']),
+  type: z.enum(['image', 'audio', 'text']),
   file: z.any().optional(),
 });
 
@@ -45,7 +46,18 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
     fileSize = file.size;
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-    const bucketName = values.type === 'image' ? 'pub_images' : 'pub_audio';
+    
+    // Determine the appropriate bucket based on file type
+    let bucketName;
+    if (values.type === 'image') {
+      bucketName = 'pub_images';
+    } else if (values.type === 'audio') {
+      bucketName = 'pub_audio';
+    } else if (values.type === 'text') {
+      bucketName = 'pub_documents'; // New bucket for text files
+    } else {
+      throw new Error('Unsupported file type.');
+    }
     
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(bucketName)
@@ -61,8 +73,8 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
       .getPublicUrl(`${projectId}/${fileName}`);
       
     filePath = urlData.publicUrl;
-  } else if (values.type === 'image') {
-    throw new Error('You must upload a file for image type.');
+  } else if (values.type === 'image' || values.type === 'text') {
+    throw new Error(`You must upload a file for ${values.type} type.`);
   } else {
     filePath = 'audio';
   }
@@ -183,16 +195,29 @@ export const bulkUploadFiles = async (
       const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
       const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExt);
       const isAudio = ['mp3', 'wav', 'ogg', 'm4a'].includes(fileExt);
+      const isText = ['txt', 'md', 'doc', 'docx'].includes(fileExt);
       
-      if (!isImage && !isAudio) {
+      if (!isImage && !isAudio && !isText) {
         toast(`${file.name} is not a supported file type.`, {
-          description: 'Only images and audio files are supported.'
+          description: 'Only images, audio, and text files are supported.'
         });
         continue;
       }
       
-      const type: FileType = isImage ? 'image' : 'audio';
-      const bucketName = type === 'image' ? 'pub_images' : 'pub_audio';
+      let type: FileType;
+      let bucketName: string;
+      
+      if (isImage) {
+        type = 'image';
+        bucketName = 'pub_images';
+      } else if (isAudio) {
+        type = 'audio';
+        bucketName = 'pub_audio';
+      } else {
+        type = 'text';
+        bucketName = 'pub_documents';
+      }
+      
       const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage

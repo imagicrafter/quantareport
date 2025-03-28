@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { DropResult } from 'react-beautiful-dnd';
 import { PlusCircle, Upload } from 'lucide-react';
@@ -40,7 +39,6 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
     try {
       setLoading(true);
       const data = await fetchFiles(projectId);
-      // Sort files by position
       const sortedFiles = [...data].sort((a, b) => (a.position || 0) - (b.position || 0));
       setFiles(sortedFiles);
     } catch (error) {
@@ -160,7 +158,6 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
         description: 'Failed to reorder files. Please try again.',
         variant: 'destructive',
       });
-      // Reload files to ensure UI is in sync with database
       loadFiles();
     }
   };
@@ -270,6 +267,7 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
         onClose={() => setIsAddDialogOpen(false)}
         onAddFile={handleAddFile}
         uploading={uploading}
+        projectId={projectId}
       />
 
       <EditFileDialog 
@@ -293,6 +291,7 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
         onUploadFiles={handleBulkUploadFiles}
         onUploadFromLink={handleUploadFromDriveLink}
         uploading={uploading}
+        projectId={projectId}
       />
     </div>
   );
