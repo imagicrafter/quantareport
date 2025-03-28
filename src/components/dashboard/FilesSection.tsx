@@ -59,10 +59,17 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
     }
   }, [projectId]);
 
-  const handleAddFile = async (values: FileFormValues) => {
+  const handleAddFile = async (values: any) => {
     try {
       setUploading(true);
-      await addFile(values, projectId);
+      const fileFormValues: FileFormValues = {
+        name: values.title,
+        description: values.description,
+        file: values.file,
+        type: values.type as FileType
+      };
+      
+      await addFile(fileFormValues, projectId);
       
       toast({
         title: 'Success',
@@ -83,12 +90,19 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
     }
   };
 
-  const handleEditFile = async (values: FileFormValues) => {
+  const handleEditFile = async (values: any) => {
     if (!selectedFile) return;
 
     try {
       setUploading(true);
-      await updateFile(selectedFile.id, values);
+      const fileFormValues: FileFormValues = {
+        name: values.title,
+        description: values.description,
+        file: values.file,
+        type: values.type as FileType
+      };
+      
+      await updateFile(selectedFile.id, fileFormValues);
 
       toast({
         title: 'Success',

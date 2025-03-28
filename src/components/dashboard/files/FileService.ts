@@ -9,6 +9,8 @@ export interface FileFormValues {
   file?: File;
   file_path?: string;
   type: FileType;
+  // Add title field to make it compatible with AddFileDialog
+  title?: string;
 }
 
 export const fetchFiles = async (projectId: string): Promise<ProjectFile[]> => {
@@ -24,7 +26,7 @@ export const fetchFiles = async (projectId: string): Promise<ProjectFile[]> => {
   }
   
   console.log('Fetched files:', data);
-
+  
   return data.map(file => ({
     ...file,
     type: file.type as FileType
@@ -89,7 +91,7 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
   const { data, error } = await supabase
     .from('files')
     .insert({
-      name: values.name,
+      name: values.title || values.name, // Use title if provided, otherwise use name
       description: values.description || '',
       file_path: filePath,
       type: values.type,
@@ -170,7 +172,7 @@ export const updateFile = async (fileId: string, values: FileFormValues): Promis
   const { data, error } = await supabase
     .from('files')
     .update({
-      name: values.name,
+      name: values.title || values.name, // Use title if provided, otherwise use name
       description: values.description,
       file_path: filePath,
       type: values.type,
