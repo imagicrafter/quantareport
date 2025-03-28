@@ -1,4 +1,6 @@
+
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { useToast } from '@/components/ui/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -387,13 +389,20 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
             editForm.setValue('analysis', data.analysis || '');
             setSelectedNote(prevNote => prevNote ? { ...prevNote, analysis: data.analysis } : null);
           }
-          toast.success('Image analysis completed');
+          uiToast({
+            title: 'Success',
+            description: 'Image analysis completed',
+          });
         }
       } else if (attempts >= maxAttempts) {
         clearInterval(intervalId);
         setPollingInterval(null);
         setAnalyzingImages(false);
-        toast.error('Analysis is taking longer than expected. Please check back later.');
+        uiToast({
+          title: 'Warning',
+          description: 'Analysis is taking longer than expected. Please check back later.',
+          variant: 'destructive',
+        });
       }
     }, 2000);
     
@@ -412,8 +421,9 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
       );
       
       if (imageRelationships.length === 0) {
-        toast('No images available for analysis', {
-          description: 'Add some images to analyze first'
+        uiToast({
+          title: 'Info',
+          description: 'No images available for analysis. Add some images to analyze first.',
         });
         setAnalyzingImages(false);
         return;
@@ -435,12 +445,19 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         throw new Error('Failed to submit image analysis request');
       }
       
-      toast.success('Image analysis started');
+      uiToast({
+        title: 'Success',
+        description: 'Image analysis started',
+      });
       startPollingForAnalysisCompletion(noteId, isAdd);
       
     } catch (error) {
       console.error('Error analyzing images:', error);
-      toast.error('Failed to analyze images');
+      uiToast({
+        title: 'Error',
+        description: 'Failed to analyze images',
+        variant: 'destructive',
+      });
       setAnalyzingImages(false);
     }
   };
