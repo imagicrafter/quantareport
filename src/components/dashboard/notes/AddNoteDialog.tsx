@@ -32,7 +32,7 @@ interface AddNoteDialogProps {
     title: string;
     content: string;
     analysis: string;
-  }>;
+  }, any, undefined>;
   onSubmit: () => void;
   saving: boolean;
   tempNoteId: string | null;
@@ -194,7 +194,7 @@ const AddNoteDialog = ({
           </Button>
           <Button 
             type="button"
-            onClick={form.handleSubmit(onSubmit)}
+            onClick={onSubmit}
             isLoading={saving}
           >
             Add Note

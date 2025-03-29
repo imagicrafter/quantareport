@@ -32,7 +32,7 @@ interface EditNoteDialogProps {
     title: string;
     content: string;
     analysis: string;
-  }>;
+  }, any, undefined>;
   onSubmit: () => void;
   saving: boolean;
   selectedNote: Note | null;
@@ -185,7 +185,7 @@ const EditNoteDialog = ({
           </Button>
           <Button 
             type="button"
-            onClick={form.handleSubmit(onSubmit)}
+            onClick={onSubmit}
             isLoading={saving}
           >
             Save Changes

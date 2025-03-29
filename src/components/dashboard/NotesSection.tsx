@@ -84,6 +84,15 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     }
   };
 
+  // Function to wrap the form submission handlers to match expected signatures
+  const handleAddNoteSubmit = () => {
+    form.handleSubmit(handleAddNote)();
+  };
+
+  const handleEditNoteSubmit = () => {
+    editForm.handleSubmit(handleEditNote)();
+  };
+
   return (
     <div className="flex flex-col h-full">
       <NotesSectionHeader 
@@ -105,7 +114,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         open={isAddDialogOpen}
         onOpenChange={handleAddDialogOpenChange}
         form={form}
-        onSubmit={handleAddNote}
+        onSubmit={handleAddNoteSubmit}
         saving={saving}
         tempNoteId={tempNoteId}
         analyzingImages={analyzingImages}
@@ -120,7 +129,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         form={editForm}
-        onSubmit={handleEditNote}
+        onSubmit={handleEditNoteSubmit}
         saving={saving}
         selectedNote={selectedNote}
         analyzingImages={analyzingImages}
