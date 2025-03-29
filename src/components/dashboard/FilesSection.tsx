@@ -18,7 +18,7 @@ import {
   FileFormValues,
   bulkUploadFiles,
   loadFilesFromDriveLink
-} from './files/FileService';
+} from './files/FileService'; // This now imports from our modular services
 import { reorderFiles } from '@/utils/fileUtils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 

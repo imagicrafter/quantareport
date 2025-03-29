@@ -310,19 +310,19 @@ export type Database = {
           created_at: string
           file_id: string
           id: number
-          insights: string | null
+          insights: Json | null
         }
         Insert: {
           created_at?: string
           file_id: string
           id?: never
-          insights?: string | null
+          insights?: Json | null
         }
         Update: {
           created_at?: string
           file_id?: string
           id?: never
-          insights?: string | null
+          insights?: Json | null
         }
         Relationships: [
           {
