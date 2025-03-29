@@ -67,7 +67,7 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
       const fileFormValues: FileFormValues = {
         name: values.title,
         description: values.description,
-        file: values.file,
+        file: values.file?.[0], // Access the first file from FileList
         type: values.type as FileType
       };
       
@@ -100,7 +100,7 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
       const fileFormValues: FileFormValues = {
         name: values.title,
         description: values.description,
-        file: values.file,
+        file: values.file?.[0], // Access the first file from FileList
         type: values.type as FileType
       };
       

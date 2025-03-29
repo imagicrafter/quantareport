@@ -41,6 +41,7 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
   
   const userId = session.session.user.id;
   let filePath = values.file_path;
+  let fileContent = null;
   
   // Upload file if provided
   if (values.file) {
@@ -57,6 +58,15 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
       bucketName = 'pub_audio';
     } else if (values.type === 'text') {
       bucketName = 'pub_documents';
+      
+      // For text files, read the content
+      if (fileExt && ['txt', 'md', 'doc', 'docx'].includes(fileExt.toLowerCase())) {
+        try {
+          fileContent = await file.text();
+        } catch (error) {
+          console.error('Error reading text file:', error);
+        }
+      }
     }
     
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -98,7 +108,9 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
       project_id: projectId,
       user_id: userId,
       position: position,
-      size: values.file ? values.file.size : 0
+      size: values.file ? values.file.size : 0,
+      // Add file content in metadata for text files
+      metadata: fileContent ? { content: fileContent } : null
     })
     .select()
     .single();
@@ -112,13 +124,14 @@ export const addFile = async (values: FileFormValues, projectId: string): Promis
 
 export const updateFile = async (fileId: string, values: FileFormValues): Promise<ProjectFile> => {
   let filePath = values.file_path;
+  let fileContent = null;
   
   // Upload new file if provided
   if (values.file) {
     // First, get the existing file to know its project_id
     const { data: existingFile, error: fetchError } = await supabase
       .from('files')
-      .select('project_id, file_path')
+      .select('project_id, file_path, metadata')
       .eq('id', fileId)
       .single();
       
@@ -140,6 +153,15 @@ export const updateFile = async (fileId: string, values: FileFormValues): Promis
       bucketName = 'pub_audio';
     } else if (values.type === 'text') {
       bucketName = 'pub_documents';
+      
+      // For text files, read the content
+      if (fileExt && ['txt', 'md', 'doc', 'docx'].includes(fileExt.toLowerCase())) {
+        try {
+          fileContent = await file.text();
+        } catch (error) {
+          console.error('Error reading text file:', error);
+        }
+      }
     }
     
     // Delete old file if it was stored in our bucket
@@ -177,7 +199,9 @@ export const updateFile = async (fileId: string, values: FileFormValues): Promis
       description: values.description,
       file_path: filePath,
       type: values.type,
-      size: values.file ? values.file.size : undefined
+      size: values.file ? values.file.size : undefined,
+      // Update metadata with file content for text files
+      metadata: fileContent ? { content: fileContent } : undefined
     })
     .eq('id', fileId)
     .select()
