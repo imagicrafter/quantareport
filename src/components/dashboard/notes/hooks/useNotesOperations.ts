@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -413,7 +412,6 @@ export const useNotesOperations = ({
     editForm.setValue('content', text);
   };
 
-  // Clean up polling interval when component unmounts
   useEffect(() => {
     return () => {
       if (pollingInterval !== null) {

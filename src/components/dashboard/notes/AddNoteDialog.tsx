@@ -30,8 +30,8 @@ interface AddNoteDialogProps {
   onOpenChange: (open: boolean) => void;
   form: UseFormReturn<{
     title: string;
-    content: string;
-    analysis: string;
+    content?: string;
+    analysis?: string;
   }, any, undefined>;
   onSubmit: () => void;
   saving: boolean;
