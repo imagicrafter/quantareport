@@ -24,15 +24,12 @@ import FilePicker from './FilePicker';
 import AudioRecorder from '../files/AudioRecorder';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
 import { Note } from '@/utils/noteUtils';
+import { NoteFormValues } from './hooks/useNotesOperations';
 
 interface EditNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  form: UseFormReturn<{
-    title: string;
-    content?: string;
-    analysis?: string;
-  }, any, undefined>;
+  form: UseFormReturn<NoteFormValues, any, undefined>;
   onSubmit: () => void;
   saving: boolean;
   selectedNote: Note | null;

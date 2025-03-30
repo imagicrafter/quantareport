@@ -2,7 +2,6 @@
 import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { ImageIcon, File } from 'lucide-react';
-import { z } from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -24,16 +23,13 @@ import Button from '@/components/ui-elements/Button';
 import FilePicker from './FilePicker';
 import AudioRecorder from '../files/AudioRecorder';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
+import { NoteFormValues } from './hooks/useNotesOperations';
 
-// Update the interface to match the form schema in useNotesOperations
+// Update the interface to use the exported NoteFormValues type
 interface AddNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  form: UseFormReturn<{
-    title: string;
-    content?: string;
-    analysis?: string;
-  }, any, undefined>;
+  form: UseFormReturn<NoteFormValues, any, undefined>;
   onSubmit: () => void;
   saving: boolean;
   tempNoteId: string | null;
@@ -44,13 +40,6 @@ interface AddNoteDialogProps {
   projectId: string;
   onTranscriptionComplete: (text: string) => void;
 }
-
-// This schema is now redundant as we're using the one from useNotesOperations
-const formSchema = z.object({
-  title: z.string().min(2, 'Title must be at least 2 characters.'),
-  content: z.string().optional(),
-  analysis: z.string().optional(),
-});
 
 const AddNoteDialog = ({
   open,
