@@ -79,7 +79,7 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
         </button>
 
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-          <div className={`transition-all duration-300`}>
+          <div className="transition-all duration-300">
             <Logo variant={collapsed ? "minimal" : "default"} />
           </div>
           <button 
@@ -99,10 +99,12 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
                 to={item.path}
                 className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
                   currentPath.includes(item.path) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                } ${collapsed ? 'justify-center' : ''}`}
+                } ${collapsed ? 'justify-center px-0' : ''}`}
                 title={collapsed ? item.name : ''}
               >
-                {item.icon}
+                <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                  {item.icon}
+                </span>
                 <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
                   {item.name}
                 </span>
@@ -117,10 +119,12 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
               to="/dashboard/admin"
               className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
                 currentPath.includes('/dashboard/admin') ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-              } ${collapsed ? 'justify-center' : ''}`}
+              } ${collapsed ? 'justify-center px-0' : ''}`}
               title={collapsed ? 'Admin' : ''}
             >
-              <Shield size={20} />
+              <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                <Shield size={20} />
+              </span>
               <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
                 Admin
               </span>
@@ -130,20 +134,24 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
             to="/dashboard/settings"
             className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
               currentPath === '/dashboard/settings' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-            } ${collapsed ? 'justify-center' : ''}`}
+            } ${collapsed ? 'justify-center px-0' : ''}`}
             title={collapsed ? 'Settings' : ''}
           >
-            <Settings size={20} />
+            <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+              <Settings size={20} />
+            </span>
             <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
               Settings
             </span>
           </Link>
           <button 
             onClick={handleSignOut}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${collapsed ? 'justify-center' : ''}`}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
             title={collapsed ? 'Sign out' : ''}
           >
-            <LogOut size={20} />
+            <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+              <LogOut size={20} />
+            </span>
             <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
               Sign out
             </span>
