@@ -212,6 +212,7 @@ const TemplatesTab = () => {
     if (template.image_module) types.push("Image");
     if (template.report_module) types.push("Report");
     if (template.layout_module) types.push("Layout");
+    if (template.html_module) types.push("HTML");
     return types.length > 0 ? types.join(", ") : "—";
   };
 

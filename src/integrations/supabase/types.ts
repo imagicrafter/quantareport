@@ -571,6 +571,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           domain_id: string | null
+          html_module: string | null
           id: string
           image_module: Json | null
           is_public: boolean | null
@@ -584,6 +585,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           domain_id?: string | null
+          html_module?: string | null
           id?: string
           image_module?: Json | null
           is_public?: boolean | null
@@ -597,6 +599,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           domain_id?: string | null
+          html_module?: string | null
           id?: string
           image_module?: Json | null
           is_public?: boolean | null
