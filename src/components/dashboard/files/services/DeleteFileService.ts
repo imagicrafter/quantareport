@@ -19,21 +19,29 @@ export const deleteFile = async (file: ProjectFile): Promise<void> => {
       }
       
       if (bucketName) {
-        // Extract the file path after the bucket name and project ID
-        // The storage path format is typically: {bucketName}/{projectId}/{filename}
-        const pathSegments = file.file_path.split('/');
-        const filePathInBucket = `${projectId}/${pathSegments[pathSegments.length - 1]}`;
+        // Get the file name from the path
+        const fileName = file.file_path.split('/').pop();
         
-        console.log(`Deleting file from storage: ${bucketName}/${filePathInBucket}`);
-        
-        const { error: storageError } = await supabase.storage
-          .from(bucketName)
-          .remove([filePathInBucket]);
+        if (!fileName) {
+          console.error('Could not extract filename from path:', file.file_path);
+        } else {
+          // The correct storage path format should be: {projectId}/{fileName}
+          const filePathInBucket = `${projectId}/${fileName}`;
           
-        if (storageError) {
-          console.error('Error deleting file from storage:', storageError);
-          // Continue with database deletion even if storage deletion fails
+          console.log(`Attempting to delete file from storage: ${bucketName}/${filePathInBucket}`);
+          
+          const { data, error: storageError } = await supabase.storage
+            .from(bucketName)
+            .remove([filePathInBucket]);
+            
+          if (storageError) {
+            console.error('Error deleting file from storage:', storageError);
+          } else {
+            console.log('Successfully deleted file from storage:', data);
+          }
         }
+      } else {
+        console.log('File is not stored in a recognized bucket:', file.file_path);
       }
     } catch (error) {
       console.error('Error processing file storage deletion:', error);
