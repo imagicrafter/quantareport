@@ -217,6 +217,7 @@ export type Database = {
           analysis: string | null
           content: string | null
           created_at: string | null
+          files_relationships_is_locked: boolean | null
           id: string
           name: string
           position: number | null
@@ -228,6 +229,7 @@ export type Database = {
           analysis?: string | null
           content?: string | null
           created_at?: string | null
+          files_relationships_is_locked?: boolean | null
           id?: string
           name: string
           position?: number | null
@@ -239,6 +241,7 @@ export type Database = {
           analysis?: string | null
           content?: string | null
           created_at?: string | null
+          files_relationships_is_locked?: boolean | null
           id?: string
           name?: string
           position?: number | null

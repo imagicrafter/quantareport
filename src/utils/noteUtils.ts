@@ -1,4 +1,3 @@
-
 import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,14 +13,15 @@ export interface NoteFileRelationshipWithType extends NoteFileRelationship {
 // Define Note interface to fix missing export error
 export interface Note {
   id: string;
+  name: string;
   title: string;
   content: string | null;
-  name: string;
-  position: number;
-  created_at: string;
-  project_id: string;
+  analysis: string | null;
+  created_at: string | null;
   user_id: string;
-  analysis?: string | null;
+  project_id: string;
+  position: number | null;
+  files_relationships_is_locked?: boolean;
 }
 
 // Title to camelCase conversion utility function

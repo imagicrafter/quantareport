@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { File, Music, Folder, FileText, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { File, Music, Folder, FileText, Plus, X, ChevronLeft, ChevronRight, Lock, Unlock } from 'lucide-react';
 import { ProjectFile } from '@/components/dashboard/files/FileItem';
 import { 
   fetchAvailableFiles, 
@@ -28,9 +28,18 @@ interface FilePickerProps {
   noteId: string;
   onFileAdded: (newRelationship?: NoteFileRelationshipWithType) => void;
   relatedFiles: NoteFileRelationshipWithType[];
+  isLocked?: boolean;
+  onLockToggle?: (locked: boolean) => Promise<void>;
 }
 
-const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePickerProps) => {
+const FilePicker = ({ 
+  projectId, 
+  noteId, 
+  onFileAdded, 
+  relatedFiles, 
+  isLocked = false,
+  onLockToggle
+}: FilePickerProps) => {
   const [open, setOpen] = useState(false);
   const [availableFiles, setAvailableFiles] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,11 +51,11 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
   const [previewTitle, setPreviewTitle] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [previewableImages, setPreviewableImages] = useState<{path: string, title: string}[]>([]);
-  
+  const [isFilesLocked, setIsFilesLocked] = useState(isLocked);
+
   const loadFiles = async () => {
     setLoading(true);
     try {
-      // Fetch available files for this project
       const { data: files, error } = await supabase
         .from('files')
         .select('*')
@@ -55,7 +64,6 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
         
       if (error) throw error;
       
-      // Filter out any files that are already in the relatedFiles array
       const relatedFileIds = relatedFiles.map(rel => rel.file_id);
       const filteredFiles = (files as ProjectFile[]).filter(
         file => !relatedFileIds.includes(file.id)
@@ -75,7 +83,6 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
     }
   }, [open, projectId, noteId, relatedFiles]);
 
-  // Prepare previewable images when related files change
   useEffect(() => {
     const images = [
       ...relatedFiles.filter(rel => rel.file_type === 'image').map(rel => ({
@@ -93,7 +100,6 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
   const handleFileSelect = async (fileId: string, selectedFile: ProjectFile) => {
     setAddingFileId(fileId);
     try {
-      // Create a temporary relationship object
       const tempRelationship: NoteFileRelationshipWithType = {
         id: `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         note_id: noteId,
@@ -104,7 +110,6 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
         file_path: selectedFile.file_path
       };
       
-      // Try to add the file to the note in the database
       const { data, error } = await supabase
         .from('note_file_relationships')
         .insert({
@@ -116,11 +121,8 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
       
       if (error) {
         console.error('Error adding file to note:', error);
-        // Even if there's an error, we can still use the temporary relationship
-        // in the UI while the user is working on the note
         onFileAdded(tempRelationship);
       } else if (data) {
-        // If successful, use the real relationship data
         const realRelationship: NoteFileRelationshipWithType = {
           id: data.id,
           note_id: data.note_id,
@@ -133,9 +135,7 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
         onFileAdded(realRelationship);
       }
       
-      // Remove the file from available files
       setAvailableFiles(prev => prev.filter(file => file.id !== fileId));
-      
     } finally {
       setAddingFileId(null);
     }
@@ -144,11 +144,9 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
   const handleRemoveFile = async (relationshipId: string) => {
     setRemovingFileId(relationshipId);
     try {
-      // Find the relationship to get the file info
       const relationship = relatedFiles.find(rel => rel.id === relationshipId);
       
       if (relationship) {
-        // Try to remove from database if it's not a temporary relationship
         if (!relationshipId.startsWith('temp-')) {
           await supabase
             .from('note_file_relationships')
@@ -156,13 +154,11 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
             .eq('id', relationshipId);
         }
         
-        // Add the file back to available files if it's not already there
         const fileAlreadyAvailable = availableFiles.some(file => file.id === relationship.file_id);
         if (!fileAlreadyAvailable && relationship.file) {
           setAvailableFiles(prev => [...prev, relationship.file!]);
         }
         
-        // Notify the parent component about the removal
         onFileAdded();
       }
     } finally {
@@ -174,7 +170,6 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
     setPreviewImage(imagePath);
     setPreviewTitle(title);
     
-    // Find the index of this image in the previewable images array
     const index = previewableImages.findIndex(img => img.path === imagePath);
     if (index !== -1) {
       setCurrentImageIndex(index);
@@ -386,18 +381,38 @@ const FilePicker = ({ projectId, noteId, onFileAdded, relatedFiles }: FilePicker
           </div>
 
           <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => setOpen(false)}
-            >
-              Done
-            </Button>
+            <div className="flex items-center justify-between w-full">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleLockToggle}
+                className="gap-2"
+              >
+                {isFilesLocked ? (
+                  <>
+                    <Lock size={16} />
+                    <span className="hidden sm:inline">Locked</span>
+                  </>
+                ) : (
+                  <>
+                    <Unlock size={16} />
+                    <span className="hidden sm:inline">Unlocked</span>
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => setOpen(false)}
+              >
+                Done
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Image Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="sm:max-w-4xl p-0 flex flex-col max-h-[90vh] overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
