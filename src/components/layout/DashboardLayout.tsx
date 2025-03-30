@@ -11,8 +11,18 @@ const DashboardLayout: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Store sidebar state in localStorage to persist across page navigations
+  useEffect(() => {
+    const storedSidebarState = localStorage.getItem('sidebarOpen');
+    if (storedSidebarState) {
+      setSidebarOpen(storedSidebarState === 'true');
+    }
+  }, []);
+
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+    const newState = !sidebarOpen;
+    setSidebarOpen(newState);
+    localStorage.setItem('sidebarOpen', String(newState));
   };
 
   // Check authentication state on component mount and set up a listener for auth changes
