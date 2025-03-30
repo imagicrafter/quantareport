@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -159,7 +158,6 @@ const AdminProjectsTab = () => {
     fetchProjects();
   }, []);
   
-  // Apply filters and search whenever dependencies change
   useEffect(() => {
     let result = [...projects];
     
@@ -327,7 +325,7 @@ const AdminProjectsTab = () => {
                 <SelectValue placeholder="Owner" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All owners</SelectItem>
+                <SelectItem value="all">All owners</SelectItem>
                 {owners.map((owner) => (
                   <SelectItem key={owner.id} value={owner.id}>
                     {owner.email}
@@ -342,7 +340,7 @@ const AdminProjectsTab = () => {
                 <SelectValue placeholder="Template" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All templates</SelectItem>
+                <SelectItem value="all">All templates</SelectItem>
                 {templates.map((template) => (
                   <SelectItem key={template.id} value={template.id}>
                     {template.name}
@@ -357,7 +355,7 @@ const AdminProjectsTab = () => {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All statuses</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
                 {statuses.map((status) => (
                   <SelectItem key={status} value={status}>
                     {status.charAt(0).toUpperCase() + status.slice(1)}
