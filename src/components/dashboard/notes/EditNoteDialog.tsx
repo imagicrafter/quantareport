@@ -160,37 +160,55 @@ const EditNoteDialog = ({
                       </FormItem>
                     )}
                   />
+                  
+                  <FormField
+                    control={form.control}
+                    name="analysis"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Analysis</FormLabel>
+                          {relatedFiles.some(file => file.file_type === 'image') && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="flex items-center gap-1"
+                              onClick={onAnalyzeImages}
+                              disabled={analyzingImages}
+                            >
+                              <Sparkles size={16} />
+                              <span>
+                                {analyzingImages ? 'Analyzing...' : 'Analyze'}
+                              </span>
+                            </Button>
+                          )}
+                        </div>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Analysis will appear here after processing images" 
+                            {...field} 
+                            className="min-h-[100px]"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </form>
               </Form>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium">Related Files</h3>
-                  <div className="flex items-center space-x-2">
-                    {relatedFiles.some(file => file.file_type === 'image') && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-1"
-                        onClick={onAnalyzeImages}
-                        disabled={analyzingImages}
-                      >
-                        <Sparkles size={16} />
-                        <span>
-                          {analyzingImages ? 'Analyzing...' : 'Analyze Images'}
-                        </span>
-                      </Button>
-                    )}
-                    <FilePicker
-                      projectId={projectId}
-                      noteId={selectedNote?.id || ''}
-                      onFileAdded={onFileAdded}
-                      relatedFiles={relatedFiles}
-                      isLocked={isLocked}
-                      onLockToggle={handleLockToggle}
-                    />
-                  </div>
+                  <FilePicker
+                    projectId={projectId}
+                    noteId={selectedNote?.id || ''}
+                    onFileAdded={onFileAdded}
+                    relatedFiles={relatedFiles}
+                    isLocked={isLocked}
+                    onLockToggle={handleLockToggle}
+                  />
                 </div>
                 <RelatedFiles 
                   files={relatedFiles}
