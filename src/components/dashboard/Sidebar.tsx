@@ -80,7 +80,7 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
 
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
           <div className={`transition-all duration-300 ${collapsed ? 'scale-75 -ml-2' : ''}`}>
-            <Logo variant="default" />
+            <Logo variant={collapsed ? "minimal" : "default"} />
           </div>
           <button 
             onClick={toggleSidebar}
