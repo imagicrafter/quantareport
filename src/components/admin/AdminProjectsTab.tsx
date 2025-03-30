@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, Calendar, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { 
   Table, 
   TableBody, 
@@ -22,9 +23,6 @@ import { Input } from '@/components/ui/input';
 import Button from '../ui-elements/Button';
 import ProjectViewDrawer from '../dashboard/ProjectViewDrawer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 
 interface Template {
   id: string;
@@ -60,8 +58,6 @@ const AdminProjectsTab = () => {
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedOwner, setSelectedOwner] = useState<string | undefined>(undefined);
   const [selectedTemplate, setSelectedTemplate] = useState<string | undefined>(undefined);
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
@@ -169,39 +165,22 @@ const AdminProjectsTab = () => {
       );
     }
     
-    // Apply date range filter
-    if (dateFrom) {
-      result = result.filter(project => 
-        new Date(project.date) >= dateFrom
-      );
-    }
-    
-    if (dateTo) {
-      // Add one day to include the end date fully
-      const adjustedDateTo = new Date(dateTo);
-      adjustedDateTo.setDate(adjustedDateTo.getDate() + 1);
-      
-      result = result.filter(project => 
-        new Date(project.date) < adjustedDateTo
-      );
-    }
-    
     // Apply owner filter
-    if (selectedOwner) {
+    if (selectedOwner && selectedOwner !== 'all') {
       result = result.filter(project => 
         project.user?.email === owners.find(o => o.id === selectedOwner)?.email
       );
     }
     
     // Apply template filter
-    if (selectedTemplate) {
+    if (selectedTemplate && selectedTemplate !== 'all') {
       result = result.filter(project => 
         project.template?.id === selectedTemplate
       );
     }
     
     // Apply status filter
-    if (selectedStatus) {
+    if (selectedStatus && selectedStatus !== 'all') {
       result = result.filter(project => 
         project.reportStatus === selectedStatus
       );
@@ -210,7 +189,7 @@ const AdminProjectsTab = () => {
     setFilteredProjects(result);
     setTotalPages(Math.max(1, Math.ceil(result.length / pageSize)));
     setCurrentPage(1); // Reset to first page when filters change
-  }, [projects, searchQuery, dateFrom, dateTo, selectedOwner, selectedTemplate, selectedStatus, pageSize]);
+  }, [projects, searchQuery, selectedOwner, selectedTemplate, selectedStatus, pageSize]);
 
   const handleViewProject = (projectId: string) => {
     setSelectedProject(projectId);
@@ -225,8 +204,6 @@ const AdminProjectsTab = () => {
   
   const resetFilters = () => {
     setSearchQuery('');
-    setDateFrom(undefined);
-    setDateTo(undefined);
     setSelectedOwner(undefined);
     setSelectedTemplate(undefined);
     setSelectedStatus(undefined);
@@ -274,51 +251,6 @@ const AdminProjectsTab = () => {
           </div>
           
           <div className="flex gap-2">
-            {/* Date filter */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  {dateFrom && dateTo ? (
-                    <span>
-                      {format(dateFrom, 'MMM d')} - {format(dateTo, 'MMM d, yyyy')}
-                    </span>
-                  ) : dateFrom ? (
-                    <span>From {format(dateFrom, 'MMM d, yyyy')}</span>
-                  ) : dateTo ? (
-                    <span>Until {format(dateTo, 'MMM d, yyyy')}</span>
-                  ) : (
-                    <span>Date range</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <div className="p-3 space-y-3">
-                  <h4 className="font-medium">Date range</h4>
-                  <div className="flex flex-col gap-2">
-                    <div>
-                      <div className="text-sm text-muted-foreground mb-1">Start date</div>
-                      <CalendarComponent
-                        mode="single"
-                        selected={dateFrom}
-                        onSelect={setDateFrom}
-                        initialFocus
-                      />
-                    </div>
-                    <div>
-                      <div className="text-sm text-muted-foreground mb-1">End date</div>
-                      <CalendarComponent
-                        mode="single"
-                        selected={dateTo}
-                        onSelect={setDateTo}
-                        initialFocus
-                      />
-                    </div>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-            
             {/* Owner filter */}
             <Select value={selectedOwner} onValueChange={setSelectedOwner}>
               <SelectTrigger className="w-[150px]">
