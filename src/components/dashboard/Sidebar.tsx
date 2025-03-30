@@ -20,6 +20,21 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
+    // Get collapsed state from localStorage
+    const storedCollapsedState = localStorage.getItem('sidebarCollapsed');
+    if (storedCollapsedState) {
+      setCollapsed(storedCollapsedState === 'true');
+    }
+  }, []);
+
+  // Update collapsed state and save to localStorage
+  const handleCollapseToggle = () => {
+    const newState = !collapsed;
+    setCollapsed(newState);
+    localStorage.setItem('sidebarCollapsed', String(newState));
+  };
+
+  useEffect(() => {
     const checkUserRole = async () => {
       const { data: session } = await supabase.auth.getSession();
       if (session.session) {
@@ -71,7 +86,7 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
       <div className="h-full flex flex-col relative">
         {/* Collapse toggle button */}
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={handleCollapseToggle}
           className="absolute -right-3 top-1/2 transform -translate-y-1/2 bg-sidebar border border-sidebar-border rounded-full p-1 text-sidebar-foreground hover:bg-sidebar-accent z-10 hidden md:flex"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
