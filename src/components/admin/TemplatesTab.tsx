@@ -184,6 +184,7 @@ const TemplatesTab = () => {
       image_module: null,
       report_module: null,
       layout_module: null,
+      html_module: null,
       is_public: false,
       domain_id: null,
       user_id: null,
