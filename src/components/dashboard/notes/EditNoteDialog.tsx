@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { NoteFormValues } from '@/components/dashboard/notes/hooks/useNotesOperations';
@@ -191,7 +192,10 @@ const EditNoteDialog = ({
                     />
                   </div>
                 </div>
-                <RelatedFiles files={relatedFiles} />
+                <RelatedFiles 
+                  files={relatedFiles}
+                  compact={true}
+                />
               </div>
             </div>
           </ScrollArea>

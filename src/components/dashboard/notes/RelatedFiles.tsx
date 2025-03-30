@@ -11,9 +11,10 @@ interface RelatedFilesProps {
   noteId?: string;
   projectId?: string;
   onRelationshipsChanged?: (newRelationship?: NoteFileRelationshipWithType) => void;
+  compact?: boolean;
 }
 
-const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged }: RelatedFilesProps) => {
+const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged, compact = false }: RelatedFilesProps) => {
   const [removingFileId, setRemovingFileId] = useState<string | null>(null);
 
   const handleRemoveFile = async (relationshipId: string) => {
@@ -51,6 +52,33 @@ const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged }: Rela
     }
   };
 
+  // Render compact version (only file count)
+  if (compact) {
+    return (
+      <div className="space-y-2">
+        {noteId && projectId && onRelationshipsChanged && (
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Related Files</h3>
+            <FilePicker 
+              projectId={projectId} 
+              noteId={noteId}
+              onFileAdded={onRelationshipsChanged}
+              relatedFiles={files}
+            />
+          </div>
+        )}
+        
+        <div className="flex items-center">
+          <FileText size={18} className="mr-2 text-muted-foreground" />
+          <span className="text-sm">
+            {files.length === 0 ? 'No files attached' : `${files.length} ${files.length === 1 ? 'file' : 'files'} attached`}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Render full version (list of files)
   return (
     <div className="space-y-2">
       {noteId && projectId && onRelationshipsChanged && (
