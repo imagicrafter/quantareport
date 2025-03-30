@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,6 +21,7 @@ interface UseNotesOperationsProps {
   refreshNotes: () => Promise<void>;
 }
 
+// Update the form schema to explicitly require title
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   content: z.string().optional(),
@@ -46,6 +48,7 @@ export const useNotesOperations = ({
   const [pollingInterval, setPollingInterval] = useState<number | null>(null);
   const [tempNoteId, setTempNoteId] = useState<string | null>(null);
 
+  // Ensure both forms use the same schema with title as required
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {

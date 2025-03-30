@@ -25,6 +25,7 @@ import FilePicker from './FilePicker';
 import AudioRecorder from '../files/AudioRecorder';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
 
+// Update the interface to match the form schema in useNotesOperations
 interface AddNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -44,6 +45,7 @@ interface AddNoteDialogProps {
   onTranscriptionComplete: (text: string) => void;
 }
 
+// This schema is now redundant as we're using the one from useNotesOperations
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   content: z.string().optional(),
