@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SignupCodesTab from '@/components/admin/SignupCodesTab';
 import TemplatesTab from '@/components/admin/TemplatesTab';
+import AdminProjectsTab from '@/components/admin/AdminProjectsTab';
 
 const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -68,13 +69,16 @@ const Admin = () => {
       <DashboardHeader title="Admin Panel" toggleSidebar={() => {}} />
       
       <div className="container mx-auto py-8 px-4">
-        <h1 className="text-2xl font-bold mb-6">Admin Controls</h1>
-        
-        <Tabs defaultValue="signup-codes" className="w-full">
+        <Tabs defaultValue="projects" className="w-full">
           <TabsList className="mb-6">
+            <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="signup-codes">Signup Codes</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="projects" className="bg-card border rounded-lg p-6">
+            <AdminProjectsTab />
+          </TabsContent>
           
           <TabsContent value="signup-codes" className="bg-card border rounded-lg p-6">
             <SignupCodesTab />

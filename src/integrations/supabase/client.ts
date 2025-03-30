@@ -40,6 +40,19 @@ const initializeBuckets = async () => {
       });
       console.log('Created pub_audio bucket');
     }
+    
+    // Check if pub_documents bucket exists
+    const { data: documentsBucket, error: documentsError } = await supabase
+      .storage
+      .getBucket('pub_documents');
+    
+    // Create pub_documents bucket if it doesn't exist
+    if (documentsError && documentsError.message.includes('does not exist')) {
+      await supabase.storage.createBucket('pub_documents', {
+        public: true
+      });
+      console.log('Created pub_documents bucket');
+    }
   } catch (error) {
     console.error('Error initializing storage buckets:', error);
   }

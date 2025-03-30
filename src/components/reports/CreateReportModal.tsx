@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,8 +35,8 @@ interface CreateReportModalProps {
 }
 
 // Get n8n webhook URLs from environment variables with fallbacks for local development
-const DEV_WEBHOOK_URL = import.meta.env.VITE_N8N_DEV_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook-test/62d6d438-48ae-47db-850e-5fc52f54e843';
-const PROD_WEBHOOK_URL = import.meta.env.VITE_N8N_PROD_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook/62d6d438-48ae-47db-850e-5fc52f54e843';
+const DEV_WEBHOOK_URL = import.meta.env.VITE_N8N_DEV_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook-test/785af48f-c1b1-484e-8bea-21920dee1146';
+const PROD_WEBHOOK_URL = import.meta.env.VITE_N8N_PROD_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook/785af48f-c1b1-484e-8bea-21920dee1146';
 
 const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   const [projects, setProjects] = useState<ProjectDetails[]>([]);

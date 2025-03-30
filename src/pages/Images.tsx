@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -7,6 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import FilesSection from '@/components/dashboard/FilesSection';
 import StatCards from '@/components/dashboard/StatCards';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ProjectWithImageCount {
   id: string;
@@ -38,7 +38,6 @@ const Images = () => {
         return;
       }
 
-      // Get all projects for StatCards
       const { data: allProjectsData, error: allProjectsError } = await supabase
         .from('projects')
         .select('*')
@@ -48,7 +47,6 @@ const Images = () => {
         setAllProjects(allProjectsData || []);
       }
 
-      // Get all projects with images
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -61,7 +59,6 @@ const Images = () => {
 
       if (error) throw error;
 
-      // For each project, get the count of images
       const projectsWithImageCounts = await Promise.all(
         data.map(async (project) => {
           const { count, error: countError } = await supabase
@@ -80,7 +77,6 @@ const Images = () => {
             };
           }
 
-          // Get last updated image for this project
           const { data: lastImageData, error: lastImageError } = await supabase
             .from('files')
             .select('created_at')
@@ -102,7 +98,6 @@ const Images = () => {
         })
       );
 
-      // Sort by last_updated descending and filter projects with images
       const filteredProjects = projectsWithImageCounts
         .filter(project => project.image_count > 0)
         .sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
@@ -127,7 +122,6 @@ const Images = () => {
 
   const handleCloseModal = () => {
     setIsFilesModalOpen(false);
-    // Refresh the projects list to update the image counts and last updated times
     fetchProjectsWithImages();
   };
 
@@ -184,17 +178,18 @@ const Images = () => {
         </div>
       </div>
 
-      {/* Files Modal */}
       <Dialog open={isFilesModalOpen} onOpenChange={setIsFilesModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl h-[90vh] p-6 flex flex-col overflow-hidden">
           {selectedProjectId && (
             <>
-              <div className="mb-4">
+              <div className="mb-4 flex-shrink-0">
                 <h2 className="text-xl font-bold">
                   {projects.find(p => p.id === selectedProjectId)?.name} - Files
                 </h2>
               </div>
-              <FilesSection projectId={selectedProjectId} />
+              <div className="flex-grow overflow-hidden">
+                <FilesSection projectId={selectedProjectId} />
+              </div>
             </>
           )}
         </DialogContent>

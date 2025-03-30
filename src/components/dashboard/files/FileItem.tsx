@@ -2,7 +2,7 @@
 import { Grip, FileImage, Music, File, Folder, FileText, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-export type FileType = 'image' | 'audio' | 'folder' | 'transcription' | 'other';
+export type FileType = 'image' | 'audio' | 'text' | 'folder' | 'transcription' | 'other';
 
 export interface ProjectFile {
   id: string;
@@ -33,6 +33,8 @@ const FileItem = ({ file, onEdit, onDelete, dragHandleProps, index }: FileItemPr
         return <FileImage size={18} className="text-blue-500" />;
       case 'audio':
         return <Music size={18} className="text-purple-500" />;
+      case 'text':
+        return <FileText size={18} className="text-green-500" />;
       case 'folder':
         return <Folder size={18} className="text-yellow-600" />;
       case 'transcription':

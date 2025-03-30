@@ -1,6 +1,6 @@
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { X, Plus, FolderPlus, Image, FileText, FileCheck, FileArchive, Settings, LogOut, Shield } from 'lucide-react';
+import { X, FolderPlus, Image, FileText, FileCheck, FileArchive, Settings, LogOut, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Logo from '../ui-elements/Logo';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,22 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const [isAdmin, setIsAdmin] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    // Get collapsed state from localStorage
+    const storedCollapsedState = localStorage.getItem('sidebarCollapsed');
+    if (storedCollapsedState) {
+      setCollapsed(storedCollapsedState === 'true');
+    }
+  }, []);
+
+  // Update collapsed state and save to localStorage
+  const handleCollapseToggle = () => {
+    const newState = !collapsed;
+    setCollapsed(newState);
+    localStorage.setItem('sidebarCollapsed', String(newState));
+  };
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -37,12 +53,13 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
     checkUserRole();
   }, []);
 
+  // Updated menu items with Reports moved between Projects and Notes
   const menuItems = [
     { name: 'Templates', icon: <FileCheck size={20} />, path: '/dashboard/templates' },
     { name: 'Projects', icon: <FolderPlus size={20} />, path: '/dashboard/projects' },
+    { name: 'Reports', icon: <FileArchive size={20} />, path: '/dashboard/reports' },
     { name: 'Notes', icon: <FileText size={20} />, path: '/dashboard/notes' },
     { name: 'Images', icon: <Image size={20} />, path: '/dashboard/images' },
-    { name: 'Reports', icon: <FileArchive size={20} />, path: '/dashboard/reports' },
   ];
 
   const handleSignOut = async () => {
@@ -58,15 +75,33 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
     }
   };
 
+  // Handle navigation without changing sidebar state
+  const handleNavigation = (path: string) => {
+    navigate(path);
+  };
+
   return (
     <aside 
-      className={`fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-300 ease-in-out ${
+      className={`fixed inset-y-0 left-0 z-50 bg-sidebar border-r border-sidebar-border transform transition-all duration-300 ease-in-out ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } md:relative md:translate-x-0`}
+      } md:relative md:translate-x-0 ${
+        collapsed ? 'w-16' : 'w-64'
+      }`}
     >
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col relative">
+        {/* Collapse toggle button */}
+        <button
+          onClick={handleCollapseToggle}
+          className="absolute -right-3 top-1/2 transform -translate-y-1/2 bg-sidebar border border-sidebar-border rounded-full p-1 text-sidebar-foreground hover:bg-sidebar-accent z-10 hidden md:flex"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-          <Logo variant="default" />
+          <div className="transition-all duration-300">
+            <Logo variant={collapsed ? "minimal" : "default"} />
+          </div>
           <button 
             onClick={toggleSidebar}
             className="p-1 rounded-md hover:bg-sidebar-accent md:hidden"
@@ -76,60 +111,70 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
           </button>
         </div>
         
-        <div className="p-4">
-          <button 
-            onClick={() => setShowCreateProject(true)}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-md py-2 px-4 flex items-center justify-center gap-2 transition-colors"
-          >
-            <Plus size={18} />
-            <span>New Project</span>
-          </button>
-        </div>
-        
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           <div className="space-y-1">
             {menuItems.map((item) => (
-              <Link
+              <button
                 key={item.name}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
+                onClick={() => handleNavigation(item.path)}
+                className={`flex w-full items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
                   currentPath.includes(item.path) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                }`}
+                } ${collapsed ? 'justify-center px-0' : ''}`}
+                title={collapsed ? item.name : ''}
               >
-                {item.icon}
-                <span>{item.name}</span>
-              </Link>
+                <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                  {item.icon}
+                </span>
+                <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
+                  {item.name}
+                </span>
+              </button>
             ))}
           </div>
         </nav>
         
         <div className="border-t border-sidebar-border p-4 space-y-2">
           {isAdmin && (
-            <Link
-              to="/dashboard/admin"
-              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
+            <button
+              onClick={() => handleNavigation('/dashboard/admin')}
+              className={`flex w-full items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
                 currentPath.includes('/dashboard/admin') ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-              }`}
+              } ${collapsed ? 'justify-center px-0' : ''}`}
+              title={collapsed ? 'Admin' : ''}
             >
-              <Shield size={20} />
-              <span>Admin</span>
-            </Link>
+              <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                <Shield size={20} />
+              </span>
+              <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
+                Admin
+              </span>
+            </button>
           )}
-          <Link
-            to="/dashboard/settings"
-            className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
+          <button
+            onClick={() => handleNavigation('/dashboard/settings')}
+            className={`flex w-full items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
               currentPath === '/dashboard/settings' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-            }`}
+            } ${collapsed ? 'justify-center px-0' : ''}`}
+            title={collapsed ? 'Settings' : ''}
           >
-            <Settings size={20} />
-            <span>Settings</span>
-          </Link>
+            <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+              <Settings size={20} />
+            </span>
+            <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
+              Settings
+            </span>
+          </button>
           <button 
             onClick={handleSignOut}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
+            title={collapsed ? 'Sign out' : ''}
           >
-            <LogOut size={20} />
-            <span>Sign out</span>
+            <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+              <LogOut size={20} />
+            </span>
+            <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
+              Sign out
+            </span>
           </button>
         </div>
       </div>

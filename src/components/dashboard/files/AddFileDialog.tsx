@@ -34,16 +34,17 @@ interface AddFileDialogProps {
   onClose: () => void;
   onAddFile: (values: z.infer<typeof formSchema>) => Promise<void>;
   uploading: boolean;
+  projectId: string;
 }
 
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   description: z.string().optional(),
-  type: z.enum(['image', 'audio']),
+  type: z.enum(['image', 'audio', 'text']),
   file: z.any().optional(),
 });
 
-const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading }: AddFileDialogProps) => {
+const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading, projectId }: AddFileDialogProps) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -131,6 +132,10 @@ const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading }: AddFileDialogP
                         <RadioGroupItem value="audio" id="audio" />
                         <Label htmlFor="audio">Audio</Label>
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="text" id="text" />
+                        <Label htmlFor="text">Text</Label>
+                      </div>
                     </RadioGroup>
                   </FormControl>
                   <FormMessage />
@@ -147,7 +152,11 @@ const AddFileDialog = ({ isOpen, onClose, onAddFile, uploading }: AddFileDialogP
                   <FormControl>
                     <Input 
                       type="file" 
-                      accept={fileType === 'image' ? "image/*" : "audio/*"}
+                      accept={fileType === 'image' 
+                        ? "image/*" 
+                        : fileType === 'audio' 
+                          ? "audio/*" 
+                          : ".txt,.md,.doc,.docx"}
                       onChange={(e) => onChange(e.target.files)}
                       {...fieldProps} 
                     />
