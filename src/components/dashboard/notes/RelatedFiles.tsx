@@ -7,13 +7,13 @@ import FilePicker from './FilePicker';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
 
 interface RelatedFilesProps {
-  noteId: string;
-  projectId: string;
-  relationships: NoteFileRelationshipWithType[];
-  onRelationshipsChanged: (newRelationship?: NoteFileRelationshipWithType) => void;
+  files: NoteFileRelationshipWithType[];
+  noteId?: string;
+  projectId?: string;
+  onRelationshipsChanged?: (newRelationship?: NoteFileRelationshipWithType) => void;
 }
 
-const RelatedFiles = ({ noteId, projectId, relationships, onRelationshipsChanged }: RelatedFilesProps) => {
+const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged }: RelatedFilesProps) => {
   const [removingFileId, setRemovingFileId] = useState<string | null>(null);
 
   const handleRemoveFile = async (relationshipId: string) => {
@@ -25,12 +25,12 @@ const RelatedFiles = ({ noteId, projectId, relationships, onRelationshipsChanged
       
       if (isTemporaryRelationship) {
         // For temporary relationships, just notify the parent to update the list
-        onRelationshipsChanged();
+        onRelationshipsChanged?.();
       } else {
         // For permanent relationships, remove from database
         const success = await removeFileFromNote(relationshipId);
         if (success) {
-          onRelationshipsChanged();
+          onRelationshipsChanged?.();
         }
       }
     } finally {
@@ -53,23 +53,25 @@ const RelatedFiles = ({ noteId, projectId, relationships, onRelationshipsChanged
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Related Files</h3>
-        <FilePicker 
-          projectId={projectId} 
-          noteId={noteId}
-          onFileAdded={onRelationshipsChanged}
-          relatedFiles={relationships}
-        />
-      </div>
+      {noteId && projectId && onRelationshipsChanged && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">Related Files</h3>
+          <FilePicker 
+            projectId={projectId} 
+            noteId={noteId}
+            onFileAdded={onRelationshipsChanged}
+            relatedFiles={files}
+          />
+        </div>
+      )}
       
-      {relationships.length === 0 ? (
+      {files.length === 0 ? (
         <div className="text-muted-foreground text-sm italic">
           No files associated with this note
         </div>
       ) : (
         <div className="space-y-2">
-          {relationships.map((rel) => (
+          {files.map((rel) => (
             <div 
               key={rel.id} 
               className="bg-secondary/30 rounded-md p-3 flex items-center justify-between"
@@ -87,17 +89,19 @@ const RelatedFiles = ({ noteId, projectId, relationships, onRelationshipsChanged
                   </div>
                 </div>
               </div>
-              <button
-                className="text-muted-foreground hover:text-destructive p-1 rounded-full"
-                onClick={() => handleRemoveFile(rel.id)}
-                disabled={removingFileId === rel.id}
-              >
-                {removingFileId === rel.id ? (
-                  <span className="h-4 w-4 block rounded-full border-2 border-t-transparent border-muted-foreground animate-spin" />
-                ) : (
-                  <X size={16} />
-                )}
-              </button>
+              {onRelationshipsChanged && (
+                <button
+                  className="text-muted-foreground hover:text-destructive p-1 rounded-full"
+                  onClick={() => handleRemoveFile(rel.id)}
+                  disabled={removingFileId === rel.id}
+                >
+                  {removingFileId === rel.id ? (
+                    <span className="h-4 w-4 block rounded-full border-2 border-t-transparent border-muted-foreground animate-spin" />
+                  ) : (
+                    <X size={16} />
+                  )}
+                </button>
+              )}
             </div>
           ))}
         </div>

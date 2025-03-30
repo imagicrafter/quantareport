@@ -193,8 +193,6 @@ const EditNoteDialog = ({
                 </div>
                 <RelatedFiles files={relatedFiles} />
               </div>
-
-              
             </div>
           </ScrollArea>
         </div>

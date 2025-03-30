@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { File, Music, Folder, FileText, Plus, X, ChevronLeft, ChevronRight, Lock, Unlock } from 'lucide-react';
 import { ProjectFile } from '@/components/dashboard/files/FileItem';
@@ -382,25 +383,27 @@ const FilePicker = ({
 
           <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
             <div className="flex items-center justify-between w-full">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleLockToggle}
-                className="gap-2"
-              >
-                {isFilesLocked ? (
-                  <>
-                    <Lock size={16} />
-                    <span className="hidden sm:inline">Locked</span>
-                  </>
-                ) : (
-                  <>
-                    <Unlock size={16} />
-                    <span className="hidden sm:inline">Unlocked</span>
-                  </>
-                )}
-              </Button>
+              {onLockToggle && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onLockToggle(!isLocked)}
+                  className="gap-2"
+                >
+                  {isLocked ? (
+                    <>
+                      <Lock size={16} />
+                      <span className="hidden sm:inline">Locked</span>
+                    </>
+                  ) : (
+                    <>
+                      <Unlock size={16} />
+                      <span className="hidden sm:inline">Unlocked</span>
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="primary"
