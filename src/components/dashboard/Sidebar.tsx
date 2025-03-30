@@ -75,6 +75,11 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
     }
   };
 
+  // Handle navigation without changing sidebar state
+  const handleNavigation = (path: string) => {
+    navigate(path);
+  };
+
   return (
     <aside 
       className={`fixed inset-y-0 left-0 z-50 bg-sidebar border-r border-sidebar-border transform transition-all duration-300 ease-in-out ${
@@ -109,10 +114,10 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           <div className="space-y-1">
             {menuItems.map((item) => (
-              <Link
+              <button
                 key={item.name}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
+                onClick={() => handleNavigation(item.path)}
+                className={`flex w-full items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
                   currentPath.includes(item.path) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
                 } ${collapsed ? 'justify-center px-0' : ''}`}
                 title={collapsed ? item.name : ''}
@@ -123,16 +128,16 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
                 <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
                   {item.name}
                 </span>
-              </Link>
+              </button>
             ))}
           </div>
         </nav>
         
         <div className="border-t border-sidebar-border p-4 space-y-2">
           {isAdmin && (
-            <Link
-              to="/dashboard/admin"
-              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
+            <button
+              onClick={() => handleNavigation('/dashboard/admin')}
+              className={`flex w-full items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
                 currentPath.includes('/dashboard/admin') ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
               } ${collapsed ? 'justify-center px-0' : ''}`}
               title={collapsed ? 'Admin' : ''}
@@ -143,11 +148,11 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
               <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
                 Admin
               </span>
-            </Link>
+            </button>
           )}
-          <Link
-            to="/dashboard/settings"
-            className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
+          <button
+            onClick={() => handleNavigation('/dashboard/settings')}
+            className={`flex w-full items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
               currentPath === '/dashboard/settings' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
             } ${collapsed ? 'justify-center px-0' : ''}`}
             title={collapsed ? 'Settings' : ''}
@@ -158,7 +163,7 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
             <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
               Settings
             </span>
-          </Link>
+          </button>
           <button 
             onClick={handleSignOut}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
