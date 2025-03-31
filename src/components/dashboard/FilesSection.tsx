@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DropResult } from 'react-beautiful-dnd';
 import FilesSectionHeader from './files/components/FilesSectionHeader';
 import FilesContainer from './files/components/FilesContainer';
@@ -7,14 +7,18 @@ import AddFileDialog from './files/AddFileDialog';
 import EditFileDialog from './files/EditFileDialog';
 import DeleteFileDialog from './files/DeleteFileDialog';
 import BulkUploadDialog from './files/BulkUploadDialog';
+import ImageAnalysisProgressModal from './files/ImageAnalysisProgressModal';
 import { useFiles } from './files/hooks/useFiles';
 import { useFileOperations } from './files/hooks/useFileOperations';
+import { useImageAnalysis } from './files/hooks/useImageAnalysis';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FilesSectionProps {
   projectId: string;
+  projectName?: string;
 }
 
-const FilesSection = ({ projectId }: FilesSectionProps) => {
+const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
   const { files, setFiles, loading, loadFiles } = useFiles(projectId);
   const {
     uploading,
@@ -36,6 +40,47 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
     handleUploadFromDriveLink,
   } = useFileOperations(projectId, loadFiles);
 
+  const {
+    isAnalyzing,
+    analysisJobId,
+    hasUnprocessedFiles,
+    unprocessedFileCount,
+    isProgressModalOpen,
+    checkUnprocessedFiles,
+    analyzeImages,
+    closeProgressModal
+  } = useImageAnalysis(projectId, projectName);
+
+  // Check for unprocessed files when the component mounts or files are updated
+  useEffect(() => {
+    if (projectId) {
+      checkUnprocessedFiles();
+    }
+  }, [projectId, checkUnprocessedFiles, files]);
+
+  // Get project name if not provided
+  const [fetchedProjectName, setFetchedProjectName] = useState('');
+  
+  useEffect(() => {
+    if (projectId && !projectName) {
+      const fetchProjectName = async () => {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('name')
+          .eq('id', projectId)
+          .single();
+          
+        if (!error && data) {
+          setFetchedProjectName(data.name);
+        }
+      };
+      
+      fetchProjectName();
+    }
+  }, [projectId, projectName]);
+
+  const effectiveProjectName = projectName || fetchedProjectName;
+
   const onReorderFiles = async (result: DropResult) => {
     const reorderedFiles = await handleReorderFiles(result, files);
     if (reorderedFiles) {
@@ -48,6 +93,9 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
       <FilesSectionHeader 
         onAddFile={() => setIsAddDialogOpen(true)}
         onBulkUpload={() => setIsBulkUploadDialogOpen(true)}
+        projectId={projectId}
+        onAnalyzeImages={analyzeImages}
+        hasUnprocessedFiles={hasUnprocessedFiles}
       />
 
       <FilesContainer 
@@ -94,6 +142,14 @@ const FilesSection = ({ projectId }: FilesSectionProps) => {
         onUploadFromLink={handleUploadFromDriveLink}
         uploading={uploading}
         projectId={projectId}
+      />
+
+      <ImageAnalysisProgressModal
+        isOpen={isProgressModalOpen}
+        onClose={closeProgressModal}
+        jobId={analysisJobId}
+        projectId={projectId}
+        fileCount={unprocessedFileCount}
       />
     </div>
   );
