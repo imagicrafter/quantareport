@@ -86,7 +86,7 @@ export const submitImageAnalysis = async (
   isTestMode: boolean
 ): Promise<boolean> => {
   try {
-    const webhookUrl = isTestMode ? NOTE_DEV_WEBHOOK_URL : NOTE_PROD_WEBHOOK_URL;
+    console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project`);
     
     const payload = {
       note_id: noteId,
@@ -94,8 +94,6 @@ export const submitImageAnalysis = async (
       image_urls: imageUrls,
       timestamp: new Date().toISOString()
     };
-    
-    console.log(`Submitting analysis request to ${webhookUrl}`);
     
     const { error } = await supabase.functions.invoke('n8n-proxy', {
       body: {
