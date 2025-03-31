@@ -45,14 +45,14 @@ const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: selectedFile?.title || '',
+      title: selectedFile?.title || selectedFile?.name || '',
       description: selectedFile?.description || '',
       type: (selectedFile?.type as any) || 'image',
     },
   });
 
   // Update form values when selected file changes
-  if (selectedFile && form.getValues('title') !== selectedFile.title) {
+  if (selectedFile && form.getValues('title') !== (selectedFile.title || selectedFile.name)) {
     form.reset({
       title: selectedFile.title || selectedFile.name, // Fallback to name if title is not available
       description: selectedFile.description || '',

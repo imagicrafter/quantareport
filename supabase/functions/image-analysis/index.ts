@@ -102,13 +102,23 @@ serve(async (req) => {
       file_path: file.file_path
     }));
     
+    // Create a callback URL for the n8n workflow to send progress updates
+    const jobId = job || crypto.randomUUID(); // Use provided job ID or generate a new one
+    
+    // Prepare the callback URL using the Supabase Function URL for report-progress
+    const supabaseProjectUrl = Deno.env.get("SUPABASE_URL") || "https://vtaufnxworztolfdwlll.supabase.co";
+    const callbackUrl = `${supabaseProjectUrl}/functions/v1/report-progress`;
+    
+    console.log(`Using callback URL: ${callbackUrl}`);
+    
     // Prepare webhook payload
     const webhookUrl = isTestMode ? DEV_IMAGE_ANALYSIS_WEBHOOK_URL : PROD_IMAGE_ANALYSIS_WEBHOOK_URL;
     const payload = {
       project_id,
       files: fileDetails,
-      job: job || crypto.randomUUID(), // Use provided job ID or generate a new one
-      timestamp: new Date().toISOString()
+      job: jobId,
+      timestamp: new Date().toISOString(),
+      callback_url: callbackUrl // Add callback URL to the payload
     };
     
     console.log(`Sending request to webhook: ${webhookUrl}`);
@@ -141,11 +151,25 @@ serve(async (req) => {
     const webhookData = await webhookResponse.json();
     console.log("Webhook response:", JSON.stringify(webhookData));
     
+    // Create initial progress record
+    const { error: progressError } = await supabase
+      .from("report_progress")
+      .insert({
+        job: jobId,
+        status: "generating",
+        message: "Starting image analysis...",
+        progress: 5
+      });
+      
+    if (progressError) {
+      console.error("Error creating initial progress record:", progressError);
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: "Image analysis initiated successfully",
-        jobId: payload.job,
+        jobId: jobId,
         fileCount: unprocessedFiles.length
       }),
       { 
