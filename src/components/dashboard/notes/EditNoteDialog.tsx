@@ -61,11 +61,15 @@ const EditNoteDialog = ({
   const [isRecording, setIsRecording] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
+  // Update form values when selectedNote changes or analysis is completed
   useEffect(() => {
     if (selectedNote) {
+      form.setValue('title', selectedNote.title);
+      form.setValue('content', selectedNote.content || '');
+      form.setValue('analysis', selectedNote.analysis || '');
       setIsLocked(selectedNote.files_relationships_is_locked || false);
     }
-  }, [selectedNote]);
+  }, [selectedNote, form]);
 
   const handleLockToggle = async (locked: boolean) => {
     if (!selectedNote) return;
@@ -188,6 +192,7 @@ const EditNoteDialog = ({
                           <Textarea 
                             placeholder="Analysis will appear here after processing images" 
                             {...field} 
+                            value={field.value || ''}
                             className="min-h-[100px]"
                           />
                         </FormControl>
