@@ -22,6 +22,7 @@ const FileActions = ({
           size="sm" 
           variant="outline"
           onClick={onAnalyzeImages}
+          className="flex items-center"
         >
           <Sparkles size={16} className="mr-2" />
           Analyze

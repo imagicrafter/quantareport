@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid'; // Import the uuid package
 
 export const useImageAnalysis = (projectId: string, projectName: string) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -40,8 +41,8 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       const isTestMode = projectName.toLowerCase().includes('test');
       console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project: ${projectName}`);
       
-      // Generate a new job ID
-      const jobId = crypto.randomUUID();
+      // Generate a new job ID using uuid package instead of crypto.randomUUID
+      const jobId = uuidv4();
       
       // Call the image-analysis edge function
       const { data, error } = await supabase.functions.invoke('image-analysis', {

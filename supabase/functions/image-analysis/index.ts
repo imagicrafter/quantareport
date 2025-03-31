@@ -107,7 +107,7 @@ serve(async (req) => {
     const payload = {
       project_id,
       files: fileDetails,
-      job: job || crypto.randomUUID(),
+      job: job || crypto.randomUUID(), // Use provided job ID or generate a new one
       timestamp: new Date().toISOString()
     };
     
