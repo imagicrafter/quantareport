@@ -1,4 +1,3 @@
-
 import { Grip, FileImage, Music, File, Folder, FileText, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -7,23 +6,24 @@ export type FileType = 'image' | 'audio' | 'text' | 'folder' | 'transcription' |
 export interface ProjectFile {
   id: string;
   name: string;
-  description: string | null;
+  title?: string;
+  description?: string;
   file_path: string;
   type: FileType;
-  created_at: string;
+  size?: number;
+  created_at?: string;
   project_id: string;
   user_id: string;
-  position: number;
-  size?: number;
+  position?: number;
+  metadata?: any;
 }
 
-// Add the index prop to FileItemProps
 export interface FileItemProps {
   file: ProjectFile;
   onEdit: (file: ProjectFile) => void;
   onDelete: (file: ProjectFile) => void;
   dragHandleProps?: any;
-  index: number; // Add this prop
+  index: number;
 }
 
 const FileItem = ({ file, onEdit, onDelete, dragHandleProps, index }: FileItemProps) => {
@@ -97,7 +97,6 @@ const FileItem = ({ file, onEdit, onDelete, dragHandleProps, index }: FileItemPr
   );
 };
 
-// Format file size helper function
 const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
   

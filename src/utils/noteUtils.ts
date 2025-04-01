@@ -1,4 +1,3 @@
-
 import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,14 +13,15 @@ export interface NoteFileRelationshipWithType extends NoteFileRelationship {
 // Define Note interface to fix missing export error
 export interface Note {
   id: string;
+  name: string;
   title: string;
   content: string | null;
-  name: string;
-  position: number;
-  created_at: string;
-  project_id: string;
+  analysis: string | null;
+  created_at: string | null;
   user_id: string;
-  analysis?: string | null;
+  project_id: string;
+  position: number | null;
+  files_relationships_is_locked?: boolean;
 }
 
 // Title to camelCase conversion utility function
@@ -86,7 +86,7 @@ export const submitImageAnalysis = async (
   isTestMode: boolean
 ): Promise<boolean> => {
   try {
-    const webhookUrl = isTestMode ? NOTE_DEV_WEBHOOK_URL : NOTE_PROD_WEBHOOK_URL;
+    console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project`);
     
     const payload = {
       note_id: noteId,
@@ -94,8 +94,6 @@ export const submitImageAnalysis = async (
       image_urls: imageUrls,
       timestamp: new Date().toISOString()
     };
-    
-    console.log(`Submitting analysis request to ${webhookUrl}`);
     
     const { error } = await supabase.functions.invoke('n8n-proxy', {
       body: {
