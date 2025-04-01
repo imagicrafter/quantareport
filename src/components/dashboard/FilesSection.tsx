@@ -8,6 +8,7 @@ import AddFileDialog from './files/AddFileDialog';
 import EditFileDialog from './files/EditFileDialog';
 import DeleteFileDialog from './files/DeleteFileDialog';
 import BulkUploadDialog from './files/BulkUploadDialog';
+import FilesAnalysisProgressModal from './files/FilesAnalysisProgressModal';
 import { useFiles } from './files/hooks/useFiles';
 import { useFileOperations } from './files/hooks/useFileOperations';
 import { useImageAnalysis } from './files/hooks/useImageAnalysis';
@@ -45,8 +46,11 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     hasUnprocessedFiles,
     unprocessedFileCount,
     checkUnprocessedFiles,
-    analyzeFiles
+    analyzeFiles,
+    currentJobId
   } = useImageAnalysis(projectId, projectName);
+
+  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
 
   // Check for unprocessed files when the component mounts or files are updated
   useEffect(() => {
@@ -54,6 +58,18 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
       checkUnprocessedFiles();
     }
   }, [projectId, checkUnprocessedFiles, files]);
+
+  // Show progress modal when analysis starts
+  useEffect(() => {
+    if (isAnalyzing && currentJobId) {
+      setIsProgressModalOpen(true);
+    } else {
+      // Add a small delay before closing to ensure any final animations are seen
+      setTimeout(() => {
+        setIsProgressModalOpen(false);
+      }, 500);
+    }
+  }, [isAnalyzing, currentJobId]);
 
   // Get project name if not provided
   const [fetchedProjectName, setFetchedProjectName] = useState('');
@@ -159,6 +175,13 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         onUploadFiles={handleBulkUploadFiles}
         onUploadFromLink={handleUploadFromDriveLink}
         uploading={uploading}
+        projectId={projectId}
+      />
+
+      <FilesAnalysisProgressModal
+        isOpen={isProgressModalOpen}
+        onClose={() => setIsProgressModalOpen(false)}
+        jobId={currentJobId}
         projectId={projectId}
       />
     </div>

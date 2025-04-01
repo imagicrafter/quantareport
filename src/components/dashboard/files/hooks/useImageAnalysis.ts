@@ -4,6 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
+// Define types for progress data
+interface ProgressData {
+  progress: number;
+  message: string;
+  status: string;
+  job: string;
+}
+
 export const useImageAnalysis = (projectId: string, projectName: string) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [hasUnprocessedFiles, setHasUnprocessedFiles] = useState(false);
@@ -55,7 +63,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       
       if (data && data.length > 0) {
         console.log('Current progress data:', data[0]);
-        return data[0];
+        return data[0] as ProgressData;
       }
       
       return null;
@@ -86,7 +94,8 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       }
       
       if (data && data.length > 0) {
-        console.log('Found completion record:', data[0]);
+        const progressData = data[0] as ProgressData;
+        console.log('Found completion record:', progressData);
         
         // Clear any existing toast and show completion toast
         if (lastToastId) {
@@ -94,11 +103,11 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
           setLastToastId(null);
         }
         
-        if (data[0].progress === 100 || data[0].status === 'completed') {
+        if (progressData.progress === 100 || progressData.status === 'completed') {
           toast.success('File analysis completed successfully');
           return true;
-        } else if (data[0].status === 'error') {
-          toast.error(data[0].message || 'Error analyzing files');
+        } else if (progressData.status === 'error') {
+          toast.error(progressData.message || 'Error analyzing files');
           return true;
         }
       }
@@ -129,7 +138,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
         
         if (!payload.new) return;
         
-        const progressData = payload.new;
+        const progressData = payload.new as ProgressData;
         
         // Clear any existing toast to avoid duplicates
         if (lastToastId) {
@@ -289,6 +298,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
     hasUnprocessedFiles,
     unprocessedFileCount,
     checkUnprocessedFiles,
-    analyzeFiles
+    analyzeFiles,
+    currentJobId
   };
 };

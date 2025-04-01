@@ -12,6 +12,13 @@ interface FilesAnalysisProgressModalProps {
   projectId: string;
 }
 
+// Define the type for progress data
+interface ProgressData {
+  message: string;
+  progress: number;
+  status: string;
+}
+
 const FilesAnalysisProgressModal = ({
   isOpen,
   onClose,
@@ -43,13 +50,15 @@ const FilesAnalysisProgressModal = ({
       }, (payload) => {
         if (!payload.new) return;
         
-        const update = payload.new;
+        const update = payload.new as ProgressData;
         console.log('Progress update received:', update);
         
+        // Safely access properties with default values
         setMessage(update.message || 'Processing files...');
         setProgress(update.progress || 0);
         
-        if (update.progress >= 100 || update.status === 'completed') {
+        // Check completion or error
+        if ((update.progress >= 100) || (update.status === 'completed')) {
           setCompleted(true);
           setTimeout(() => {
             onClose();
@@ -78,13 +87,15 @@ const FilesAnalysisProgressModal = ({
           .limit(1);
           
         if (!error && data && data.length > 0) {
-          const update = data[0];
+          const update = data[0] as ProgressData;
           console.log('Initial progress state:', update);
           
+          // Safely access properties with default values
           setMessage(update.message || 'Processing files...');
           setProgress(update.progress || 0);
           
-          if (update.progress >= 100 || update.status === 'completed' || update.status === 'error') {
+          // Check completion or error
+          if ((update.progress >= 100) || (update.status === 'completed') || (update.status === 'error')) {
             setCompleted(true);
             setTimeout(() => {
               onClose();
@@ -114,11 +125,14 @@ const FilesAnalysisProgressModal = ({
           .limit(1);
           
         if (!error && data && data.length > 0) {
-          const update = data[0];
+          const update = data[0] as ProgressData;
+          
+          // Safely access properties with default values
           setMessage(update.message || 'Processing files...');
           setProgress(update.progress || 0);
           
-          if (update.progress >= 100 || update.status === 'completed' || update.status === 'error') {
+          // Check completion or error
+          if ((update.progress >= 100) || (update.status === 'completed') || (update.status === 'error')) {
             setCompleted(true);
             clearInterval(pollInterval);
             setTimeout(() => {
