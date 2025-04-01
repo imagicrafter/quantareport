@@ -62,6 +62,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
             });
           }
           
+          // Always check if we've reached 100% or completion status
           if (payload.new.status === 'completed' || 
               payload.new.status === 'error' || 
               payload.new.progress >= 100
@@ -94,6 +95,42 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       supabase.removeChannel(channel);
     };
   }, [currentJobId, checkUnprocessedFiles]);
+
+  // Add a backup check to ensure we don't leave the button spinning
+  useEffect(() => {
+    if (!isAnalyzing || !currentJobId) return;
+    
+    // Set a timeout to check the status after 30 seconds
+    const timeoutId = setTimeout(async () => {
+      console.log('Running backup check for job completion...');
+      
+      try {
+        // Check if we have any progress records with 100% for this job
+        const { data } = await supabase
+          .from('report_progress')
+          .select('*')
+          .eq('job', currentJobId)
+          .or('progress.eq.100,status.eq.completed,status.eq.error')
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (data && data.length > 0) {
+          console.log('Backup check found completed state:', data[0]);
+          setIsAnalyzing(false);
+          toast.success('File analysis completed');
+          checkUnprocessedFiles();
+        } else {
+          // If still analyzing after 30 seconds with no completion record,
+          // check again after another 30 seconds
+          console.log('Analysis still in progress, scheduling another check');
+        }
+      } catch (error) {
+        console.error('Error in backup check:', error);
+      }
+    }, 30000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isAnalyzing, currentJobId, checkUnprocessedFiles]);
 
   const analyzeFiles = useCallback(async () => {
     try {
@@ -132,25 +169,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       
       console.log('File analysis response:', data);
       
-      if (data.success) {
-        toast.success('File analysis started');
-        
-        // Set up a backup check in case realtime fails
-        setTimeout(() => {
-          if (isAnalyzing) {
-            console.log('Performing backup check for completion...');
-            checkUnprocessedFiles().then(hasUnprocessed => {
-              if (!hasUnprocessed) {
-                console.log('Backup check: All files appear to be processed');
-                setIsAnalyzing(false);
-                toast.success('All files analyzed successfully');
-              } else {
-                console.log(`Backup check: Still have ${unprocessedFileCount} unprocessed files`);
-              }
-            });
-          }
-        }, 30000); // 30 second backup check
-      } else {
+      if (!data.success) {
         toast.error(data.message || 'Failed to start file analysis');
         setIsAnalyzing(false);
       }
@@ -159,7 +178,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       toast.error('An error occurred while analyzing files');
       setIsAnalyzing(false);
     }
-  }, [projectId, projectName, checkUnprocessedFiles, isAnalyzing, unprocessedFileCount]);
+  }, [projectId, projectName, checkUnprocessedFiles]);
 
   return {
     isAnalyzing,
