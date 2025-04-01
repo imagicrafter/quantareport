@@ -33,7 +33,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
     }
   }, [projectId]);
 
-  const analyzeImages = useCallback(async () => {
+  const analyzeFiles = useCallback(async () => {
     try {
       setIsAnalyzing(true);
       
@@ -44,8 +44,8 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       // Generate a new job ID using uuid package instead of crypto.randomUUID
       const jobId = uuidv4();
       
-      // Call the image-analysis edge function
-      const { data, error } = await supabase.functions.invoke('image-analysis', {
+      // Call the file-analysis edge function
+      const { data, error } = await supabase.functions.invoke('file-analysis', {
         body: {
           project_id: projectId,
           isTestMode,
@@ -54,24 +54,24 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       });
       
       if (error) {
-        console.error('Error invoking image-analysis function:', error);
-        toast.error('Failed to start image analysis');
+        console.error('Error invoking file-analysis function:', error);
+        toast.error('Failed to start file analysis');
         setIsAnalyzing(false);
         return;
       }
       
-      console.log('Image analysis response:', data);
+      console.log('File analysis response:', data);
       
       if (data.success) {
         setAnalysisJobId(data.jobId);
         setIsProgressModalOpen(true);
-        toast.success('Image analysis started');
+        toast.success('File analysis started');
       } else {
-        toast.error(data.message || 'Failed to start image analysis');
+        toast.error(data.message || 'Failed to start file analysis');
       }
     } catch (error) {
-      console.error('Error analyzing images:', error);
-      toast.error('An error occurred while analyzing images');
+      console.error('Error analyzing files:', error);
+      toast.error('An error occurred while analyzing files');
     } finally {
       setIsAnalyzing(false);
     }
@@ -89,7 +89,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
     unprocessedFileCount,
     isProgressModalOpen,
     checkUnprocessedFiles,
-    analyzeImages,
+    analyzeFiles,
     closeProgressModal
   };
 };

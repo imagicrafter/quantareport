@@ -7,7 +7,7 @@ import AddFileDialog from './files/AddFileDialog';
 import EditFileDialog from './files/EditFileDialog';
 import DeleteFileDialog from './files/DeleteFileDialog';
 import BulkUploadDialog from './files/BulkUploadDialog';
-import ImageAnalysisProgressModal from './files/ImageAnalysisProgressModal';
+import FileAnalysisProgressModal from './files/FileAnalysisProgressModal';
 import { useFiles } from './files/hooks/useFiles';
 import { useFileOperations } from './files/hooks/useFileOperations';
 import { useImageAnalysis } from './files/hooks/useImageAnalysis';
@@ -47,7 +47,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     unprocessedFileCount,
     isProgressModalOpen,
     checkUnprocessedFiles,
-    analyzeImages,
+    analyzeFiles,
     closeProgressModal
   } = useImageAnalysis(projectId, projectName);
 
@@ -94,7 +94,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         onAddFile={() => setIsAddDialogOpen(true)}
         onBulkUpload={() => setIsBulkUploadDialogOpen(true)}
         projectId={projectId}
-        onAnalyzeImages={analyzeImages}
+        onAnalyzeFiles={analyzeFiles}
         hasUnprocessedFiles={hasUnprocessedFiles}
       />
 
@@ -144,7 +144,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         projectId={projectId}
       />
 
-      <ImageAnalysisProgressModal
+      <FileAnalysisProgressModal
         isOpen={isProgressModalOpen}
         onClose={closeProgressModal}
         jobId={analysisJobId}
