@@ -47,6 +47,23 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       
       console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
       
+      // Open the modal immediately with the job ID
+      setIsProgressModalOpen(true);
+      
+      // Create initial progress record to ensure there's at least one record to display
+      const { error: initialProgressError } = await supabase
+        .from('report_progress')
+        .insert({
+          status: 'generating',
+          message: 'Starting file analysis...',
+          progress: 5,
+          job: jobId
+        });
+        
+      if (initialProgressError) {
+        console.error('Error creating initial progress record:', initialProgressError);
+      }
+      
       // Call the file-analysis edge function
       const { data, error } = await supabase.functions.invoke('file-analysis', {
         body: {
@@ -64,9 +81,6 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       }
       
       console.log('File analysis response:', data);
-      
-      // First set the job ID and open the modal, regardless of the response
-      setIsProgressModalOpen(true);
       
       if (data.success) {
         toast.success('File analysis started');

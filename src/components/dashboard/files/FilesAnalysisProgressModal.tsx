@@ -23,7 +23,8 @@ const FilesAnalysisProgressModal = ({
   const [status, setStatus] = useState<'idle' | 'generating' | 'completed' | 'error'>('idle');
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('Starting file analysis...');
-  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
+  const [subscription, setSubscription] = useState<any>(null);
+  const [contentCheckInterval, setContentCheckInterval] = useState<number | null>(null);
 
   // Reset state when modal opens with new job
   useEffect(() => {
@@ -32,38 +33,112 @@ const FilesAnalysisProgressModal = ({
       setProgress(0);
       setMessage('Starting file analysis...');
       console.log(`Opening progress modal for job: ${jobId}`);
-      startPolling();
+      setupSubscription();
     } else {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        setPollingInterval(null);
-      }
+      cleanupSubscription();
     }
 
     return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
+      cleanupSubscription();
     };
   }, [isOpen, jobId]);
 
-  const startPolling = () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
+  const cleanupSubscription = () => {
+    console.log('Cleaning up subscriptions and intervals');
+    if (subscription) {
+      console.log('Removing channel:', subscription.topic);
+      supabase.removeChannel(subscription);
+      setSubscription(null);
     }
+    if (contentCheckInterval) {
+      window.clearInterval(contentCheckInterval);
+      setContentCheckInterval(null);
+    }
+  };
 
-    const checkInterval = window.setInterval(async () => {
-      if (!jobId) return;
-      await checkProgress(jobId);
-    }, 1500);
-
-    setPollingInterval(checkInterval);
+  const setupSubscription = async () => {
+    if (!jobId) return;
+    
+    console.log(`Setting up subscription for file analysis progress updates on job ${jobId}`);
+    
+    // Get initial status to handle cases where events might have been missed
+    try {
+      const { data: initialStatus, error: initialStatusError } = await supabase
+        .from('report_progress')
+        .select('*')
+        .eq('job', jobId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+        
+      if (!initialStatusError && initialStatus && initialStatus.length > 0) {
+        console.log('Initial status found:', initialStatus[0]);
+        const update = initialStatus[0];
+        setMessage(update.message || 'Processing files...');
+        setProgress(update.progress || 0);
+        setStatus(update.status as any || 'generating');
+        
+        // If analysis is already complete, close the modal after a delay
+        if (update.status === 'completed' || update.status === 'error' || update.progress >= 100) {
+          console.log('Analysis already completed, closing modal...');
+          setTimeout(() => {
+            checkUnprocessedFiles();
+          }, 1500);
+          return;
+        }
+      } else {
+        console.log('No initial status found for job:', jobId);
+      }
+    } catch (err) {
+      console.error('Error checking initial status:', err);
+    }
+    
+    // Create a unique channel name with timestamp to avoid conflicts
+    const channelName = `file-progress-${jobId}-${Date.now()}`;
+    console.log(`Creating channel with name: ${channelName}`);
+    
+    // Set up real-time subscription
+    const newSubscription = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'report_progress',
+          filter: `job=eq.${jobId}`
+        },
+        (payload) => {
+          const update = payload.new;
+          console.log('Received progress update:', update);
+          setMessage(update.message || 'Processing files...');
+          setProgress(update.progress || 0);
+          setStatus(update.status as any || 'generating');
+          
+          if (update.status === 'completed' || update.status === 'error' || update.progress >= 100) {
+            console.log('File analysis completed, checking for unprocessed files...');
+            checkUnprocessedFiles();
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log(`Channel ${channelName} subscription status:`, status);
+      });
+      
+    setSubscription(newSubscription);
+    console.log('Subscription set up successfully');
+    
+    // Set up polling interval as backup
+    const interval = window.setInterval(() => {
+      checkProgress(jobId);
+    }, 2000); // Check every 2 seconds
+    
+    setContentCheckInterval(interval);
   };
 
   const checkProgress = async (job: string) => {
     try {
       // Check for job progress
-      console.log(`Checking progress for job: ${job}`);
+      console.log(`Polling progress for job: ${job}`);
       const { data, error } = await supabase
         .from('report_progress')
         .select('*')
@@ -80,7 +155,7 @@ const FilesAnalysisProgressModal = ({
         const latestProgress = data[0];
         
         // Log progress updates for debugging
-        console.log("Progress update received:", {
+        console.log("Progress update received from polling:", {
           status: latestProgress.status,
           progress: latestProgress.progress,
           message: latestProgress.message,
@@ -91,37 +166,45 @@ const FilesAnalysisProgressModal = ({
         setProgress(latestProgress.progress || 0);
         setStatus(latestProgress.status as any || 'generating');
 
-        if (latestProgress.status === 'completed' || latestProgress.status === 'error') {
-          // Check if we still have unprocessed files
-          const { data: filesData, error: filesError } = await supabase
-            .from('files_not_processed')
-            .select('id')
-            .eq('project_id', projectId)
-            .limit(1);
-
-          if (!filesError) {
-            if (!filesData || filesData.length === 0) {
-              // No more unprocessed files, close the modal after a delay
-              setTimeout(() => {
-                onClose();
-                toast.success('All files analyzed successfully');
-              }, 1500);
-            } else {
-              // Some files failed to process
-              setMessage('Some files could not be processed. You can try analyzing again.');
-            }
-          }
-
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
-            setPollingInterval(null);
-          }
+        if (latestProgress.status === 'completed' || latestProgress.status === 'error' || latestProgress.progress >= 100) {
+          checkUnprocessedFiles();
         }
       } else {
         console.log(`No progress updates found for job: ${job}`);
       }
     } catch (error) {
       console.error('Error in progress checking:', error);
+    }
+  };
+
+  const checkUnprocessedFiles = async () => {
+    try {
+      // Check if we still have unprocessed files
+      const { data: filesData, error: filesError } = await supabase
+        .from('files_not_processed')
+        .select('id')
+        .eq('project_id', projectId)
+        .limit(1);
+
+      if (!filesError) {
+        if (!filesData || filesData.length === 0) {
+          // No more unprocessed files, close the modal after a delay
+          console.log("All files processed successfully, closing modal...");
+          setTimeout(() => {
+            onClose();
+            toast.success('All files analyzed successfully');
+          }, 1500);
+        } else {
+          // Some files failed to process
+          console.log(`Still have ${filesData.length} unprocessed files`);
+          setMessage('Some files could not be processed. You can try analyzing again.');
+        }
+      }
+
+      // Clean up subscription regardless of result
+      cleanupSubscription();
+    } catch (error) {
+      console.error('Error checking unprocessed files:', error);
     }
   };
 
