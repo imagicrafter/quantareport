@@ -32,9 +32,39 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
     }
   }, [projectId]);
 
+  // Check for job completion directly from the database
+  const checkJobCompletion = useCallback(async (jobId: string) => {
+    if (!jobId) return false;
+    
+    try {
+      console.log(`Checking completion status for job: ${jobId}`);
+      
+      const { data, error } = await supabase
+        .from('report_progress')
+        .select('*')
+        .eq('job', jobId)
+        .or('progress.eq.100,status.eq.completed,status.eq.error')
+        .order('created_at', { ascending: false })
+        .limit(1);
+        
+      if (error) {
+        console.error('Error checking job completion:', error);
+        return false;
+      }
+      
+      if (data && data.length > 0) {
+        console.log('Found completion record:', data[0]);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error in checkJobCompletion:', error);
+      return false;
+    }
+  }, []);
+
   // Setup realtime subscription to track file analysis progress
-  // Note: This uses the report_progress table which is a general-purpose progress tracking table,
-  // not just for reports. Each job has a unique ID that we use to track progress.
   useEffect(() => {
     if (!currentJobId) return;
     
@@ -67,7 +97,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
               payload.new.status === 'error' || 
               payload.new.progress >= 100
           ) {
-            console.log('File analysis completed!', payload.new);
+            console.log('File analysis completed via realtime!', payload.new);
             setIsAnalyzing(false);
             
             // Show appropriate toast based on status
@@ -96,41 +126,44 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
     };
   }, [currentJobId, checkUnprocessedFiles]);
 
-  // Add a backup check to ensure we don't leave the button spinning
+  // Add multiple backup checks to ensure we don't leave the button spinning
   useEffect(() => {
     if (!isAnalyzing || !currentJobId) return;
     
-    // Set a timeout to check the status after 30 seconds
-    const timeoutId = setTimeout(async () => {
-      console.log('Running backup check for job completion...');
-      
-      try {
-        // Check if we have any progress records with 100% for this job
-        const { data } = await supabase
-          .from('report_progress')
-          .select('*')
-          .eq('job', currentJobId)
-          .or('progress.eq.100,status.eq.completed,status.eq.error')
-          .order('created_at', { ascending: false })
-          .limit(1);
-          
-        if (data && data.length > 0) {
-          console.log('Backup check found completed state:', data[0]);
-          setIsAnalyzing(false);
-          toast.success('File analysis completed');
-          checkUnprocessedFiles();
-        } else {
-          // If still analyzing after 30 seconds with no completion record,
-          // check again after another 30 seconds
-          console.log('Analysis still in progress, scheduling another check');
-        }
-      } catch (error) {
-        console.error('Error in backup check:', error);
-      }
-    }, 30000);
+    console.log('Setting up backup completion checks...');
     
-    return () => clearTimeout(timeoutId);
-  }, [isAnalyzing, currentJobId, checkUnprocessedFiles]);
+    // Check every 10 seconds for job completion
+    const checkInterval = setInterval(async () => {
+      console.log(`Running interval check for job completion: ${currentJobId}`);
+      
+      const isCompleted = await checkJobCompletion(currentJobId);
+      
+      if (isCompleted) {
+        console.log('Interval check found completed state!');
+        setIsAnalyzing(false);
+        toast.success('File analysis completed');
+        checkUnprocessedFiles();
+        clearInterval(checkInterval);
+      }
+    }, 10000);
+    
+    // Final fallback: timeout after 180 seconds (3 minutes) regardless
+    const fallbackTimeout = setTimeout(() => {
+      console.log('Fallback timeout reached - forcing completion');
+      if (isAnalyzing) {
+        setIsAnalyzing(false);
+        toast.info('File analysis timeout reached', { 
+          description: 'The operation may have completed silently'
+        });
+        checkUnprocessedFiles();
+      }
+    }, 180000);
+    
+    return () => {
+      clearInterval(checkInterval);
+      clearTimeout(fallbackTimeout);
+    };
+  }, [isAnalyzing, currentJobId, checkUnprocessedFiles, checkJobCompletion]);
 
   const analyzeFiles = useCallback(async () => {
     try {
