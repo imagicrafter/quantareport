@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,6 +8,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [hasUnprocessedFiles, setHasUnprocessedFiles] = useState(false);
   const [unprocessedFileCount, setUnprocessedFileCount] = useState(0);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
 
   const checkUnprocessedFiles = useCallback(async () => {
     try {
@@ -31,6 +32,58 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
     }
   }, [projectId]);
 
+  // Setup realtime subscription to catch when processing completes
+  useEffect(() => {
+    if (!currentJobId) return;
+    
+    console.log(`Setting up realtime subscription for job: ${currentJobId}`);
+    
+    // Create a unique channel name for this job
+    const channelName = `job-progress-${currentJobId}`;
+    
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'report_progress',
+        filter: `job=eq.${currentJobId}`,
+      }, (payload) => {
+        console.log('Received progress update:', payload);
+        
+        if (payload.new && (
+            payload.new.status === 'completed' || 
+            payload.new.status === 'error' || 
+            payload.new.progress >= 100
+        )) {
+          console.log('Processing completed!', payload.new);
+          setIsAnalyzing(false);
+          
+          // Show appropriate toast based on status
+          if (payload.new.status === 'error') {
+            toast.error(payload.new.message || 'Error analyzing files');
+          } else {
+            toast.success('All files analyzed successfully');
+          }
+          
+          // Check for unprocessed files to update UI
+          checkUnprocessedFiles();
+          
+          // Clean up the subscription
+          supabase.removeChannel(channel);
+        }
+      })
+      .subscribe((status) => {
+        console.log(`Subscription status for ${channelName}:`, status);
+      });
+    
+    // Clean up subscription when component unmounts or job changes
+    return () => {
+      console.log(`Cleaning up subscription for job: ${currentJobId}`);
+      supabase.removeChannel(channel);
+    };
+  }, [currentJobId, checkUnprocessedFiles]);
+
   const analyzeFiles = useCallback(async () => {
     try {
       setIsAnalyzing(true);
@@ -41,6 +94,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       
       // Generate a job ID
       const jobId = uuidv4();
+      setCurrentJobId(jobId); // Store for realtime subscription
       
       console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
       
@@ -65,24 +119,17 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       if (data.success) {
         toast.success('File analysis started');
         
-        // Set up a check for completion
-        const checkInterval = setInterval(async () => {
-          const stillHasUnprocessed = await checkUnprocessedFiles();
-          
-          if (!stillHasUnprocessed) {
-            clearInterval(checkInterval);
-            setIsAnalyzing(false);
-            toast.success('All files analyzed successfully');
-          }
-        }, 2000); // Check every 2 seconds
-        
-        // Safety timeout to prevent infinite checking
+        // Set up a backup check in case realtime fails
         setTimeout(() => {
-          clearInterval(checkInterval);
           if (isAnalyzing) {
-            setIsAnalyzing(false);
+            checkUnprocessedFiles().then(hasUnprocessed => {
+              if (!hasUnprocessed) {
+                setIsAnalyzing(false);
+                toast.success('All files analyzed successfully');
+              }
+            });
           }
-        }, 60000); // 1 minute maximum
+        }, 30000); // 30 second backup check
       } else {
         toast.error(data.message || 'Failed to start file analysis');
         setIsAnalyzing(false);
@@ -92,7 +139,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       toast.error('An error occurred while analyzing files');
       setIsAnalyzing(false);
     }
-  }, [projectId, projectName, checkUnprocessedFiles]);
+  }, [projectId, projectName, checkUnprocessedFiles, isAnalyzing]);
 
   return {
     isAnalyzing,
