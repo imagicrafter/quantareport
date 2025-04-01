@@ -25,7 +25,7 @@ const FilesSectionHeader = ({
     <div className="flex justify-between items-center mb-4 p-4 border-b">
       <h2 className="text-lg font-semibold">Files</h2>
       <div className="flex space-x-2">
-        {hasUnprocessedFiles && !isAnalyzing && !analysisStarted && (
+        {hasUnprocessedFiles && !analysisStarted && (
           <Button 
             variant="outline" 
             size="sm" 
@@ -36,7 +36,7 @@ const FilesSectionHeader = ({
             Analyze Files
           </Button>
         )}
-        {isAnalyzing && (
+        {isAnalyzing && analysisStarted && (
           <Button 
             variant="outline" 
             size="sm" 

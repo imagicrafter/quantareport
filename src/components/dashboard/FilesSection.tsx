@@ -89,7 +89,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     }
   };
 
-  // Handle file analysis
+  // Handle file analysis with automatic UI cleanup
   const handleAnalyzeFiles = () => {
     // First refresh check for unprocessed files before starting analysis
     checkUnprocessedFiles().then(hasFiles => {
@@ -97,7 +97,10 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         // Show message to user about the longer process
         toast.info(
           'File analysis has started', 
-          { description: 'This process will take 3-5 minutes to complete in the background.' }
+          { 
+            description: 'This process will take 3-5 minutes to complete in the background.',
+            duration: 5000 // 5 seconds
+          }
         );
         
         // Mark analysis as started to hide the button
@@ -105,6 +108,11 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         
         // Start the analysis process
         analyzeFiles();
+        
+        // Automatically reset the analyzing state after 5 seconds to hide the spinning button
+        setTimeout(() => {
+          setAnalysisStarted(false);
+        }, 5000);
       }
     });
   };
@@ -117,7 +125,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         closeButton 
         richColors 
         toastOptions={{
-          duration: 4000, // 4 seconds default duration
+          duration: 5000, // 5 seconds default duration
         }}
       />
       

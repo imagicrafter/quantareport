@@ -2,7 +2,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { v4 as uuidv4 } from 'uuid';
 
 // Define types for progress data
 interface ProgressData {
@@ -17,8 +16,6 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
   const [hasUnprocessedFiles, setHasUnprocessedFiles] = useState(false);
   const [unprocessedFileCount, setUnprocessedFileCount] = useState(0);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
-  // Use string | number | null to accommodate Sonner toast IDs
-  const [lastToastId, setLastToastId] = useState<string | number | null>(null);
 
   const checkUnprocessedFiles = useCallback(async () => {
     try {
@@ -57,15 +54,10 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project: ${projectName}`);
       
       // Generate a job ID
-      const jobId = uuidv4();
+      const jobId = crypto.randomUUID();
       setCurrentJobId(jobId);
       
       console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
-      
-      // Dismiss any previous toast messages
-      if (lastToastId) {
-        toast.dismiss(lastToastId);
-      }
       
       // Call the file-analysis edge function
       const { data, error } = await supabase.functions.invoke('file-analysis', {
@@ -95,7 +87,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       toast.error('An error occurred while analyzing files');
       setIsAnalyzing(false);
     }
-  }, [projectId, projectName, isAnalyzing, lastToastId]);
+  }, [projectId, projectName, isAnalyzing]);
 
   return {
     isAnalyzing,
