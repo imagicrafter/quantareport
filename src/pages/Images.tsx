@@ -1,12 +1,12 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Toaster } from 'sonner';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import FilesSection from '@/components/dashboard/FilesSection';
 import StatCards from '@/components/dashboard/StatCards';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ProjectWithImageCount {
   id: string;
@@ -21,8 +21,8 @@ const Images = () => {
   const [allProjects, setAllProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [selectedProjectName, setSelectedProjectName] = useState<string>('');
   const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchProjectsWithImages();
@@ -105,15 +105,18 @@ const Images = () => {
       setProjects(filteredProjects);
     } catch (error) {
       console.error('Error fetching projects with images:', error);
-      toast.error('Failed to load image data. Please try again.');
+      toast({
+        title: 'Error',
+        description: 'Failed to load image data. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleProjectClick = (project: ProjectWithImageCount) => {
-    setSelectedProjectId(project.id);
-    setSelectedProjectName(project.name);
+  const handleProjectClick = (projectId: string) => {
+    setSelectedProjectId(projectId);
     setIsFilesModalOpen(true);
   };
 
@@ -124,9 +127,6 @@ const Images = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Use only Sonner Toaster for toast notifications */}
-      <Toaster position="top-right" closeButton richColors />
-      
       <DashboardHeader title="Images" toggleSidebar={() => {}} />
       
       <div className="container mx-auto py-8 space-y-8">
@@ -153,7 +153,7 @@ const Images = () => {
                 <Card 
                   key={project.id} 
                   className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => handleProjectClick(project)}
+                  onClick={() => handleProjectClick(project.id)}
                 >
                   <CardHeader>
                     <CardTitle>{project.name}</CardTitle>
@@ -184,14 +184,11 @@ const Images = () => {
             <>
               <div className="mb-4 flex-shrink-0">
                 <h2 className="text-xl font-bold">
-                  {selectedProjectName} - Files
+                  {projects.find(p => p.id === selectedProjectId)?.name} - Files
                 </h2>
               </div>
               <div className="flex-grow overflow-hidden">
-                <FilesSection 
-                  projectId={selectedProjectId} 
-                  projectName={selectedProjectName}
-                />
+                <FilesSection projectId={selectedProjectId} />
               </div>
             </>
           )}

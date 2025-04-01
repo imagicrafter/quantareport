@@ -73,7 +73,6 @@ export type Database = {
           position: number | null
           project_id: string
           size: number | null
-          title: string | null
           type: string
           user_id: string
         }
@@ -87,7 +86,6 @@ export type Database = {
           position?: number | null
           project_id: string
           size?: number | null
-          title?: string | null
           type: string
           user_id: string
         }
@@ -101,7 +99,6 @@ export type Database = {
           position?: number | null
           project_id?: string
           size?: number | null
-          title?: string | null
           type?: string
           user_id?: string
         }
@@ -145,21 +142,21 @@ export type Database = {
           {
             foreignKeyName: "image_descriptions_file_id_fkey"
             columns: ["file_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "files"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "image_descriptions_file_id_fkey"
             columns: ["file_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "files_not_processed"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "image_descriptions_file_id_fkey"
             columns: ["file_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "project_images"
             referencedColumns: ["files_id"]
           },
