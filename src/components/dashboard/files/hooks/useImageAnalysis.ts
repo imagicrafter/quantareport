@@ -9,7 +9,8 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
   const [hasUnprocessedFiles, setHasUnprocessedFiles] = useState(false);
   const [unprocessedFileCount, setUnprocessedFileCount] = useState(0);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
-  const [lastToastId, setLastToastId] = useState<string | null>(null);
+  // Update the type to accept either string | null or number to match Sonner toast IDs
+  const [lastToastId, setLastToastId] = useState<string | number | null>(null);
 
   const checkUnprocessedFiles = useCallback(async () => {
     try {
@@ -105,6 +106,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
           const id = toast.info(progressData.message || 'Processing files...', {
             description: `Progress: ${progressData.progress}%`
           });
+          // Now the type of lastToastId matches what toast.info() returns
           setLastToastId(id);
         }
         
@@ -218,6 +220,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       const initialToastId = toast.info('Starting file analysis...', {
         description: 'This may take a few minutes to complete'
       });
+      // Now the type of lastToastId matches what toast.info() returns
       setLastToastId(initialToastId);
       
       // Call the file-analysis edge function
