@@ -9,6 +9,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
   const [hasUnprocessedFiles, setHasUnprocessedFiles] = useState(false);
   const [unprocessedFileCount, setUnprocessedFileCount] = useState(0);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [lastToastId, setLastToastId] = useState<string | null>(null);
 
   const checkUnprocessedFiles = useCallback(async () => {
     try {
@@ -54,7 +55,14 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       
       if (data && data.length > 0) {
         console.log('Found completion record:', data[0]);
-        return true;
+        // Show completion toast if we haven't already
+        if (data[0].progress === 100 || data[0].status === 'completed') {
+          toast.success('File analysis completed successfully');
+          return true;
+        } else if (data[0].status === 'error') {
+          toast.error(data[0].message || 'Error analyzing files');
+          return true;
+        }
       }
       
       return false;
@@ -83,36 +91,43 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       }, (payload) => {
         console.log('Received file analysis progress update:', payload);
         
-        // Show toast with progress update message
-        if (payload.new) {
-          // Don't show toast for the initial "Starting..." message to avoid too many notifications
-          if (payload.new.progress > 5) {
-            toast.info(payload.new.message || 'Processing files...', {
-              description: `Progress: ${payload.new.progress}%`
-            });
+        if (!payload.new) return;
+        
+        const progressData = payload.new;
+        
+        // Only show progress toast for significant progress updates (avoid too many notifications)
+        if (progressData.progress > 5 && progressData.progress < 100) {
+          // Avoid duplicate toasts by checking message
+          if (lastToastId) {
+            toast.dismiss(lastToastId);
           }
           
-          // Always check if we've reached 100% or completion status
-          if (payload.new.status === 'completed' || 
-              payload.new.status === 'error' || 
-              payload.new.progress >= 100
-          ) {
-            console.log('File analysis completed via realtime!', payload.new);
-            setIsAnalyzing(false);
-            
-            // Show appropriate toast based on status
-            if (payload.new.status === 'error') {
-              toast.error(payload.new.message || 'Error analyzing files');
-            } else {
-              toast.success('All files analyzed successfully');
-            }
-            
-            // Check for unprocessed files to update UI
-            checkUnprocessedFiles();
-            
-            // Clean up the subscription
-            supabase.removeChannel(channel);
+          const id = toast.info(progressData.message || 'Processing files...', {
+            description: `Progress: ${progressData.progress}%`
+          });
+          setLastToastId(id);
+        }
+        
+        // Always check if we've reached 100% or completion status
+        if (progressData.status === 'completed' || 
+            progressData.status === 'error' || 
+            progressData.progress >= 100
+        ) {
+          console.log('File analysis completed via realtime!', progressData);
+          setIsAnalyzing(false);
+          
+          // Show appropriate toast based on status
+          if (progressData.status === 'error') {
+            toast.error(progressData.message || 'Error analyzing files');
+          } else {
+            toast.success('All files analyzed successfully');
           }
+          
+          // Check for unprocessed files to update UI
+          checkUnprocessedFiles();
+          
+          // Clean up the subscription
+          supabase.removeChannel(channel);
         }
       })
       .subscribe((status) => {
@@ -124,7 +139,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       console.log(`Cleaning up subscription for job: ${currentJobId}`);
       supabase.removeChannel(channel);
     };
-  }, [currentJobId, checkUnprocessedFiles]);
+  }, [currentJobId, checkUnprocessedFiles, lastToastId]);
 
   // Add multiple backup checks to ensure we don't leave the button spinning
   useEffect(() => {
@@ -132,25 +147,29 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
     
     console.log('Setting up backup completion checks...');
     
-    // Check every 10 seconds for job completion
+    let completionDetected = false;
+    
+    // Check every 5 seconds for job completion
     const checkInterval = setInterval(async () => {
+      if (completionDetected) return;
+      
       console.log(`Running interval check for job completion: ${currentJobId}`);
       
       const isCompleted = await checkJobCompletion(currentJobId);
       
       if (isCompleted) {
         console.log('Interval check found completed state!');
+        completionDetected = true;
         setIsAnalyzing(false);
-        toast.success('File analysis completed');
         checkUnprocessedFiles();
         clearInterval(checkInterval);
       }
-    }, 10000);
+    }, 5000);
     
     // Final fallback: timeout after 180 seconds (3 minutes) regardless
     const fallbackTimeout = setTimeout(() => {
       console.log('Fallback timeout reached - forcing completion');
-      if (isAnalyzing) {
+      if (isAnalyzing && !completionDetected) {
         setIsAnalyzing(false);
         toast.info('File analysis timeout reached', { 
           description: 'The operation may have completed silently'
@@ -159,9 +178,25 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       }
     }, 180000);
     
+    // One-time initial check after 10 seconds to catch any missed completion events
+    const initialCheckTimeout = setTimeout(async () => {
+      if (completionDetected) return;
+      
+      console.log('Running initial completion check...');
+      const isCompleted = await checkJobCompletion(currentJobId);
+      
+      if (isCompleted) {
+        console.log('Initial check found completed state!');
+        completionDetected = true;
+        setIsAnalyzing(false);
+        checkUnprocessedFiles();
+      }
+    }, 10000);
+    
     return () => {
       clearInterval(checkInterval);
       clearTimeout(fallbackTimeout);
+      clearTimeout(initialCheckTimeout);
     };
   }, [isAnalyzing, currentJobId, checkUnprocessedFiles, checkJobCompletion]);
 
@@ -179,10 +214,11 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       
       console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
       
-      // Show initial toast
-      toast.info('Starting file analysis...', {
+      // Show initial toast with a unique ID
+      const initialToastId = toast.info('Starting file analysis...', {
         description: 'This may take a few minutes to complete'
       });
+      setLastToastId(initialToastId);
       
       // Call the file-analysis edge function
       const { data, error } = await supabase.functions.invoke('file-analysis', {
@@ -211,7 +247,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       toast.error('An error occurred while analyzing files');
       setIsAnalyzing(false);
     }
-  }, [projectId, projectName, checkUnprocessedFiles]);
+  }, [projectId, projectName]);
 
   return {
     isAnalyzing,

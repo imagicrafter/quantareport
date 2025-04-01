@@ -85,6 +85,11 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     }
   };
 
+  // Handle file analysis
+  const handleAnalyzeFiles = () => {
+    analyzeFiles();
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Add Sonner Toaster component for better toast notifications */}
@@ -94,7 +99,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         onAddFile={() => setIsAddDialogOpen(true)}
         onBulkUpload={() => setIsBulkUploadDialogOpen(true)}
         projectId={projectId}
-        onAnalyzeFiles={analyzeFiles}
+        onAnalyzeFiles={handleAnalyzeFiles}
         hasUnprocessedFiles={hasUnprocessedFiles}
         isAnalyzing={isAnalyzing}
       />
