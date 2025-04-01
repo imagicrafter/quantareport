@@ -55,7 +55,8 @@ export const updateFile = async (fileId: string, values: FileFormValues): Promis
   const { data, error } = await supabase
     .from('files')
     .update({
-      name: values.title || values.name, // Use title if provided, otherwise use name
+      name: values.name,
+      title: values.title, // Use title directly
       description: values.description,
       file_path: filePath,
       type: values.type,
