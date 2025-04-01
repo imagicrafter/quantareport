@@ -41,8 +41,10 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       const isTestMode = projectName.toLowerCase().includes('test');
       console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project: ${projectName}`);
       
-      // Generate a new job ID using uuid package instead of crypto.randomUUID
+      // Generate a new job ID using uuid package
       const jobId = uuidv4();
+      
+      console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
       
       // Call the file-analysis edge function
       const { data, error } = await supabase.functions.invoke('file-analysis', {

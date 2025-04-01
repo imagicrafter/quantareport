@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 
@@ -30,6 +29,12 @@ serve(async (req) => {
     const requestData = await req.json();
     console.log("Request data:", JSON.stringify(requestData));
     
+    // Check if this is a progress update from n8n workflow
+    if (requestData.status && requestData.job && requestData.progress !== undefined) {
+      return await handleProgressUpdate(requestData);
+    }
+    
+    // Otherwise, treat it as a file analysis request
     const { project_id, isTestMode = false, job = null } = requestData;
     
     if (!project_id) {
@@ -105,9 +110,8 @@ serve(async (req) => {
     // Create a callback URL for the n8n workflow to send progress updates
     const jobId = job || crypto.randomUUID(); // Use provided job ID or generate a new one
     
-    // Prepare the callback URL using the Supabase Function URL for report-progress
-    const supabaseProjectUrl = Deno.env.get("SUPABASE_URL") || "https://vtaufnxworztolfdwlll.supabase.co";
-    const callbackUrl = `${supabaseProjectUrl}/functions/v1/report-progress`;
+    // Use the current function URL as callback to simplify n8n configuration
+    const callbackUrl = `${Deno.env.get("SUPABASE_URL") || "https://vtaufnxworztolfdwlll.supabase.co"}/functions/v1/file-analysis`;
     
     console.log(`Using callback URL: ${callbackUrl}`);
     
@@ -178,7 +182,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error processing file analysis request:", error);
+    console.error("Error processing request:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error", details: error.message }),
       { 
@@ -188,3 +192,116 @@ serve(async (req) => {
     );
   }
 });
+
+// Helper function to handle progress updates from n8n
+async function handleProgressUpdate(data: any) {
+  console.log("Handling progress update:", JSON.stringify(data));
+  
+  try {
+    // Validate required fields
+    if (!data.job) {
+      console.error("Missing 'job' field in progress update");
+      return new Response(
+        JSON.stringify({ error: "Missing required field: job" }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400 
+        }
+      );
+    }
+    
+    // Map status from n8n to our application status
+    let appStatus: "idle" | "generating" | "completed" | "error" = "generating";
+    
+    if (data.status === "completed") {
+      appStatus = "completed";
+    } else if (data.status === "error") {
+      appStatus = "error";
+    }
+    
+    // Create Supabase client for progress update
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing Supabase environment variables");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500 
+        }
+      );
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Prepare the data to insert
+    const insertData = {
+      status: appStatus,
+      message: data.message || "Processing files...",
+      progress: parseInt(String(data.progress), 10) || 0,
+      job: data.job
+    };
+    
+    console.log("Inserting progress record:", insertData);
+    
+    // Insert the progress update into the database
+    const { data: progressData, error: progressError } = await supabase
+      .from("report_progress")
+      .insert(insertData)
+      .select();
+      
+    if (progressError) {
+      console.error("Error inserting progress update:", progressError);
+      return new Response(
+        JSON.stringify({ error: "Failed to save progress update", details: progressError.message }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500 
+        }
+      );
+    }
+    
+    console.log("Progress update saved successfully");
+    
+    // If status is completed, remove processed files from files_not_processed
+    if (appStatus === "completed" && data.project_id) {
+      try {
+        const { error: cleanupError } = await supabase
+          .from("files_not_processed")
+          .delete()
+          .eq("project_id", data.project_id);
+          
+        if (cleanupError) {
+          console.error("Error cleaning up processed files:", cleanupError);
+        } else {
+          console.log(`Cleaned up processed files for project ${data.project_id}`);
+        }
+      } catch (cleanupErr) {
+        console.error("Exception during cleanup:", cleanupErr);
+      }
+    }
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: "Progress update received",
+        data: progressData
+      }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200 
+      }
+    );
+  } catch (error) {
+    console.error("Error handling progress update:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal server error", details: error.message }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500 
+      }
+    );
+  }
+}
