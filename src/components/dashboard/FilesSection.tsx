@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { DropResult } from 'react-beautiful-dnd';
 import { Toaster } from 'sonner';
+import { toast } from 'sonner';
 import FilesSectionHeader from './files/components/FilesSectionHeader';
 import FilesContainer from './files/components/FilesContainer';
 import AddFileDialog from './files/AddFileDialog';
@@ -51,6 +52,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
   } = useImageAnalysis(projectId, projectName);
 
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+  const [analysisStarted, setAnalysisStarted] = useState(false);
 
   // Check for unprocessed files when the component mounts or files are updated
   useEffect(() => {
@@ -58,18 +60,6 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
       checkUnprocessedFiles();
     }
   }, [projectId, checkUnprocessedFiles, files]);
-
-  // Show progress modal when analysis starts
-  useEffect(() => {
-    if (isAnalyzing && currentJobId) {
-      setIsProgressModalOpen(true);
-    } else {
-      // Add a small delay before closing to ensure any final animations are seen
-      setTimeout(() => {
-        setIsProgressModalOpen(false);
-      }, 500);
-    }
-  }, [isAnalyzing, currentJobId]);
 
   // Get project name if not provided
   const [fetchedProjectName, setFetchedProjectName] = useState('');
@@ -106,6 +96,16 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     // First refresh check for unprocessed files before starting analysis
     checkUnprocessedFiles().then(hasFiles => {
       if (hasFiles) {
+        // Show message to user about the longer process
+        toast.info(
+          'File analysis has started', 
+          { description: 'This process will take 3-5 minutes to complete in the background.' }
+        );
+        
+        // Mark analysis as started to hide the button
+        setAnalysisStarted(true);
+        
+        // Start the analysis process
         analyzeFiles();
       }
     });
@@ -130,6 +130,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         onAnalyzeFiles={handleAnalyzeFiles}
         hasUnprocessedFiles={hasUnprocessedFiles}
         isAnalyzing={isAnalyzing}
+        analysisStarted={analysisStarted}
       />
 
       <FilesContainer 
@@ -175,13 +176,6 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         onUploadFiles={handleBulkUploadFiles}
         onUploadFromLink={handleUploadFromDriveLink}
         uploading={uploading}
-        projectId={projectId}
-      />
-
-      <FilesAnalysisProgressModal
-        isOpen={isProgressModalOpen}
-        onClose={() => setIsProgressModalOpen(false)}
-        jobId={currentJobId}
         projectId={projectId}
       />
     </div>

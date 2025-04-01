@@ -9,6 +9,7 @@ interface FilesSectionHeaderProps {
   onAnalyzeFiles: () => void;
   hasUnprocessedFiles: boolean;
   isAnalyzing: boolean;
+  analysisStarted: boolean;
 }
 
 const FilesSectionHeader = ({ 
@@ -17,13 +18,14 @@ const FilesSectionHeader = ({
   projectId,
   onAnalyzeFiles,
   hasUnprocessedFiles,
-  isAnalyzing
+  isAnalyzing,
+  analysisStarted
 }: FilesSectionHeaderProps) => {
   return (
     <div className="flex justify-between items-center mb-4 p-4 border-b">
       <h2 className="text-lg font-semibold">Files</h2>
       <div className="flex space-x-2">
-        {hasUnprocessedFiles && !isAnalyzing && (
+        {hasUnprocessedFiles && !isAnalyzing && !analysisStarted && (
           <Button 
             variant="outline" 
             size="sm" 
