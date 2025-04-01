@@ -9,7 +9,6 @@ import AddFileDialog from './files/AddFileDialog';
 import EditFileDialog from './files/EditFileDialog';
 import DeleteFileDialog from './files/DeleteFileDialog';
 import BulkUploadDialog from './files/BulkUploadDialog';
-import FilesAnalysisProgressModal from './files/FilesAnalysisProgressModal';
 import { useFiles } from './files/hooks/useFiles';
 import { useFileOperations } from './files/hooks/useFileOperations';
 import { useImageAnalysis } from './files/hooks/useImageAnalysis';
@@ -51,7 +50,6 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     currentJobId
   } = useImageAnalysis(projectId, projectName);
 
-  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [analysisStarted, setAnalysisStarted] = useState(false);
 
   // Check for unprocessed files when the component mounts or files are updated
