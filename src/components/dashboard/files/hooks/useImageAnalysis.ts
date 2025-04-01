@@ -32,14 +32,16 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
     }
   }, [projectId]);
 
-  // Setup realtime subscription to catch when processing completes
+  // Setup realtime subscription to track file analysis progress
+  // Note: This uses the report_progress table which is a general-purpose progress tracking table,
+  // not just for reports. Each job has a unique ID that we use to track progress.
   useEffect(() => {
     if (!currentJobId) return;
     
-    console.log(`Setting up realtime subscription for job: ${currentJobId}`);
+    console.log(`Setting up realtime subscription for file analysis job: ${currentJobId}`);
     
     // Create a unique channel name for this job
-    const channelName = `job-progress-${currentJobId}`;
+    const channelName = `file-analysis-progress-${currentJobId}-${Date.now()}`;
     
     const channel = supabase
       .channel(channelName)
@@ -49,14 +51,14 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
         table: 'report_progress',
         filter: `job=eq.${currentJobId}`,
       }, (payload) => {
-        console.log('Received progress update:', payload);
+        console.log('Received file analysis progress update:', payload);
         
         if (payload.new && (
             payload.new.status === 'completed' || 
             payload.new.status === 'error' || 
             payload.new.progress >= 100
         )) {
-          console.log('Processing completed!', payload.new);
+          console.log('File analysis completed!', payload.new);
           setIsAnalyzing(false);
           
           // Show appropriate toast based on status
@@ -122,10 +124,14 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
         // Set up a backup check in case realtime fails
         setTimeout(() => {
           if (isAnalyzing) {
+            console.log('Performing backup check for completion...');
             checkUnprocessedFiles().then(hasUnprocessed => {
               if (!hasUnprocessed) {
+                console.log('Backup check: All files appear to be processed');
                 setIsAnalyzing(false);
                 toast.success('All files analyzed successfully');
+              } else {
+                console.log(`Backup check: Still have ${unprocessedFileCount} unprocessed files`);
               }
             });
           }
@@ -139,7 +145,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       toast.error('An error occurred while analyzing files');
       setIsAnalyzing(false);
     }
-  }, [projectId, projectName, checkUnprocessedFiles, isAnalyzing]);
+  }, [projectId, projectName, checkUnprocessedFiles, isAnalyzing, unprocessedFileCount]);
 
   return {
     isAnalyzing,
