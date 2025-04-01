@@ -7,7 +7,7 @@ import AddFileDialog from './files/AddFileDialog';
 import EditFileDialog from './files/EditFileDialog';
 import DeleteFileDialog from './files/DeleteFileDialog';
 import BulkUploadDialog from './files/BulkUploadDialog';
-import FileAnalysisProgressModal from './files/FileAnalysisProgressModal';
+import FilesAnalysisProgressModal from './files/FilesAnalysisProgressModal';
 import { useFiles } from './files/hooks/useFiles';
 import { useFileOperations } from './files/hooks/useFileOperations';
 import { useImageAnalysis } from './files/hooks/useImageAnalysis';
@@ -144,7 +144,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         projectId={projectId}
       />
 
-      <FileAnalysisProgressModal
+      <FilesAnalysisProgressModal
         isOpen={isProgressModalOpen}
         onClose={closeProgressModal}
         jobId={analysisJobId}

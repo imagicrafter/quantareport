@@ -43,6 +43,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       
       // Generate a new job ID using uuid package
       const jobId = uuidv4();
+      setAnalysisJobId(jobId); // Set job ID immediately to ensure it's available for the modal
       
       console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
       
@@ -64,9 +65,10 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       
       console.log('File analysis response:', data);
       
+      // First set the job ID and open the modal, regardless of the response
+      setIsProgressModalOpen(true);
+      
       if (data.success) {
-        setAnalysisJobId(data.jobId);
-        setIsProgressModalOpen(true);
         toast.success('File analysis started');
       } else {
         toast.error(data.message || 'Failed to start file analysis');
@@ -81,6 +83,7 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
 
   const closeProgressModal = useCallback(() => {
     setIsProgressModalOpen(false);
+    setAnalysisJobId(null); // Reset job ID when modal is closed
     checkUnprocessedFiles();
   }, [checkUnprocessedFiles]);
 

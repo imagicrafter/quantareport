@@ -25,9 +25,13 @@ const FilesAnalysisProgressModal = ({
   const [message, setMessage] = useState('Starting file analysis...');
   const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 
+  // Reset state when modal opens with new job
   useEffect(() => {
     if (isOpen && jobId) {
       setStatus('generating');
+      setProgress(0);
+      setMessage('Starting file analysis...');
+      console.log(`Opening progress modal for job: ${jobId}`);
       startPolling();
     } else {
       if (pollingInterval) {
@@ -59,6 +63,7 @@ const FilesAnalysisProgressModal = ({
   const checkProgress = async (job: string) => {
     try {
       // Check for job progress
+      console.log(`Checking progress for job: ${job}`);
       const { data, error } = await supabase
         .from('report_progress')
         .select('*')
@@ -73,16 +78,18 @@ const FilesAnalysisProgressModal = ({
 
       if (data && data.length > 0) {
         const latestProgress = data[0];
-        setMessage(latestProgress.message || 'Processing files...');
-        setProgress(latestProgress.progress || 0);
-        setStatus(latestProgress.status as any);
-
+        
         // Log progress updates for debugging
         console.log("Progress update received:", {
           status: latestProgress.status,
           progress: latestProgress.progress,
-          message: latestProgress.message
+          message: latestProgress.message,
+          job: latestProgress.job
         });
+        
+        setMessage(latestProgress.message || 'Processing files...');
+        setProgress(latestProgress.progress || 0);
+        setStatus(latestProgress.status as any || 'generating');
 
         if (latestProgress.status === 'completed' || latestProgress.status === 'error') {
           // Check if we still have unprocessed files
@@ -110,6 +117,8 @@ const FilesAnalysisProgressModal = ({
             setPollingInterval(null);
           }
         }
+      } else {
+        console.log(`No progress updates found for job: ${job}`);
       }
     } catch (error) {
       console.error('Error in progress checking:', error);

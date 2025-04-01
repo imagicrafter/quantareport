@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 
@@ -31,6 +32,7 @@ serve(async (req) => {
     
     // Check if this is a progress update from n8n workflow
     if (requestData.status && requestData.job && requestData.progress !== undefined) {
+      console.log("Detected progress update request");
       return await handleProgressUpdate(requestData);
     }
     
@@ -268,6 +270,7 @@ async function handleProgressUpdate(data: any) {
     // If status is completed, remove processed files from files_not_processed
     if (appStatus === "completed" && data.project_id) {
       try {
+        console.log(`Cleaning up processed files for project ${data.project_id}`);
         const { error: cleanupError } = await supabase
           .from("files_not_processed")
           .delete()
