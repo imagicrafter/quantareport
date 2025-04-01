@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { DropResult } from 'react-beautiful-dnd';
+import { Toaster } from 'sonner';
 import FilesSectionHeader from './files/components/FilesSectionHeader';
 import FilesContainer from './files/components/FilesContainer';
 import AddFileDialog from './files/AddFileDialog';
@@ -86,6 +87,9 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Add Sonner Toaster component for better toast notifications */}
+      <Toaster position="top-right" closeButton richColors />
+      
       <FilesSectionHeader 
         onAddFile={() => setIsAddDialogOpen(true)}
         onBulkUpload={() => setIsBulkUploadDialogOpen(true)}

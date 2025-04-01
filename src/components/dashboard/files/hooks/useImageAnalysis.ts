@@ -53,26 +53,35 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       }, (payload) => {
         console.log('Received file analysis progress update:', payload);
         
-        if (payload.new && (
-            payload.new.status === 'completed' || 
-            payload.new.status === 'error' || 
-            payload.new.progress >= 100
-        )) {
-          console.log('File analysis completed!', payload.new);
-          setIsAnalyzing(false);
-          
-          // Show appropriate toast based on status
-          if (payload.new.status === 'error') {
-            toast.error(payload.new.message || 'Error analyzing files');
-          } else {
-            toast.success('All files analyzed successfully');
+        // Show toast with progress update message
+        if (payload.new) {
+          // Don't show toast for the initial "Starting..." message to avoid too many notifications
+          if (payload.new.progress > 5) {
+            toast.info(payload.new.message || 'Processing files...', {
+              description: `Progress: ${payload.new.progress}%`
+            });
           }
           
-          // Check for unprocessed files to update UI
-          checkUnprocessedFiles();
-          
-          // Clean up the subscription
-          supabase.removeChannel(channel);
+          if (payload.new.status === 'completed' || 
+              payload.new.status === 'error' || 
+              payload.new.progress >= 100
+          ) {
+            console.log('File analysis completed!', payload.new);
+            setIsAnalyzing(false);
+            
+            // Show appropriate toast based on status
+            if (payload.new.status === 'error') {
+              toast.error(payload.new.message || 'Error analyzing files');
+            } else {
+              toast.success('All files analyzed successfully');
+            }
+            
+            // Check for unprocessed files to update UI
+            checkUnprocessedFiles();
+            
+            // Clean up the subscription
+            supabase.removeChannel(channel);
+          }
         }
       })
       .subscribe((status) => {
@@ -99,6 +108,11 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       setCurrentJobId(jobId); // Store for realtime subscription
       
       console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
+      
+      // Show initial toast
+      toast.info('Starting file analysis...', {
+        description: 'This may take a few minutes to complete'
+      });
       
       // Call the file-analysis edge function
       const { data, error } = await supabase.functions.invoke('file-analysis', {

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { Toaster } from 'sonner';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
@@ -130,6 +131,9 @@ const Images = () => {
 
   return (
     <div className="min-h-screen">
+      {/* Add Sonner Toaster for toast notifications */}
+      <Toaster position="top-right" closeButton richColors />
+      
       <DashboardHeader title="Images" toggleSidebar={() => {}} />
       
       <div className="container mx-auto py-8 space-y-8">
