@@ -2,14 +2,12 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { v4 as uuidv4 } from 'uuid'; // Import the uuid package
+import { v4 as uuidv4 } from 'uuid';
 
 export const useImageAnalysis = (projectId: string, projectName: string) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
   const [hasUnprocessedFiles, setHasUnprocessedFiles] = useState(false);
   const [unprocessedFileCount, setUnprocessedFileCount] = useState(0);
-  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
 
   const checkUnprocessedFiles = useCallback(async () => {
     try {
@@ -41,28 +39,10 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       const isTestMode = projectName.toLowerCase().includes('test');
       console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project: ${projectName}`);
       
-      // Generate a new job ID using uuid package
+      // Generate a job ID
       const jobId = uuidv4();
-      setAnalysisJobId(jobId); // Set job ID immediately to ensure it's available for the modal
       
       console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
-      
-      // Open the modal immediately with the job ID
-      setIsProgressModalOpen(true);
-      
-      // Create initial progress record to ensure there's at least one record to display
-      const { error: initialProgressError } = await supabase
-        .from('report_progress')
-        .insert({
-          status: 'generating',
-          message: 'Starting file analysis...',
-          progress: 5,
-          job: jobId
-        });
-        
-      if (initialProgressError) {
-        console.error('Error creating initial progress record:', initialProgressError);
-      }
       
       // Call the file-analysis edge function
       const { data, error } = await supabase.functions.invoke('file-analysis', {
@@ -84,31 +64,41 @@ export const useImageAnalysis = (projectId: string, projectName: string) => {
       
       if (data.success) {
         toast.success('File analysis started');
+        
+        // Set up a check for completion
+        const checkInterval = setInterval(async () => {
+          const stillHasUnprocessed = await checkUnprocessedFiles();
+          
+          if (!stillHasUnprocessed) {
+            clearInterval(checkInterval);
+            setIsAnalyzing(false);
+            toast.success('All files analyzed successfully');
+          }
+        }, 2000); // Check every 2 seconds
+        
+        // Safety timeout to prevent infinite checking
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          if (isAnalyzing) {
+            setIsAnalyzing(false);
+          }
+        }, 60000); // 1 minute maximum
       } else {
         toast.error(data.message || 'Failed to start file analysis');
+        setIsAnalyzing(false);
       }
     } catch (error) {
       console.error('Error analyzing files:', error);
       toast.error('An error occurred while analyzing files');
-    } finally {
       setIsAnalyzing(false);
     }
-  }, [projectId, projectName]);
-
-  const closeProgressModal = useCallback(() => {
-    setIsProgressModalOpen(false);
-    setAnalysisJobId(null); // Reset job ID when modal is closed
-    checkUnprocessedFiles();
-  }, [checkUnprocessedFiles]);
+  }, [projectId, projectName, checkUnprocessedFiles]);
 
   return {
     isAnalyzing,
-    analysisJobId,
     hasUnprocessedFiles,
     unprocessedFileCount,
-    isProgressModalOpen,
     checkUnprocessedFiles,
-    analyzeFiles,
-    closeProgressModal
+    analyzeFiles
   };
 };

@@ -7,7 +7,6 @@ import AddFileDialog from './files/AddFileDialog';
 import EditFileDialog from './files/EditFileDialog';
 import DeleteFileDialog from './files/DeleteFileDialog';
 import BulkUploadDialog from './files/BulkUploadDialog';
-import FilesAnalysisProgressModal from './files/FilesAnalysisProgressModal';
 import { useFiles } from './files/hooks/useFiles';
 import { useFileOperations } from './files/hooks/useFileOperations';
 import { useImageAnalysis } from './files/hooks/useImageAnalysis';
@@ -42,13 +41,10 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
 
   const {
     isAnalyzing,
-    analysisJobId,
     hasUnprocessedFiles,
     unprocessedFileCount,
-    isProgressModalOpen,
     checkUnprocessedFiles,
-    analyzeFiles,
-    closeProgressModal
+    analyzeFiles
   } = useImageAnalysis(projectId, projectName);
 
   // Check for unprocessed files when the component mounts or files are updated
@@ -96,6 +92,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         projectId={projectId}
         onAnalyzeFiles={analyzeFiles}
         hasUnprocessedFiles={hasUnprocessedFiles}
+        isAnalyzing={isAnalyzing}
       />
 
       <FilesContainer 
@@ -142,14 +139,6 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         onUploadFromLink={handleUploadFromDriveLink}
         uploading={uploading}
         projectId={projectId}
-      />
-
-      <FilesAnalysisProgressModal
-        isOpen={isProgressModalOpen}
-        onClose={closeProgressModal}
-        jobId={analysisJobId}
-        projectId={projectId}
-        fileCount={unprocessedFileCount}
       />
     </div>
   );
