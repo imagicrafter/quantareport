@@ -87,13 +87,25 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
 
   // Handle file analysis
   const handleAnalyzeFiles = () => {
-    analyzeFiles();
+    // First refresh check for unprocessed files before starting analysis
+    checkUnprocessedFiles().then(hasFiles => {
+      if (hasFiles) {
+        analyzeFiles();
+      }
+    });
   };
 
   return (
     <div className="flex flex-col h-full">
-      {/* Add Sonner Toaster component for better toast notifications */}
-      <Toaster position="top-right" closeButton richColors />
+      {/* Configure Toaster for better toast management */}
+      <Toaster 
+        position="top-right" 
+        closeButton 
+        richColors 
+        toastOptions={{
+          duration: 4000, // 4 seconds default duration
+        }}
+      />
       
       <FilesSectionHeader 
         onAddFile={() => setIsAddDialogOpen(true)}
