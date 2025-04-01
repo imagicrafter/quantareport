@@ -4,11 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Toaster } from 'sonner';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import FilesSection from '@/components/dashboard/FilesSection';
 import StatCards from '@/components/dashboard/StatCards';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ProjectWithImageCount {
   id: string;
@@ -25,7 +23,6 @@ const Images = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedProjectName, setSelectedProjectName] = useState<string>('');
   const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchProjectsWithImages();
@@ -108,11 +105,7 @@ const Images = () => {
       setProjects(filteredProjects);
     } catch (error) {
       console.error('Error fetching projects with images:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load image data. Please try again.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to load image data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -131,7 +124,7 @@ const Images = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Add Sonner Toaster for toast notifications */}
+      {/* Use only Sonner Toaster for toast notifications */}
       <Toaster position="top-right" closeButton richColors />
       
       <DashboardHeader title="Images" toggleSidebar={() => {}} />

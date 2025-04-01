@@ -94,6 +94,9 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     // First refresh check for unprocessed files before starting analysis
     checkUnprocessedFiles().then(hasFiles => {
       if (hasFiles) {
+        // Immediately mark analysis as started to hide the button
+        setAnalysisStarted(true);
+        
         // Show message to user about the longer process
         toast.info(
           'File analysis has started', 
@@ -103,16 +106,8 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
           }
         );
         
-        // Mark analysis as started to hide the button
-        setAnalysisStarted(true);
-        
         // Start the analysis process
         analyzeFiles();
-        
-        // Automatically reset the analyzing state after 5 seconds to hide the spinning button
-        setTimeout(() => {
-          setAnalysisStarted(false);
-        }, 5000);
       }
     });
   };
