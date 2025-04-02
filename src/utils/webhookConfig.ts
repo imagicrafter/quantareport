@@ -19,20 +19,28 @@ export interface WebhookConfig {
 
 // Get current environment from ENV var or determine from URL
 export const getCurrentEnvironment = (): Environment => {
-  // Check if environment is explicitly set
+  // Check if environment is explicitly set as env variable
   const envVar = import.meta.env.VITE_APP_ENVIRONMENT;
+  
+  console.log('Current VITE_APP_ENVIRONMENT:', envVar);
+  
   if (envVar && ['development', 'staging', 'production'].includes(envVar)) {
+    console.log('Using environment from VITE_APP_ENVIRONMENT:', envVar);
     return envVar as Environment;
   }
 
   // Otherwise determine from hostname
   const hostname = window.location.hostname;
+  console.log('Determining environment from hostname:', hostname);
   
-  if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
+  if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.match(/\d+\.\d+\.\d+\.\d+/)) {
+    console.log('Environment detected: development (from IP/localhost)');
     return 'development';
   } else if (hostname.includes('staging') || hostname.includes('test')) {
+    console.log('Environment detected: staging');
     return 'staging';
   } else {
+    console.log('Environment detected: production (default)');
     return 'production';
   }
 };
