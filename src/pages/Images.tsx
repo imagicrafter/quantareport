@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { supabase } from '@/integrations/supabase/client';
-import { FileType } from '@/components/dashboard/files/types/FileTypes';
+import { ProjectFile } from '@/components/dashboard/files/FileItem';
 import { Input } from '@/components/ui/input';
-import { Search, Filter, List, GridIcon } from 'lucide-react';
+import { Search, Filter, List, GridIcon, Upload } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FileItem from '@/components/dashboard/files/FileItem';
 import { useFiles } from '@/components/dashboard/files/hooks/useFiles';
@@ -13,7 +13,6 @@ import AddFileDialog from '@/components/dashboard/files/AddFileDialog';
 import DeleteFileDialog from '@/components/dashboard/files/DeleteFileDialog';
 import EditFileDialog from '@/components/dashboard/files/EditFileDialog';
 import BulkUploadDialog from '@/components/dashboard/files/BulkUploadDialog';
-import { useFileOperations } from '@/components/dashboard/files/hooks/useFileOperations';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ImageAnalysisProgressModal from '@/components/dashboard/files/ImageAnalysisProgressModal';
@@ -27,43 +26,39 @@ const Images = () => {
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [projectOptions, setProjectOptions] = useState<{ label: string, value: string }[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [projectName, setProjectName] = useState('');
 
   const {
     files,
-    fetchFiles,
     loading,
     fileToDelete,
     setFileToDelete,
     fileToEdit,
     setFileToEdit,
     handleRefresh,
-    setFiles
-  } = useFiles();
+    setFiles,
+  } = useFiles(selectedProject);
 
   const {
-    isAddDialogOpen,
-    isBulkUploadOpen,
-    toggleAddDialog,
-    toggleBulkUploadDialog,
-    handleFileUploaded,
-    handleFileUpdated,
-    handleFileDeleted,
-  } = useFileOperations(handleRefresh);
+    analysisInProgress,
+    analysisJobId,
+    isProgressModalOpen,
+    isAnalyzing: analysisIsAnalyzing,
+    analyzeImage,
+    analyzeFiles,
+    closeProgressModal
+  } = useImageAnalysis(selectedProject, projectName);
 
-  const { analyzeImage, analysisInProgress } = useImageAnalysis();
-
-  // Filter files based on search query and selected project
+  // Filter files based on search query
   const filteredFiles = files.filter(file => {
     const matchesSearch = searchQuery
       ? file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         file.description?.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
     
-    const matchesProject = selectedProject
-      ? file.project_id === selectedProject
-      : true;
-    
-    return matchesSearch && matchesProject;
+    return matchesSearch;
   });
 
   // Function to fetch all projects for the filter dropdown
@@ -98,7 +93,17 @@ const Images = () => {
 
   // Handle project selection
   const handleProjectChange = (projectId: string) => {
-    setSelectedProject(projectId === 'all' ? null : projectId);
+    const selectedProjectId = projectId === 'all' ? null : projectId;
+    setSelectedProject(selectedProjectId);
+    
+    if (selectedProjectId) {
+      const project = projectOptions.find(p => p.value === selectedProjectId);
+      if (project) {
+        setProjectName(project.label);
+      }
+    } else {
+      setProjectName('');
+    }
   };
 
   // Handle analyze all images
@@ -114,20 +119,35 @@ const Images = () => {
         return;
       }
       
-      toast.info(`Starting analysis of ${imagesToAnalyze.length} images. This may take a few minutes.`);
-      
-      for (const file of imagesToAnalyze) {
-        await analyzeImage(file.id);
-      }
-      
-      toast.success('Image analysis complete!');
-      handleRefresh();
+      await analyzeFiles();
     } catch (error) {
       console.error('Error analyzing images:', error);
-      toast.error('Failed to analyze some images. Please try again.');
+      toast.error('Failed to analyze images. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  // Toggle dialog functions
+  const toggleAddDialog = () => {
+    setIsAddDialogOpen(!isAddDialogOpen);
+  };
+
+  const toggleBulkUploadDialog = () => {
+    setIsBulkUploadOpen(!isBulkUploadOpen);
+  };
+
+  // Handle file operations
+  const handleFileUploaded = async () => {
+    handleRefresh();
+  };
+
+  const handleFileUpdated = async () => {
+    handleRefresh();
+  };
+
+  const handleFileDeleted = async () => {
+    handleRefresh();
   };
 
   useEffect(() => {
@@ -171,7 +191,7 @@ const Images = () => {
               variant="outline"
               size="sm"
               onClick={handleAnalyzeAllImages}
-              disabled={isAnalyzing}
+              disabled={isAnalyzing || analysisInProgress || !selectedProject}
               className="flex items-center"
             >
               {isAnalyzing ? 
@@ -184,6 +204,7 @@ const Images = () => {
               variant="outline"
               size="sm"
               onClick={toggleBulkUploadDialog}
+              disabled={!selectedProject}
               className="flex items-center"
             >
               <Upload size={16} className="mr-2" />
@@ -192,6 +213,7 @@ const Images = () => {
             <Button
               size="sm"
               onClick={toggleAddDialog}
+              disabled={!selectedProject}
               className="flex items-center"
             >
               <svg
@@ -233,7 +255,9 @@ const Images = () => {
             <p className="text-muted-foreground mt-2">
               {searchQuery 
                 ? "No images match your search criteria. Try different keywords."
-                : "Upload your first image to get started."}
+                : selectedProject 
+                  ? "Upload your first image to get started." 
+                  : "Select a project to view images."}
             </p>
           </div>
         ) : (
@@ -245,7 +269,7 @@ const Images = () => {
               <FileItem
                 key={file.id}
                 file={file}
-                viewMode={viewMode}
+                index={0}
                 onDelete={() => setFileToDelete(file)}
                 onEdit={() => setFileToEdit(file)}
               />
@@ -254,39 +278,53 @@ const Images = () => {
         )}
       </div>
 
-      <AddFileDialog 
-        open={isAddDialogOpen} 
-        onClose={toggleAddDialog}
-        onFileAdded={handleFileUploaded}
-        fileType="image"
-      />
+      {selectedProject && (
+        <>
+          <AddFileDialog 
+            isOpen={isAddDialogOpen} 
+            onClose={toggleAddDialog}
+            onAddFile={handleFileUploaded}
+            uploading={isAnalyzing}
+            projectId={selectedProject}
+          />
 
-      <BulkUploadDialog
-        open={isBulkUploadOpen}
-        onClose={toggleBulkUploadDialog}
-        onFilesUploaded={handleFileUploaded}
-        acceptedFileTypes="image/*"
-      />
+          <BulkUploadDialog
+            isOpen={isBulkUploadOpen}
+            onClose={toggleBulkUploadDialog}
+            onUploadFiles={handleFileUploaded}
+            onUploadFromLink={handleFileUploaded}
+            uploading={isAnalyzing}
+            projectId={selectedProject}
+          />
+        </>
+      )}
 
       {fileToDelete && (
         <DeleteFileDialog
-          file={fileToDelete}
-          open={!!fileToDelete}
+          isOpen={!!fileToDelete}
           onClose={() => setFileToDelete(null)}
-          onDeleted={handleFileDeleted}
+          onDelete={handleFileDeleted}
+          uploading={isAnalyzing}
         />
       )}
 
       {fileToEdit && (
         <EditFileDialog
-          file={fileToEdit}
-          open={!!fileToEdit}
+          isOpen={!!fileToEdit}
           onClose={() => setFileToEdit(null)}
-          onUpdated={handleFileUpdated}
+          onEditFile={handleFileUpdated}
+          selectedFile={fileToEdit}
+          uploading={isAnalyzing}
         />
       )}
 
-      <ImageAnalysisProgressModal />
+      <ImageAnalysisProgressModal 
+        isOpen={isProgressModalOpen} 
+        onClose={closeProgressModal} 
+        jobId={analysisJobId} 
+        projectId={selectedProject || ''}
+        fileCount={filteredFiles.filter(f => f.type === 'image').length}
+      />
     </>
   );
 };

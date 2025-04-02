@@ -2,17 +2,25 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { ProjectFile } from '../FileItem';
-import { fetchFiles } from '../FileService';
+import { fetchFiles as fetchFilesService } from '../FileService';
 
-export const useFiles = (projectId: string) => {
+export const useFiles = (projectId?: string) => {
   const { toast } = useToast();
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fileToDelete, setFileToDelete] = useState<ProjectFile | null>(null);
+  const [fileToEdit, setFileToEdit] = useState<ProjectFile | null>(null);
 
-  const loadFiles = async () => {
+  const fetchFiles = async () => {
+    if (!projectId) {
+      setFiles([]);
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
-      const data = await fetchFiles(projectId);
+      const data = await fetchFilesService(projectId);
       const sortedFiles = [...data].sort((a, b) => (a.position || 0) - (b.position || 0));
       setFiles(sortedFiles);
     } catch (error) {
@@ -27,11 +35,31 @@ export const useFiles = (projectId: string) => {
     }
   };
 
+  // For compatibility with existing code
+  const loadFiles = fetchFiles;
+  
+  const handleRefresh = () => {
+    fetchFiles();
+  };
+
   useEffect(() => {
     if (projectId) {
-      loadFiles();
+      fetchFiles();
+    } else {
+      setLoading(false);
     }
   }, [projectId]);
 
-  return { files, setFiles, loading, loadFiles };
+  return { 
+    files, 
+    setFiles, 
+    loading, 
+    loadFiles, 
+    fetchFiles,
+    fileToDelete, 
+    setFileToDelete, 
+    fileToEdit, 
+    setFileToEdit, 
+    handleRefresh 
+  };
 };

@@ -21,10 +21,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Button from '../../ui-elements/Button';
-import { ProjectFile, FileType } from './FileItem';
+import { ProjectFile } from './FileItem';
 import AudioRecorder from './AudioRecorder';
 
-interface EditFileDialogProps {
+export interface EditFileDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onEditFile: (values: z.infer<typeof formSchema>) => Promise<void>;
