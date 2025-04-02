@@ -9,10 +9,34 @@ const corsHeaders = {
 };
 
 // Get n8n webhook URLs from environment variables with fallbacks
+// We'll keep these but enhance with a more flexible system
 const DEV_FILE_ANALYSIS_WEBHOOK_URL = Deno.env.get("DEV_FILE_ANALYSIS_WEBHOOK_URL") || 
   "https://n8n-01.imagicrafterai.com/webhook-test/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0";
 const PROD_FILE_ANALYSIS_WEBHOOK_URL = Deno.env.get("PROD_FILE_ANALYSIS_WEBHOOK_URL") || 
   "https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0";
+
+// New function to get webhook URL based on environment
+const getWebhookUrl = async (env: string): Promise<string> => {
+  // Try to get webhook URL from config endpoint first
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const response = await fetch(`${supabaseUrl}/functions/v1/file-analysis-config?env=${env}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.currentWebhooks["file-analysis"];
+    }
+  } catch (error) {
+    console.error("Error fetching webhook config, using fallback:", error);
+  }
+  
+  // Fallback to environment variables or defaults
+  if (env === "development" || env === "dev" || env === "test") {
+    return DEV_FILE_ANALYSIS_WEBHOOK_URL;
+  } else {
+    return PROD_FILE_ANALYSIS_WEBHOOK_URL;
+  }
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -111,18 +135,38 @@ serve(async (req) => {
     const jobId = job || crypto.randomUUID(); // Use provided job ID or generate a new one
     
     // Use the current function URL as callback to simplify n8n configuration
-    const callbackUrl = `${Deno.env.get("SUPABASE_URL") || "https://vtaufnxworztolfdwlll.supabase.co"}/functions/v1/file-analysis`;
+    const callbackUrl = `${supabaseUrl}/functions/v1/file-analysis`;
     
     console.log(`Using callback URL: ${callbackUrl}`);
     
+    // Get project details to determine environment from name
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("name")
+      .eq("id", project_id)
+      .single();
+      
+    if (projectError) {
+      console.error("Error fetching project details:", projectError);
+    }
+    
+    // Determine environment based on project name or isTestMode flag
+    const projectName = project?.name || "";
+    const isDevEnvironment = isTestMode || projectName.toLowerCase().includes("test");
+    const environment = isDevEnvironment ? "development" : "production";
+    
+    // Determine webhook URL based on environment
+    const webhookUrl = await getWebhookUrl(environment);
+    console.log(`Using webhook URL for ${environment} environment: ${webhookUrl}`);
+    
     // Prepare webhook payload
-    const webhookUrl = isTestMode ? DEV_FILE_ANALYSIS_WEBHOOK_URL : PROD_FILE_ANALYSIS_WEBHOOK_URL;
     const payload = {
       project_id,
       files: fileDetails,
       job: jobId,
       timestamp: new Date().toISOString(),
-      callback_url: callbackUrl // Include callback URL in the payload
+      callback_url: callbackUrl, // Include callback URL in the payload
+      environment: environment // Include environment in payload
     };
     
     console.log(`Sending request to webhook: ${webhookUrl}`);
@@ -174,7 +218,8 @@ serve(async (req) => {
         success: true, 
         message: "File analysis initiated successfully",
         jobId: jobId,
-        fileCount: unprocessedFiles.length
+        fileCount: unprocessedFiles.length,
+        environment: environment
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },

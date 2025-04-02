@@ -1,9 +1,10 @@
 import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { getWebhookUrl } from './webhookConfig';
 
-// Get n8n webhook URLs from environment variables with fallbacks
-export const NOTE_DEV_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_DEV_WEBHOOK || 'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=dev';
-export const NOTE_PROD_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_PROD_WEBHOOK || 'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=prod';
+// Get n8n webhook URLs from the central configuration service
+export const NOTE_DEV_WEBHOOK_URL = getWebhookUrl('note', 'development');
+export const NOTE_PROD_WEBHOOK_URL = getWebhookUrl('note', 'production');
 
 export interface NoteFileRelationshipWithType extends NoteFileRelationship {
   file_type: string;

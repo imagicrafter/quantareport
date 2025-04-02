@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, AlertCircle } from 'lucide-react';
 import ReportGenerationProgress from './ReportGenerationProgress';
 import { v4 as uuidv4 } from 'uuid';
+import { getWebhookUrl } from '@/utils/webhookConfig'; 
 
 interface ProjectDetails {
   id: string;
@@ -34,9 +35,9 @@ interface CreateReportModalProps {
   onClose: () => void;
 }
 
-// Get n8n webhook URLs from environment variables with fallbacks for local development
-const DEV_WEBHOOK_URL = import.meta.env.VITE_N8N_DEV_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook-test/785af48f-c1b1-484e-8bea-21920dee1146';
-const PROD_WEBHOOK_URL = import.meta.env.VITE_N8N_PROD_WEBHOOK || 'https://n8n-01.imagicrafterai.com/webhook/785af48f-c1b1-484e-8bea-21920dee1146';
+// Get webhook URLs using the central configuration service
+const DEV_WEBHOOK_URL = getWebhookUrl('report', 'development');
+const PROD_WEBHOOK_URL = getWebhookUrl('report', 'production');
 
 const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   const [projects, setProjects] = useState<ProjectDetails[]>([]);
