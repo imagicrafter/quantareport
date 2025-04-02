@@ -27,8 +27,17 @@ import { supabase } from '@/integrations/supabase/client';
 
 const ConfigurationTab = () => {
   const [environment, setEnvironment] = useState<string>('');
-  const [webhookConfig, setWebhookConfig] = useState<Record<WebhookType, any>>({});
-  const [currentWebhookUrls, setCurrentWebhookUrls] = useState<Record<WebhookType, string>>({});
+  // Initialize with proper type structures to avoid TypeScript errors
+  const [webhookConfig, setWebhookConfig] = useState<Record<WebhookType, any>>({
+    'file-analysis': {},
+    'report': {},
+    'note': {}
+  });
+  const [currentWebhookUrls, setCurrentWebhookUrls] = useState<Record<WebhookType, string>>({
+    'file-analysis': '',
+    'report': '',
+    'note': ''
+  });
   const [supabsaseSecrets, setSupabaseSecrets] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<boolean>(true);
 
