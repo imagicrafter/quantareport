@@ -19,14 +19,9 @@ import { Badge } from '@/components/ui/badge';
 import { 
   CheckCircle, 
   Clock, 
-  Copy, 
-  ExternalLink,
-  RefreshCcw,
   AlertTriangle,
   Globe,
-  Server
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -59,7 +54,6 @@ const ConfigurationTab = () => {
     error: null
   });
   
-  const [refreshKey, setRefreshKey] = useState<number>(0);
   const [envVarValue, setEnvVarValue] = useState<string>('Not set');
 
   useEffect(() => {
@@ -112,12 +106,7 @@ const ConfigurationTab = () => {
     };
 
     init();
-  }, [refreshKey]);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard');
-  };
+  }, []);
 
   const getEnvBadgeColor = (env: string) => {
     switch (env) {
@@ -137,10 +126,6 @@ const ConfigurationTab = () => {
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
-  };
-
-  const refreshConfig = () => {
-    window.location.reload();
   };
 
   if (webhookState.loading) {
@@ -188,6 +173,8 @@ const ConfigurationTab = () => {
           
           <p className="text-sm text-muted-foreground mb-4">
             The application is currently running in <strong>{environment}</strong> mode.
+          </p>
+          <p className="text-sm text-muted-foreground mb-4">
             Webhooks and other environment-specific settings are configured accordingly.
           </p>
           
@@ -221,17 +208,7 @@ const ConfigurationTab = () => {
                 </tr>
                 <tr>
                   <td className="px-4 py-3 text-sm">Base URL</td>
-                  <td className="px-4 py-3 text-sm flex items-center gap-2">
-                    {window.location.origin}
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="size-5"
-                      onClick={() => copyToClipboard(window.location.origin)}
-                    >
-                      <Copy className="size-3" />
-                    </Button>
-                  </td>
+                  <td className="px-4 py-3 text-sm">{window.location.origin}</td>
                 </tr>
                 {webhookState.configData && (
                   <tr>
@@ -344,18 +321,8 @@ const ConfigurationTab = () => {
                                 {env}
                               </Badge>
                             </td>
-                            <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px] relative group">
-                              <div className="flex items-center">
-                                <span className="mr-2 truncate">{typeof url === 'string' ? url : 'N/A'}</span>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="size-5 opacity-0 group-hover:opacity-100"
-                                  onClick={() => typeof url === 'string' && copyToClipboard(url)}
-                                >
-                                  <Copy className="size-3" />
-                                </Button>
-                              </div>
+                            <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
+                              {typeof url === 'string' ? url : 'N/A'}
                             </td>
                           </tr>
                         ))

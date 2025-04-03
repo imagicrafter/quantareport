@@ -4,8 +4,7 @@ import { useToast } from '@/components/ui/use-toast';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectFile } from '@/components/dashboard/files/FileItem';
-import { Folder, FileImage, File, FileText, X } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Folder, FileImage, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import FilesSection from '@/components/dashboard/FilesSection';
@@ -13,18 +12,21 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import StatCards from '@/components/dashboard/StatCards';
 
-interface Project {
+// Define a type that matches what the StatCards component expects
+interface ProjectForStatCards {
   id: string;
   name: string;
   description: string | null;
-  imageCount: number;
-  lastUpdated: Date | null;
+  created_at: string; // Adding the missing property
+  status: string;     // Adding the missing property
+  imageCount?: number; // Optional as it's our custom property
+  lastUpdated?: Date | null; // Optional as it's our custom property
 }
 
 const Images = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectForStatCards[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState<{id: string; name: string} | null>(null);
   const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
@@ -94,7 +96,7 @@ const Images = () => {
 
       const { data: projects, error: projectError } = await supabase
         .from('projects')
-        .select('id, name, description, created_at')
+        .select('id, name, description, created_at, status')
         .eq('user_id', session.session.user.id)
         .order('created_at', { ascending: false });
 
@@ -151,7 +153,7 @@ const Images = () => {
     }
   };
 
-  const handleProjectClick = (project: Project) => {
+  const handleProjectClick = (project: ProjectForStatCards) => {
     setSelectedProject({
       id: project.id,
       name: project.name
@@ -162,6 +164,10 @@ const Images = () => {
   const handleCloseFilesModal = () => {
     setIsFilesModalOpen(false);
     setSelectedProject(null);
+  };
+
+  const handleCardClick = (path: string) => {
+    navigate(`/dashboard/${path}`);
   };
 
   useEffect(() => {
@@ -175,7 +181,36 @@ const Images = () => {
       
       <div className="container mx-auto p-4 max-w-7xl">
         {/* Stats Cards */}
-        <StatCards projects={projects} />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div 
+            className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border cursor-pointer hover:border-primary transition-all"
+            onClick={() => handleCardClick('projects')}
+          >
+            <h3 className="font-medium text-muted-foreground mb-1">Projects</h3>
+            <p className="text-3xl font-bold">{stats.projects}</p>
+          </div>
+          <div 
+            className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border cursor-pointer hover:border-primary transition-all"
+            onClick={() => handleCardClick('notes')}
+          >
+            <h3 className="font-medium text-muted-foreground mb-1">Notes</h3>
+            <p className="text-3xl font-bold">{stats.notes}</p>
+          </div>
+          <div 
+            className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border cursor-pointer hover:border-primary transition-all"
+            onClick={() => handleCardClick('images')}
+          >
+            <h3 className="font-medium text-muted-foreground mb-1">Images</h3>
+            <p className="text-3xl font-bold">{stats.images}</p>
+          </div>
+          <div 
+            className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border cursor-pointer hover:border-primary transition-all"
+            onClick={() => handleCardClick('reports')}
+          >
+            <h3 className="font-medium text-muted-foreground mb-1">Reports</h3>
+            <p className="text-3xl font-bold">{stats.reports}</p>
+          </div>
+        </div>
         
         <h2 className="text-2xl font-semibold mb-4">Images</h2>
 
