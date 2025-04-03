@@ -4,327 +4,276 @@ import { useToast } from '@/components/ui/use-toast';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectFile } from '@/components/dashboard/files/FileItem';
-import { Input } from '@/components/ui/input';
-import { Search, Filter, List, GridIcon, Upload } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import FileItem from '@/components/dashboard/files/FileItem';
-import { useFiles } from '@/components/dashboard/files/hooks/useFiles';
-import AddFileDialog from '@/components/dashboard/files/AddFileDialog';
-import DeleteFileDialog from '@/components/dashboard/files/DeleteFileDialog';
-import EditFileDialog from '@/components/dashboard/files/EditFileDialog';
-import BulkUploadDialog from '@/components/dashboard/files/BulkUploadDialog';
+import { Folder, FileImage, File, FileText } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import ImageAnalysisProgressModal from '@/components/dashboard/files/ImageAnalysisProgressModal';
-import { toast } from 'sonner';
-import { useImageAnalysis } from '@/components/dashboard/files/hooks/useImageAnalysis';
+import FilesSection from '@/components/dashboard/FilesSection';
+import { format } from 'date-fns';
+
+interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  imageCount: number;
+  lastUpdated: Date | null;
+}
 
 const Images = () => {
-  const { toast: uiToast } = useToast();
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
-  const [projectOptions, setProjectOptions] = useState<{ label: string, value: string }[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
-  const [projectName, setProjectName] = useState('');
-
-  const {
-    files,
-    loading,
-    fileToDelete,
-    setFileToDelete,
-    fileToEdit,
-    setFileToEdit,
-    handleRefresh,
-    setFiles,
-  } = useFiles(selectedProject);
-
-  const {
-    analysisInProgress,
-    analysisJobId,
-    isProgressModalOpen,
-    isAnalyzing: analysisIsAnalyzing,
-    analyzeImage,
-    analyzeFiles,
-    closeProgressModal
-  } = useImageAnalysis(selectedProject, projectName);
-
-  // Filter files based on search query
-  const filteredFiles = files.filter(file => {
-    const matchesSearch = searchQuery
-      ? file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        file.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      : true;
-    
-    return matchesSearch;
+  const { toast } = useToast();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedProject, setSelectedProject] = useState<{id: string; name: string} | null>(null);
+  const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
+  const [stats, setStats] = useState({
+    projects: 0,
+    images: 0,
+    notes: 0,
+    reports: 0
   });
 
-  // Function to fetch all projects for the filter dropdown
+  // Fetch stats for the cards at the top
+  const fetchStats = async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session.session) return;
+
+    try {
+      // Get project count
+      const { count: projectCount, error: projectError } = await supabase
+        .from('projects')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', session.session.user.id);
+
+      if (projectError) throw projectError;
+
+      // Get image count
+      const { count: imageCount, error: imageError } = await supabase
+        .from('files')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', session.session.user.id)
+        .eq('type', 'image');
+
+      if (imageError) throw imageError;
+
+      // Get note count
+      const { count: noteCount, error: noteError } = await supabase
+        .from('notes')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', session.session.user.id);
+
+      if (noteError) throw noteError;
+
+      // Get report count
+      const { count: reportCount, error: reportError } = await supabase
+        .from('reports')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', session.session.user.id);
+
+      if (reportError) throw reportError;
+
+      setStats({
+        projects: projectCount || 0,
+        images: imageCount || 0,
+        notes: noteCount || 0,
+        reports: reportCount || 0
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  // Fetch projects with image counts
   const fetchProjects = async () => {
     try {
+      setLoading(true);
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) return;
 
-      const { data, error } = await supabase
+      const { data: projects, error: projectError } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id, name, description, created_at')
         .eq('user_id', session.session.user.id)
-        .order('name', { ascending: true });
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (projectError) throw projectError;
 
-      const options = data.map(project => ({
-        label: project.name,
-        value: project.id
-      }));
-      
-      setProjectOptions([{ label: 'All Projects', value: 'all' }, ...options]);
+      // Get image counts for each project
+      const projectsWithImageCounts = await Promise.all(
+        projects.map(async (project) => {
+          const { count: imageCount, error } = await supabase
+            .from('files')
+            .select('id', { count: 'exact', head: true })
+            .eq('project_id', project.id)
+            .eq('type', 'image');
+
+          if (error) {
+            console.error('Error getting image count:', error);
+            return {
+              ...project,
+              imageCount: 0,
+              lastUpdated: new Date(project.created_at)
+            };
+          }
+
+          // Get the last updated file for this project
+          const { data: latestFile, error: latestError } = await supabase
+            .from('files')
+            .select('created_at')
+            .eq('project_id', project.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          const lastUpdated = latestFile && latestFile.length > 0 
+            ? new Date(latestFile[0].created_at) 
+            : new Date(project.created_at);
+
+          return {
+            ...project,
+            imageCount: imageCount || 0,
+            lastUpdated
+          };
+        })
+      );
+
+      setProjects(projectsWithImageCounts);
     } catch (error) {
       console.error('Error fetching projects:', error);
-      uiToast({
+      toast({
         title: 'Error',
         description: 'Failed to load projects. Please try again.',
         variant: 'destructive',
       });
-    }
-  };
-
-  // Handle project selection
-  const handleProjectChange = (projectId: string) => {
-    const selectedProjectId = projectId === 'all' ? null : projectId;
-    setSelectedProject(selectedProjectId);
-    
-    if (selectedProjectId) {
-      const project = projectOptions.find(p => p.value === selectedProjectId);
-      if (project) {
-        setProjectName(project.label);
-      }
-    } else {
-      setProjectName('');
-    }
-  };
-
-  // Handle analyze all images
-  const handleAnalyzeAllImages = async () => {
-    setIsAnalyzing(true);
-    
-    try {
-      const imagesToAnalyze = filteredFiles.filter(file => file.type === 'image');
-      
-      if (imagesToAnalyze.length === 0) {
-        toast.info('No images to analyze');
-        setIsAnalyzing(false);
-        return;
-      }
-      
-      await analyzeFiles();
-    } catch (error) {
-      console.error('Error analyzing images:', error);
-      toast.error('Failed to analyze images. Please try again.');
     } finally {
-      setIsAnalyzing(false);
+      setLoading(false);
     }
   };
 
-  // Toggle dialog functions
-  const toggleAddDialog = () => {
-    setIsAddDialogOpen(!isAddDialogOpen);
+  const handleProjectClick = (project: Project) => {
+    setSelectedProject({
+      id: project.id,
+      name: project.name
+    });
+    setIsFilesModalOpen(true);
   };
 
-  const toggleBulkUploadDialog = () => {
-    setIsBulkUploadOpen(!isBulkUploadOpen);
-  };
-
-  // Handle file operations
-  const handleFileUploaded = async () => {
-    handleRefresh();
-  };
-
-  const handleFileUpdated = async () => {
-    handleRefresh();
-  };
-
-  const handleFileDeleted = async () => {
-    handleRefresh();
+  const handleCloseFilesModal = () => {
+    setIsFilesModalOpen(false);
+    setSelectedProject(null);
   };
 
   useEffect(() => {
+    fetchStats();
     fetchProjects();
   }, []);
 
   return (
     <>
-      <DashboardHeader title="Image Library" toggleSidebar={() => {}} />
+      <DashboardHeader title="Images" toggleSidebar={() => {}} />
+      
       <div className="container mx-auto p-4 max-w-7xl">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 space-y-4 lg:space-y-0">
-          <div className="flex w-full lg:w-auto space-x-2">
-            <div className="relative flex-grow lg:min-w-[300px]">
-              <Input
-                placeholder="Search images..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-              <Search className="absolute left-2.5 top-2.5 h-5 w-5 text-muted-foreground" />
-            </div>
-            
-            <div className="w-[200px]">
-              <Select onValueChange={handleProjectChange} defaultValue="all">
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projectOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center p-6">
+              <div className="bg-blue-100 p-4 rounded-full mb-4">
+                <Folder className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-medium text-center mb-1">Projects</h3>
+              <p className="text-3xl font-bold">{stats.projects}</p>
+            </CardContent>
+          </Card>
           
-          <div className="flex space-x-2 w-full lg:w-auto justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleAnalyzeAllImages}
-              disabled={isAnalyzing || analysisInProgress || !selectedProject}
-              className="flex items-center"
-            >
-              {isAnalyzing ? 
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-primary"></div> : 
-                <Filter size={16} className="mr-2" />
-              }
-              {isAnalyzing ? "Analyzing..." : "Analyze All"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleBulkUploadDialog}
-              disabled={!selectedProject}
-              className="flex items-center"
-            >
-              <Upload size={16} className="mr-2" />
-              Bulk Upload
-            </Button>
-            <Button
-              size="sm"
-              onClick={toggleAddDialog}
-              disabled={!selectedProject}
-              className="flex items-center"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="mr-2"
-              >
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              Add Image
-            </Button>
-            <Tabs defaultValue="grid" className="hidden lg:block" onValueChange={(value) => setViewMode(value as 'grid' | 'list')}>
-              <TabsList className="h-9">
-                <TabsTrigger value="grid" className="h-8 w-8 p-0">
-                  <GridIcon size={16} />
-                </TabsTrigger>
-                <TabsTrigger value="list" className="h-8 w-8 p-0">
-                  <List size={16} />
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center p-6">
+              <div className="bg-blue-100 p-4 rounded-full mb-4">
+                <FileImage className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-medium text-center mb-1">Images</h3>
+              <p className="text-3xl font-bold">{stats.images}</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center p-6">
+              <div className="bg-blue-100 p-4 rounded-full mb-4">
+                <FileText className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-medium text-center mb-1">Notes</h3>
+              <p className="text-3xl font-bold">{stats.notes}</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center p-6">
+              <div className="bg-blue-100 p-4 rounded-full mb-4">
+                <File className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-medium text-center mb-1">Reports</h3>
+              <p className="text-3xl font-bold">{stats.reports}</p>
+            </CardContent>
+          </Card>
         </div>
+        
+        <h2 className="text-2xl font-semibold mb-4">Images</h2>
+
+        {/* Recent Images Section */}
+        <h3 className="text-xl font-medium mb-4 mt-8 text-right">Recent Images</h3>
 
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-40 bg-gray-100 animate-pulse rounded-lg"></div>
+            ))}
           </div>
-        ) : filteredFiles.length === 0 ? (
-          <div className="text-center p-10 border rounded-lg bg-card">
-            <h3 className="text-lg font-medium">No images found</h3>
-            <p className="text-muted-foreground mt-2">
-              {searchQuery 
-                ? "No images match your search criteria. Try different keywords."
-                : selectedProject 
-                  ? "Upload your first image to get started." 
-                  : "Select a project to view images."}
+        ) : projects.length === 0 ? (
+          <div className="text-center p-8 border rounded-lg">
+            <p className="text-muted-foreground">
+              No projects with images found. Create a project and add images to get started.
             </p>
           </div>
         ) : (
-          <div className={viewMode === 'grid' 
-            ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" 
-            : "flex flex-col space-y-2"
-          }>
-            {filteredFiles.map((file) => (
-              <FileItem
-                key={file.id}
-                file={file}
-                index={0}
-                onDelete={() => setFileToDelete(file)}
-                onEdit={() => setFileToEdit(file)}
-              />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {projects.map((project) => (
+              <div 
+                key={project.id} 
+                className="border rounded-lg p-6 cursor-pointer hover:border-primary transition-colors"
+                onClick={() => handleProjectClick(project)}
+              >
+                <h3 className="font-semibold text-lg mb-1">{project.name}</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {project.description || "No description"}
+                </p>
+                
+                <p className="font-medium">
+                  {project.imageCount} {project.imageCount === 1 ? 'image' : 'images'}
+                </p>
+                
+                <p className="text-xs text-muted-foreground mt-4">
+                  Last updated: {project.lastUpdated ? format(project.lastUpdated, 'M/d/yyyy') : 'Never'}
+                </p>
+              </div>
             ))}
           </div>
         )}
       </div>
-
+      
+      {/* Files Modal for selected project */}
       {selectedProject && (
-        <>
-          <AddFileDialog 
-            isOpen={isAddDialogOpen} 
-            onClose={toggleAddDialog}
-            onAddFile={handleFileUploaded}
-            uploading={isAnalyzing}
-            projectId={selectedProject}
-          />
-
-          <BulkUploadDialog
-            isOpen={isBulkUploadOpen}
-            onClose={toggleBulkUploadDialog}
-            onUploadFiles={handleFileUploaded}
-            onUploadFromLink={handleFileUploaded}
-            uploading={isAnalyzing}
-            projectId={selectedProject}
-          />
-        </>
+        <Sheet open={isFilesModalOpen} onOpenChange={handleCloseFilesModal}>
+          <SheetContent side="right" className="w-[90vw] sm:max-w-[900px] p-0 overflow-y-auto">
+            <SheetHeader className="p-6 border-b">
+              <SheetTitle>{selectedProject.name} - Files</SheetTitle>
+            </SheetHeader>
+            
+            <div className="p-0">
+              <FilesSection 
+                projectId={selectedProject.id} 
+                projectName={selectedProject.name} 
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       )}
-
-      {fileToDelete && (
-        <DeleteFileDialog
-          isOpen={!!fileToDelete}
-          onClose={() => setFileToDelete(null)}
-          onDelete={handleFileDeleted}
-          uploading={isAnalyzing}
-        />
-      )}
-
-      {fileToEdit && (
-        <EditFileDialog
-          isOpen={!!fileToEdit}
-          onClose={() => setFileToEdit(null)}
-          onEditFile={handleFileUpdated}
-          selectedFile={fileToEdit}
-          uploading={isAnalyzing}
-        />
-      )}
-
-      <ImageAnalysisProgressModal 
-        isOpen={isProgressModalOpen} 
-        onClose={closeProgressModal} 
-        jobId={analysisJobId} 
-        projectId={selectedProject || ''}
-        fileCount={filteredFiles.filter(f => f.type === 'image').length}
-      />
     </>
   );
 };
