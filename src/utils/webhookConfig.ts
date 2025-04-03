@@ -33,7 +33,7 @@ export const getCurrentEnvironment = (): Environment => {
   const hostname = window.location.hostname;
   console.log('Determining environment from hostname:', hostname);
   
-  if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.match(/\d+\.\d+\.\d+\.\d+/)) {
+  if (hostname.includes('localhost') || hostname.includes('dev') || hostname.includes('preview') || hostname.includes('127.0.0.1') || hostname.match(/\d+\.\d+\.\d+\.\d+/)) {
     console.log('Environment detected: development (from IP/localhost)');
     return 'development';
   } else if (hostname.includes('staging') || hostname.includes('test')) {
