@@ -2,9 +2,12 @@
 import { useState, useEffect } from 'react';
 import { 
   getCurrentEnvironment,
-  getFullWebhookConfig, 
+  getFullWebhookConfig,
+  getFullDirectWebhookConfig,
   getAllWebhookUrls, 
-  WebhookType 
+  getAllDirectWebhookUrls,
+  WebhookType,
+  isProxyUrl,
 } from '@/utils/webhookConfig';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -21,7 +24,9 @@ import {
   Copy, 
   ExternalLink,
   RefreshCcw,
-  AlertTriangle
+  AlertTriangle,
+  Globe,
+  Server
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -59,11 +64,19 @@ const ConfigurationTab = () => {
         
         // Get all webhook configurations
         const config = getFullWebhookConfig();
-        setWebhookConfig(config);
+        const directConfig = getFullDirectWebhookConfig();
+        setWebhookConfig({
+          proxy: config,
+          direct: directConfig
+        });
         
         // Get current webhook URLs
         const urls = getAllWebhookUrls(env);
-        setCurrentWebhookUrls(urls);
+        const directUrls = getAllDirectWebhookUrls(env);
+        setCurrentWebhookUrls({
+          proxy: urls,
+          direct: directUrls
+        });
         
         // Try to get webhook configuration from the edge function
         try {
@@ -73,6 +86,7 @@ const ConfigurationTab = () => {
           
           if (!error && data) {
             console.log('Received edge function webhook config:', data);
+            // You could potentially use this to update the configuration if needed
           }
         } catch (edgeFnError) {
           console.warn('Failed to get webhook config from edge function:', edgeFnError);
@@ -228,7 +242,7 @@ const ConfigurationTab = () => {
         <CardHeader>
           <CardTitle>Webhook Configuration</CardTitle>
           <CardDescription>
-            Active webhook endpoints for the current environment
+            Webhook endpoints for the current environment
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -236,9 +250,21 @@ const ConfigurationTab = () => {
             <TabsList className="mb-4">
               <TabsTrigger value="current">Current Environment</TabsTrigger>
               <TabsTrigger value="all">All Environments</TabsTrigger>
+              <TabsTrigger value="direct">Direct URLs</TabsTrigger>
             </TabsList>
             
             <TabsContent value="current">
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="flex items-center mb-2">
+                  <Globe className="h-4 w-4 text-blue-500 mr-2" />
+                  <p className="text-sm font-medium text-blue-800">Proxy Webhook URLs</p>
+                </div>
+                <p className="text-xs text-blue-700">
+                  These are the webhook URLs used by your application. They route through the Supabase edge function proxy
+                  which selects the appropriate backend service based on the current environment.
+                </p>
+              </div>
+            
               <div className="border rounded-md overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-muted">
@@ -249,7 +275,7 @@ const ConfigurationTab = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {Object.entries(currentWebhookUrls).map(([type, url]) => (
+                    {currentWebhookUrls.proxy && Object.entries(currentWebhookUrls.proxy).map(([type, url]) => (
                       <tr key={type}>
                         <td className="px-4 py-3 text-sm">{formatWebhookName(type)}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
@@ -295,9 +321,66 @@ const ConfigurationTab = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {Object.entries(webhookConfig).map(([type, envUrls]) => 
+                    {webhookConfig.proxy && Object.entries(webhookConfig.proxy).map(([type, envUrls]) => 
                       Object.entries(envUrls).map(([env, url]) => (
                         <tr key={`${type}-${env}`}>
+                          <td className="px-4 py-3 text-sm">
+                            {formatWebhookName(type)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge 
+                              variant={env === environment ? "default" : "outline"}
+                              className={env === environment ? getEnvBadgeColor(env) : ""}
+                            >
+                              {env}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px] relative group">
+                            <div className="flex items-center">
+                              <span className="mr-2 truncate">{url as string}</span>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="size-5 opacity-0 group-hover:opacity-100"
+                                onClick={() => copyToClipboard(url as string)}
+                              >
+                                <Copy className="size-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="direct">
+              <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                <div className="flex items-center mb-2">
+                  <Server className="h-4 w-4 text-amber-500 mr-2" />
+                  <p className="text-sm font-medium text-amber-800">Direct Webhook URLs</p>
+                </div>
+                <p className="text-xs text-amber-700">
+                  These are the direct URLs to the n8n webhook endpoints without going through the proxy.
+                  These URLs are generally only used for reference or advanced debugging.
+                </p>
+              </div>
+            
+              <div className="border rounded-md overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-sm font-medium">Webhook Type</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium">Environment</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium">Direct URL</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {webhookConfig.direct && Object.entries(webhookConfig.direct).map(([type, envUrls]) => 
+                      Object.entries(envUrls).map(([env, url]) => (
+                        <tr key={`direct-${type}-${env}`}>
                           <td className="px-4 py-3 text-sm">
                             {formatWebhookName(type)}
                           </td>
