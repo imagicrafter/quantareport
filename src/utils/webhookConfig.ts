@@ -10,23 +10,30 @@ export type Environment = 'development' | 'staging' | 'production';
 // Define webhook types
 export type WebhookType = 'report' | 'file-analysis' | 'note';
 
+// Interface for webhook configuration
+export interface WebhookConfig {
+  development: string;
+  staging: string;
+  production: string;
+}
+
 // Get current environment from ENV var or determine from URL
 export const getCurrentEnvironment = (): Environment => {
-  // First priority: Check for explicit environment variable
+  // Check if environment is explicitly set as env variable
   const envVar = import.meta.env.VITE_APP_ENVIRONMENT;
   
   console.log('Current VITE_APP_ENVIRONMENT:', envVar);
   
-  if (envVar === 'development' || envVar === 'staging' || envVar === 'production') {
+  if (envVar && ['development', 'staging', 'production'].includes(envVar)) {
     console.log('Using environment from VITE_APP_ENVIRONMENT:', envVar);
     return envVar as Environment;
   }
 
-  // Second priority: Determine from hostname
+  // Otherwise determine from hostname
   const hostname = window.location.hostname;
   console.log('Determining environment from hostname:', hostname);
   
-  if (hostname.includes('localhost') || hostname.includes('dev') || hostname.includes('preview') || hostname.includes('127.0.0.1') || hostname.match(/\d+\.\d+\.\d+\.\d+/)) {
+  if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.match(/\d+\.\d+\.\d+\.\d+/)) {
     console.log('Environment detected: development (from IP/localhost)');
     return 'development';
   } else if (hostname.includes('staging') || hostname.includes('test')) {
@@ -38,57 +45,64 @@ export const getCurrentEnvironment = (): Environment => {
   }
 };
 
-// Get the Supabase project URL from config
-const getSupabaseProjectUrl = () => {
-  // This can be overridden by an environment variable if needed
-  return import.meta.env.VITE_SUPABASE_URL || 
-    "https://vtaufnxworztolfdwlll.supabase.co";
-};
-
-// Base URL for the proxy function
-const getProxyBaseUrl = () => {
-  return `${getSupabaseProjectUrl()}/functions/v1/n8n-webhook-proxy`;
+// Webhook configurations - using the consolidated webhook proxy
+const webhookConfigs: Record<WebhookType, WebhookConfig> = {
+  report: {
+    // Report generation webhooks
+    development: import.meta.env.VITE_N8N_DEV_WEBHOOK || 
+      'https://n8n-01.imagicrafterai.com/webhook-test/785af48f-c1b1-484e-8bea-21920dee1146',
+    staging: import.meta.env.VITE_N8N_STAGING_WEBHOOK || 
+      'https://n8n-01.imagicrafterai.com/webhook-staging/785af48f-c1b1-484e-8bea-21920dee1146',
+    production: import.meta.env.VITE_N8N_PROD_WEBHOOK || 
+      'https://n8n-01.imagicrafterai.com/webhook/785af48f-c1b1-484e-8bea-21920dee1146'
+  },
+  'file-analysis': {
+    // File analysis webhooks
+    development: import.meta.env.VITE_FILE_ANALYSIS_DEV_WEBHOOK || 
+      'https://n8n-01.imagicrafterai.com/webhook-test/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0',
+    staging: import.meta.env.VITE_FILE_ANALYSIS_STAGING_WEBHOOK || 
+      'https://n8n-01.imagicrafterai.com/webhook-staging/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0',
+    production: import.meta.env.VITE_FILE_ANALYSIS_PROD_WEBHOOK || 
+      'https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0'
+  },
+  note: {
+    // Note webhooks
+    development: import.meta.env.VITE_N8N_NOTE_DEV_WEBHOOK || 
+      'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=dev',
+    staging: import.meta.env.VITE_N8N_NOTE_STAGING_WEBHOOK || 
+      'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=staging',
+    production: import.meta.env.VITE_N8N_NOTE_PROD_WEBHOOK || 
+      'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=prod'
+  }
 };
 
 // Get webhook URL for specified type and environment
 export const getWebhookUrl = (type: WebhookType, env?: Environment): string => {
   const environment = env || getCurrentEnvironment();
-  return `${getProxyBaseUrl()}/proxy?env=${environment}&type=${type}`;
+  return webhookConfigs[type][environment];
 };
 
 // Get all webhook URLs for current environment
 export const getAllWebhookUrls = (env?: Environment): Record<WebhookType, string> => {
   const environment = env || getCurrentEnvironment();
   return {
-    report: getWebhookUrl('report', environment),
-    'file-analysis': getWebhookUrl('file-analysis', environment),
-    note: getWebhookUrl('note', environment)
+    report: webhookConfigs.report[environment],
+    'file-analysis': webhookConfigs['file-analysis'][environment],
+    note: webhookConfigs.note[environment]
   };
 };
 
-// Check if a URL is using the proxy
-export const isProxyUrl = (url: string): boolean => {
-  return url.includes(getProxyBaseUrl());
+// Get full configuration for displaying in admin panel
+export const getFullWebhookConfig = (): Record<WebhookType, WebhookConfig> => {
+  return { ...webhookConfigs };
 };
 
-// Fetch webhook configuration from the edge function
-export const fetchWebhookConfig = async (env?: Environment): Promise<any> => {
-  const environment = env || getCurrentEnvironment();
-  try {
-    const response = await fetch(`${getProxyBaseUrl()}/config?env=${environment}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching webhook config:', error);
-    throw error;
-  }
+// Check if a URL is external to determine if it's using environment variables
+export const isExternalUrl = (url: string): boolean => {
+  return url !== webhookConfigs.report.development && 
+         url !== webhookConfigs.report.production &&
+         url !== webhookConfigs['file-analysis'].development &&
+         url !== webhookConfigs['file-analysis'].production &&
+         url !== webhookConfigs.note.development &&
+         url !== webhookConfigs.note.production;
 };

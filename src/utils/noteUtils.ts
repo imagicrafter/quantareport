@@ -3,6 +3,10 @@ import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { getWebhookUrl } from './webhookConfig';
 
+// Get n8n webhook URLs from the central configuration service
+export const NOTE_DEV_WEBHOOK_URL = getWebhookUrl('note', 'development');
+export const NOTE_PROD_WEBHOOK_URL = getWebhookUrl('note', 'production');
+
 export interface NoteFileRelationshipWithType extends NoteFileRelationship {
   file_type: string;
   file_path: string;
@@ -93,10 +97,10 @@ export const submitImageAnalysis = async (
       timestamp: new Date().toISOString()
     };
     
-    // Use the consolidated n8n-webhook-proxy function directly
+    // Use the new consolidated n8n-webhook-proxy function
     const { error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
       body: {
-        env: isTestMode ? 'development' : 'production',
+        env: isTestMode ? 'dev' : 'prod',
         payload,
         type: 'note'
       }
