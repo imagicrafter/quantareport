@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 // Version tracking to help identify if deployment was successful
-const FUNCTION_VERSION = "1.1.0";
+const FUNCTION_VERSION = "1.2.0";
 
 // The actual n8n webhook URLs for note operations
 const NOTE_DEV_WEBHOOK_URL = "https://n8n-01.imagicrafterai.com/webhook-test/62d6d438-48ae-47db-850e-5fc52f54e843";
@@ -22,7 +22,7 @@ const webhookConfigs = {
     development: Deno.env.get("DEV_FILE_ANALYSIS_WEBHOOK_URL") || 
       "https://n8n-01.imagicrafterai.com/webhook-test/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0",
     staging: Deno.env.get("STAGING_FILE_ANALYSIS_WEBHOOK_URL") || 
-      "https://n8n-01.imagicrafterai.com/webhook-staging/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0",
+      "https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0", // Changed to match prod URL
     production: Deno.env.get("PROD_FILE_ANALYSIS_WEBHOOK_URL") || 
       "https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0",
   },
@@ -65,7 +65,8 @@ serve(async (req) => {
           version: FUNCTION_VERSION,
           timestamp: new Date().toISOString(),
           config: {
-            availableEndpoints: ["status", "config", "proxy"] 
+            availableEndpoints: ["status", "config", "proxy"],
+            webhookTypes: Object.keys(webhookConfigs)
           }
         }),
         {

@@ -20,7 +20,8 @@ import {
   Clock, 
   Copy, 
   ExternalLink,
-  RefreshCcw
+  RefreshCcw,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -41,6 +42,7 @@ const ConfigurationTab = () => {
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [envVarValue, setEnvVarValue] = useState<string>('Not set');
 
   useEffect(() => {
     const init = async () => {
@@ -50,6 +52,10 @@ const ConfigurationTab = () => {
         const env = getCurrentEnvironment();
         console.log('ConfigurationTab: Current environment:', env);
         setEnvironment(env);
+        
+        // Get env variable value directly
+        const envVar = import.meta.env.VITE_APP_ENVIRONMENT;
+        setEnvVarValue(envVar || 'Not set');
         
         // Get all webhook configurations
         const config = getFullWebhookConfig();
@@ -109,8 +115,8 @@ const ConfigurationTab = () => {
   };
 
   const refreshConfig = () => {
-    setRefreshKey(prevKey => prevKey + 1);
-    toast.success('Configuration refreshed');
+    // Force reload the page to ensure environment variables are re-evaluated
+    window.location.reload();
   };
 
   if (loading) {
@@ -123,6 +129,8 @@ const ConfigurationTab = () => {
       </div>
     );
   }
+
+  const envMismatch = envVarValue && envVarValue !== 'Not set' && envVarValue !== environment;
 
   return (
     <div className="space-y-6">
@@ -150,6 +158,19 @@ const ConfigurationTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {envMismatch && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md flex items-start">
+              <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">Environment variable mismatch detected</p>
+                <p className="text-xs text-yellow-700 mt-1">
+                  Your VITE_APP_ENVIRONMENT is set to "{envVarValue}" but the application is running in "{environment}" mode. 
+                  Try restarting your application or clearing cache.
+                </p>
+              </div>
+            </div>
+          )}
+          
           <p className="text-sm text-muted-foreground mb-4">
             The application is currently running in <strong>{environment}</strong> mode.
             Webhooks and other environment-specific settings are configured accordingly.
@@ -170,7 +191,14 @@ const ConfigurationTab = () => {
                 </tr>
                 <tr>
                   <td className="px-4 py-3 text-sm">Env Variable</td>
-                  <td className="px-4 py-3 text-sm">{import.meta.env.VITE_APP_ENVIRONMENT || 'Not set'}</td>
+                  <td className="px-4 py-3 text-sm flex items-center">
+                    <span className={envMismatch ? "text-yellow-600 font-medium" : ""}>
+                      {envVarValue}
+                    </span>
+                    {envMismatch && (
+                      <AlertTriangle className="h-4 w-4 text-yellow-500 ml-2" />
+                    )}
+                  </td>
                 </tr>
                 <tr>
                   <td className="px-4 py-3 text-sm">Host Name</td>
@@ -325,6 +353,17 @@ const ConfigurationTab = () => {
                 <li>You need to manually deploy edge functions using the Supabase CLI</li>
                 <li>Run: <code className="bg-amber-100 px-2 py-1 rounded">supabase functions deploy n8n-webhook-proxy</code></li>
                 <li>Or deploy through the Supabase Dashboard UI by uploading the updated file</li>
+                <li>Run: <code className="bg-amber-100 px-2 py-1 rounded">cd supabase && npx supabase functions deploy n8n-webhook-proxy</code></li>
+              </ol>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-md text-blue-800 mt-4">
+              <h3 className="font-medium mb-2">Testing Edge Function Changes</h3>
+              <p className="mb-2">To verify your edge function version and configuration:</p>
+              <ol className="list-decimal list-inside space-y-2">
+                <li>Visit the status endpoint: <code className="bg-blue-100 px-2 py-1 rounded">/n8n-webhook-proxy/status</code></li>
+                <li>Check the version number to confirm your deployment was successful</li>
+                <li>Verify webhook URLs in the configuration endpoint: <code className="bg-blue-100 px-2 py-1 rounded">/n8n-webhook-proxy/config</code></li>
               </ol>
             </div>
           </div>

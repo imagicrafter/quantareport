@@ -24,7 +24,7 @@ export const getCurrentEnvironment = (): Environment => {
   
   console.log('Current VITE_APP_ENVIRONMENT:', envVar);
   
-  if (envVar && ['development', 'staging', 'production'].includes(envVar)) {
+  if (envVar === 'development' || envVar === 'staging' || envVar === 'production') {
     console.log('Using environment from VITE_APP_ENVIRONMENT:', envVar);
     return envVar as Environment;
   }
@@ -61,7 +61,7 @@ const webhookConfigs: Record<WebhookType, WebhookConfig> = {
     development: import.meta.env.VITE_FILE_ANALYSIS_DEV_WEBHOOK || 
       'https://n8n-01.imagicrafterai.com/webhook-test/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0',
     staging: import.meta.env.VITE_FILE_ANALYSIS_STAGING_WEBHOOK || 
-      'https://n8n-01.imagicrafterai.com/webhook-staging/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0',
+      'https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0', // Changed to match production URL
     production: import.meta.env.VITE_FILE_ANALYSIS_PROD_WEBHOOK || 
       'https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0'
   },
