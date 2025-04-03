@@ -176,28 +176,6 @@ const ProjectsTable = ({ onRefresh }: ProjectsTableProps) => {
                     <TableCell>
                       <div className="font-medium break-words">{project.name}</div>
                     </TableCell>
-                    <TableCell className="font-mono text-xs whitespace-nowrap">
-                      <div className="flex items-center">
-                        <span className="truncate max-w-[120px]">{project.id}</span>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 ml-1" 
-                                onClick={() => copyToClipboard(project.id)}
-                              >
-                                <Copy size={14} />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Copy Project ID</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
                       {new Date(project.date).toLocaleDateString()}
                     </TableCell>

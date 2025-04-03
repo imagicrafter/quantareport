@@ -154,7 +154,9 @@ const ConfigurationTab = () => {
             </div>
           </div>
           <CardDescription>
-            Current application environment and configuration details
+           <p className="text-sm text-left text-muted-foreground mb-4">
+             Current application environment and configuration details
+           </p> 
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -171,10 +173,10 @@ const ConfigurationTab = () => {
             </div>
           )}
           
-          <p className="text-sm text-muted-foreground mb-4">
+          <p className="text-sm text-left text-muted-foreground mb-4">
             The application is currently running in <strong>{environment}</strong> mode.
           </p>
-          <p className="text-sm text-muted-foreground mb-4">
+          <p className="text-sm text-left text-muted-foreground mb-4">
             Webhooks and other environment-specific settings are configured accordingly.
           </p>
           
@@ -357,7 +359,8 @@ const ConfigurationTab = () => {
               To update your edge functions on Supabase, you need to explicitly deploy them:
             </p>
             
-            <div className="bg-amber-50 border border-amber-200 p-4 rounded-md text-amber-800">
+            
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-md text-amber-800 text-left">
               <h3 className="font-medium mb-2">Updating Edge Functions</h3>
               <ol className="list-decimal list-inside space-y-2">
                 <li>Changes to edge function code in your local project are NOT automatically deployed to Supabase</li>
@@ -368,7 +371,7 @@ const ConfigurationTab = () => {
               </ol>
             </div>
             
-            <div className="bg-blue-50 border border-blue-200 p-4 rounded-md text-blue-800 mt-4">
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-md text-blue-800 mt-4 text-left">
               <h3 className="font-medium mb-2">Testing Edge Function Changes</h3>
               <p className="mb-2">To verify your edge function version and configuration:</p>
               <ol className="list-decimal list-inside space-y-2">
