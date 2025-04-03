@@ -32,19 +32,46 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
+// Define proper types for webhook configurations
+interface WebhookConfigState {
+  proxy: Record<WebhookType, any>;
+  direct: Record<WebhookType, any>;
+}
+
+interface CurrentWebhookUrlsState {
+  proxy: Record<WebhookType, string>;
+  direct: Record<WebhookType, string>;
+}
+
 const ConfigurationTab = () => {
   const [environment, setEnvironment] = useState<string>('');
-  // Initialize with proper type structures to avoid TypeScript errors
-  const [webhookConfig, setWebhookConfig] = useState<Record<WebhookType, any>>({
-    'file-analysis': {},
-    'report': {},
-    'note': {}
+  // Initialize with proper type structures
+  const [webhookConfig, setWebhookConfig] = useState<WebhookConfigState>({
+    proxy: {
+      'file-analysis': {},
+      'report': {},
+      'note': {}
+    },
+    direct: {
+      'file-analysis': {},
+      'report': {},
+      'note': {}
+    }
   });
-  const [currentWebhookUrls, setCurrentWebhookUrls] = useState<Record<WebhookType, string>>({
-    'file-analysis': '',
-    'report': '',
-    'note': ''
+  
+  const [currentWebhookUrls, setCurrentWebhookUrls] = useState<CurrentWebhookUrlsState>({
+    proxy: {
+      'file-analysis': '',
+      'report': '',
+      'note': ''
+    },
+    direct: {
+      'file-analysis': '',
+      'report': '',
+      'note': ''
+    }
   });
+  
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [envVarValue, setEnvVarValue] = useState<string>('Not set');
@@ -279,7 +306,7 @@ const ConfigurationTab = () => {
                       <tr key={type}>
                         <td className="px-4 py-3 text-sm">{formatWebhookName(type)}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
-                          {url}
+                          {url || "N/A"}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex justify-center gap-2">
@@ -287,7 +314,8 @@ const ConfigurationTab = () => {
                               variant="ghost" 
                               size="sm" 
                               className="h-8"
-                              onClick={() => copyToClipboard(url)}
+                              onClick={() => url && copyToClipboard(url)}
+                              disabled={!url}
                             >
                               <Copy className="h-3 w-3 mr-1" />
                               Copy
@@ -296,7 +324,8 @@ const ConfigurationTab = () => {
                               variant="ghost" 
                               size="sm" 
                               className="h-8"
-                              onClick={() => window.open(url, '_blank')}
+                              onClick={() => url && window.open(url, '_blank')}
+                              disabled={!url}
                             >
                               <ExternalLink className="h-3 w-3 mr-1" />
                               Open
@@ -337,12 +366,12 @@ const ConfigurationTab = () => {
                           </td>
                           <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px] relative group">
                             <div className="flex items-center">
-                              <span className="mr-2 truncate">{url as string}</span>
+                              <span className="mr-2 truncate">{typeof url === 'string' ? url : 'N/A'}</span>
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 className="size-5 opacity-0 group-hover:opacity-100"
-                                onClick={() => copyToClipboard(url as string)}
+                                onClick={() => typeof url === 'string' && copyToClipboard(url)}
                               >
                                 <Copy className="size-3" />
                               </Button>
@@ -394,12 +423,12 @@ const ConfigurationTab = () => {
                           </td>
                           <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px] relative group">
                             <div className="flex items-center">
-                              <span className="mr-2 truncate">{url as string}</span>
+                              <span className="mr-2 truncate">{typeof url === 'string' ? url : 'N/A'}</span>
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 className="size-5 opacity-0 group-hover:opacity-100"
-                                onClick={() => copyToClipboard(url as string)}
+                                onClick={() => typeof url === 'string' && copyToClipboard(url)}
                               >
                                 <Copy className="size-3" />
                               </Button>
