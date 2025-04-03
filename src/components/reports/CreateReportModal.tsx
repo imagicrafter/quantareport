@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, AlertCircle } from 'lucide-react';
 import ReportGenerationProgress from './ReportGenerationProgress';
 import { v4 as uuidv4 } from 'uuid';
-import { getWebhookUrl, getCurrentEnvironment } from '@/utils/webhookConfig'; 
+import { getWebhookUrl } from '@/utils/webhookConfig'; 
 
 interface ProjectDetails {
   id: string;
@@ -33,6 +34,10 @@ interface CreateReportModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Get webhook URLs using the central configuration service
+const DEV_WEBHOOK_URL = getWebhookUrl('report', 'development');
+const PROD_WEBHOOK_URL = getWebhookUrl('report', 'production');
 
 const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   const [projects, setProjects] = useState<ProjectDetails[]>([]);
@@ -332,16 +337,16 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       toast.success('Report created. Generating content...');
       
-      // Get the right webhook URL for report generation based on the environment and whether it's a test
-      const environment = getCurrentEnvironment();
-      // If it's a test report, always use development webhook regardless of environment
-      const webhookEnv = isTestReport ? 'development' : environment;
-      const reportWebhookUrl = getWebhookUrl('report', webhookEnv);
+      // Determine which webhook URL to use based on report title
+      const isTestingTitle = newReport.title.includes('##TESTING##');
       
-      console.log(`Using ${isTestReport ? 'TESTING' : environment.toUpperCase()} webhook URL from environment ${webhookEnv}: ${reportWebhookUrl}`);
+      // Select the appropriate webhook URL based on title
+      const webhookUrl = isTestingTitle ? DEV_WEBHOOK_URL : PROD_WEBHOOK_URL;
+      
+      console.log(`Using ${isTestingTitle ? 'TESTING' : 'PRODUCTION'} webhook URL: ${webhookUrl}`);
       
       // Use the Supabase edge function URL directly instead of a frontend route
-      const supabaseProjectUrl = import.meta.env.VITE_SUPABASE_URL || "https://vtaufnxworztolfdwlll.supabase.co";
+      const supabaseProjectUrl = 'https://vtaufnxworztolfdwlll.supabase.co';
       const callbackUrl = `${supabaseProjectUrl}/functions/v1/report-progress/${newReport.id}`;
       
       console.log(`Using Supabase edge function callback URL: ${callbackUrl}`);
@@ -358,17 +363,17 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         action: 'generate_report',
         callback_url: callbackUrl,
         job: jobUuid,
-        is_test: isTestReport
+        is_test: isTestingTitle
       };
       
       console.log('Webhook payload:', webhookPayload);
       
       // Send webhook request with proper CORS handling
       try {
-        console.log(`Sending webhook to: ${reportWebhookUrl}`);
+        console.log(`Sending webhook to: ${webhookUrl}`);
         
         // Add mode: 'cors' and proper headers for CORS
-        const postResponse = await fetch(reportWebhookUrl, {
+        const postResponse = await fetch(webhookUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -380,12 +385,12 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         });
         
         if (postResponse.ok) {
-          console.log(`Webhook POST request to ${reportWebhookUrl} succeeded:`, await postResponse.text());
+          console.log(`Webhook POST request to ${webhookUrl} succeeded:`, await postResponse.text());
         } else {
-          console.error(`Webhook POST response error for ${reportWebhookUrl}:`, await postResponse.text());
+          console.error(`Webhook POST response error for ${webhookUrl}:`, await postResponse.text());
           
           // Fallback to GET request
-          const getUrl = new URL(reportWebhookUrl);
+          const getUrl = new URL(webhookUrl);
           Object.entries(webhookPayload).forEach(([key, value]) => {
             getUrl.searchParams.append(key, String(value));
           });
@@ -400,14 +405,14 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           });
           
           if (getResponse.ok) {
-            console.log(`Webhook GET request to ${reportWebhookUrl} succeeded:`, await getResponse.text());
+            console.log(`Webhook GET request to ${webhookUrl} succeeded:`, await getResponse.text());
           } else {
-            console.error(`Webhook GET response error for ${reportWebhookUrl}:`, await getResponse.text());
-            throw new Error(`Failed to send webhook request to ${reportWebhookUrl}`);
+            console.error(`Webhook GET response error for ${webhookUrl}:`, await getResponse.text());
+            throw new Error(`Failed to send webhook request to ${webhookUrl}`);
           }
         }
       } catch (error) {
-        console.error(`Error sending webhook to ${reportWebhookUrl}:`, error);
+        console.error(`Error sending webhook to ${webhookUrl}:`, error);
         toast.error('Failed to start report generation. Please try again.');
       }
     } catch (error) {

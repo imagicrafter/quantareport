@@ -280,76 +280,62 @@ const ConfigurationTab = () => {
             </TabsList>
             
             <TabsContent value="current">
-              {webhookState.configData ? (
-                <>
-                  <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                    <div className="flex items-center mb-2">
-                      <Globe className="h-4 w-4 text-blue-500 mr-2" />
-                      <p className="text-sm font-medium text-blue-800">Webhook URLs for {environment}</p>
-                    </div>
-                    <p className="text-xs text-blue-700">
-                      These are the actual webhook URLs for your current environment ({environment}).
-                      These URLs are used by the Supabase edge function proxy to route requests.
-                    </p>
-                  </div>
-                
-                  <div className="border rounded-md overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-muted">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-sm font-medium">Webhook Type</th>
-                          <th className="px-4 py-2 text-left text-sm font-medium">URL</th>
-                          <th className="px-4 py-2 text-center text-sm font-medium">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {webhookState.configData && webhookState.configData.currentWebhooks && 
-                          Object.entries(webhookState.configData.currentWebhooks).map(([type, url]) => (
-                            <tr key={type}>
-                              <td className="px-4 py-3 text-sm">{formatWebhookName(type)}</td>
-                              <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
-                                {typeof url === 'string' ? url : 'N/A'}
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex justify-center gap-2">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-8"
-                                    onClick={() => typeof url === 'string' && copyToClipboard(url)}
-                                    disabled={typeof url !== 'string'}
-                                  >
-                                    <Copy className="h-3 w-3 mr-1" />
-                                    Copy
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-8"
-                                    onClick={() => typeof url === 'string' && window.open(url, '_blank')}
-                                    disabled={typeof url !== 'string'}
-                                  >
-                                    <ExternalLink className="h-3 w-3 mr-1" />
-                                    Open
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : (
-                <div className="p-6 flex justify-center items-center border rounded-md">
-                  <p className="text-sm text-muted-foreground">
-                    {webhookState.error ? 
-                      "Failed to load webhook configuration from edge function." : 
-                      "No configuration data available. Try refreshing."}
-                  </p>
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="flex items-center mb-2">
+                  <Globe className="h-4 w-4 text-blue-500 mr-2" />
+                  <p className="text-sm font-medium text-blue-800">Proxy Webhook URLs</p>
                 </div>
-              )}
+                <p className="text-xs text-blue-700">
+                  These are the webhook URLs used by your application. They route through the Supabase edge function proxy
+                  which selects the appropriate backend service based on the current environment.
+                </p>
+              </div>
+            
+              <div className="border rounded-md overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-sm font-medium">Webhook Type</th>
+                      <th className="px-4 py-2 text-left text-sm font-medium">URL</th>
+                      <th className="px-4 py-2 text-center text-sm font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {Object.entries(webhookState.proxyUrls).map(([type, url]) => (
+                      <tr key={type}>
+                        <td className="px-4 py-3 text-sm">{formatWebhookName(type)}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
+                          {url || "N/A"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-center gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8"
+                              onClick={() => url && copyToClipboard(url)}
+                              disabled={!url}
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              Copy
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8"
+                              onClick={() => url && window.open(url, '_blank')}
+                              disabled={!url}
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              Open
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </TabsContent>
             
             <TabsContent value="all">
