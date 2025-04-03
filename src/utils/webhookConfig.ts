@@ -1,4 +1,3 @@
-
 /**
  * Central webhook configuration service
  * Manages webhook URLs across different environments
@@ -37,7 +36,7 @@ export const getCurrentEnvironment = (): Environment => {
   }
 };
 
-// Webhook configurations - using the consolidated webhook proxy
+// Webhook configurations
 const webhookConfigs: Record<WebhookType, WebhookConfig> = {
   report: {
     // Report generation webhooks

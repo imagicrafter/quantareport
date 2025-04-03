@@ -55,19 +55,12 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       
       console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
       
-      // Call the file-analysis edge function using the new consolidated proxy
-      const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
+      // Call the file-analysis edge function
+      const { data, error } = await supabase.functions.invoke('file-analysis', {
         body: {
           project_id: projectId,
           isTestMode,
-          job: jobId,
-          type: 'file-analysis',
-          env: isTestMode ? 'development' : 'production',
-          payload: {
-            project_id: projectId,
-            isTestMode,
-            job: jobId
-          }
+          job: jobId
         }
       });
       
@@ -82,7 +75,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       console.log('File analysis response:', data);
       
       if (data.success) {
-        setAnalysisJobId(data.jobId || jobId);
+        setAnalysisJobId(data.jobId);
         setIsProgressModalOpen(true);
         toast.success('File analysis started');
       } else {
@@ -108,17 +101,11 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
     try {
       setAnalysisInProgress(true);
       
-      // Call the image-analysis edge function using the new consolidated proxy
-      const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
+      // Call the image-analysis edge function
+      const { data, error } = await supabase.functions.invoke('image-analysis', {
         body: {
           file_id: fileId,
-          project_id: projectId,
-          type: 'file-analysis', // Using file-analysis webhook type
-          env: 'production',
-          payload: {
-            file_id: fileId,
-            project_id: projectId
-          }
+          project_id: projectId
         }
       });
       

@@ -1,4 +1,3 @@
-
 import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { getWebhookUrl } from './webhookConfig';
@@ -97,17 +96,15 @@ export const submitImageAnalysis = async (
       timestamp: new Date().toISOString()
     };
     
-    // Use the new consolidated n8n-webhook-proxy function
-    const { error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
+    const { error } = await supabase.functions.invoke('n8n-proxy', {
       body: {
         env: isTestMode ? 'dev' : 'prod',
-        payload,
-        type: 'note'
+        payload
       }
     });
     
     if (error) {
-      console.error('Error invoking n8n-webhook-proxy function:', error);
+      console.error('Error invoking n8n-proxy function:', error);
       return false;
     }
     
