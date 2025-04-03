@@ -4,12 +4,14 @@ import { useToast } from '@/components/ui/use-toast';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectFile } from '@/components/dashboard/files/FileItem';
-import { Folder, FileImage, File, FileText } from 'lucide-react';
+import { Folder, FileImage, File, FileText, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import FilesSection from '@/components/dashboard/FilesSection';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import StatCards from '@/components/dashboard/StatCards';
 
 interface Project {
   id: string;
@@ -21,6 +23,7 @@ interface Project {
 
 const Images = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState<{id: string; name: string} | null>(null);
@@ -172,52 +175,15 @@ const Images = () => {
       
       <div className="container mx-auto p-4 max-w-7xl">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center p-6">
-              <div className="bg-blue-100 p-4 rounded-full mb-4">
-                <Folder className="h-6 w-6 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-medium text-center mb-1">Projects</h3>
-              <p className="text-3xl font-bold">{stats.projects}</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center p-6">
-              <div className="bg-blue-100 p-4 rounded-full mb-4">
-                <FileImage className="h-6 w-6 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-medium text-center mb-1">Images</h3>
-              <p className="text-3xl font-bold">{stats.images}</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center p-6">
-              <div className="bg-blue-100 p-4 rounded-full mb-4">
-                <FileText className="h-6 w-6 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-medium text-center mb-1">Notes</h3>
-              <p className="text-3xl font-bold">{stats.notes}</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center p-6">
-              <div className="bg-blue-100 p-4 rounded-full mb-4">
-                <File className="h-6 w-6 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-medium text-center mb-1">Reports</h3>
-              <p className="text-3xl font-bold">{stats.reports}</p>
-            </CardContent>
-          </Card>
-        </div>
+        <StatCards projects={projects} />
         
         <h2 className="text-2xl font-semibold mb-4">Images</h2>
 
-        {/* Recent Images Section */}
-        <h3 className="text-xl font-medium mb-4 mt-8 text-right">Recent Images</h3>
+        {/* Recent Files Section */}
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex-1"></div>
+          <h3 className="text-xl font-medium">Recent Files</h3>
+        </div>
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -259,20 +225,28 @@ const Images = () => {
       
       {/* Files Modal for selected project */}
       {selectedProject && (
-        <Sheet open={isFilesModalOpen} onOpenChange={handleCloseFilesModal}>
-          <SheetContent side="right" className="w-[90vw] sm:max-w-[900px] p-0 overflow-y-auto">
-            <SheetHeader className="p-6 border-b">
-              <SheetTitle>{selectedProject.name} - Files</SheetTitle>
-            </SheetHeader>
+        <Dialog open={isFilesModalOpen} onOpenChange={handleCloseFilesModal}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader className="flex items-center justify-between">
+              <DialogTitle>{selectedProject.name} - Files</DialogTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCloseFilesModal}
+                className="absolute right-4 top-4"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogHeader>
             
-            <div className="p-0">
+            <div className="flex-1 overflow-y-auto">
               <FilesSection 
                 projectId={selectedProject.id} 
                 projectName={selectedProject.name} 
               />
             </div>
-          </SheetContent>
-        </Sheet>
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );

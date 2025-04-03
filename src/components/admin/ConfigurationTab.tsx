@@ -140,7 +140,6 @@ const ConfigurationTab = () => {
   };
 
   const refreshConfig = () => {
-    // Force reload the page to ensure environment variables are re-evaluated
     window.location.reload();
   };
 
@@ -162,21 +161,12 @@ const ConfigurationTab = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <span>Environment Settings</span>
+            <div className="flex items-center gap-2">
+              <CardTitle>Environment Settings</CardTitle>
               <Badge className={getEnvBadgeColor(environment)}>
                 {environment.toUpperCase()}
               </Badge>
-            </CardTitle>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={refreshConfig} 
-              className="h-8"
-            >
-              <RefreshCcw className="h-3 w-3 mr-1" />
-              Refresh
-            </Button>
+            </div>
           </div>
           <CardDescription>
             Current application environment and configuration details
@@ -299,7 +289,6 @@ const ConfigurationTab = () => {
                         <tr>
                           <th className="px-4 py-2 text-left text-sm font-medium">Webhook Type</th>
                           <th className="px-4 py-2 text-left text-sm font-medium">URL</th>
-                          <th className="px-4 py-2 text-center text-sm font-medium">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -307,32 +296,8 @@ const ConfigurationTab = () => {
                           Object.entries(webhookState.configData.currentWebhooks).map(([type, url]) => (
                             <tr key={type}>
                               <td className="px-4 py-3 text-sm">{formatWebhookName(type)}</td>
-                              <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
+                              <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[500px]">
                                 {typeof url === 'string' ? url : 'N/A'}
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex justify-center gap-2">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-8"
-                                    onClick={() => typeof url === 'string' && copyToClipboard(url)}
-                                    disabled={typeof url !== 'string'}
-                                  >
-                                    <Copy className="h-3 w-3 mr-1" />
-                                    Copy
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-8"
-                                    onClick={() => typeof url === 'string' && window.open(url, '_blank')}
-                                    disabled={typeof url !== 'string'}
-                                  >
-                                    <ExternalLink className="h-3 w-3 mr-1" />
-                                    Open
-                                  </Button>
-                                </div>
                               </td>
                             </tr>
                           ))
