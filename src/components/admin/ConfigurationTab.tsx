@@ -19,9 +19,14 @@ import { Badge } from '@/components/ui/badge';
 import { 
   CheckCircle, 
   Clock, 
+  Copy, 
+  ExternalLink,
+  RefreshCcw,
   AlertTriangle,
   Globe,
+  Server
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -54,6 +59,7 @@ const ConfigurationTab = () => {
     error: null
   });
   
+  const [refreshKey, setRefreshKey] = useState<number>(0);
   const [envVarValue, setEnvVarValue] = useState<string>('Not set');
 
   useEffect(() => {
@@ -106,7 +112,12 @@ const ConfigurationTab = () => {
     };
 
     init();
-  }, []);
+  }, [refreshKey]);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  };
 
   const getEnvBadgeColor = (env: string) => {
     switch (env) {
@@ -128,6 +139,11 @@ const ConfigurationTab = () => {
       .join(' ');
   };
 
+  const refreshConfig = () => {
+    // Force reload the page to ensure environment variables are re-evaluated
+    window.location.reload();
+  };
+
   if (webhookState.loading) {
     return (
       <div className="flex items-center justify-center p-6">
@@ -146,17 +162,24 @@ const ConfigurationTab = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CardTitle>Environment Settings</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <span>Environment Settings</span>
               <Badge className={getEnvBadgeColor(environment)}>
                 {environment.toUpperCase()}
               </Badge>
-            </div>
+            </CardTitle>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={refreshConfig} 
+              className="h-8"
+            >
+              <RefreshCcw className="h-3 w-3 mr-1" />
+              Refresh
+            </Button>
           </div>
           <CardDescription>
-           <p className="text-sm text-left text-muted-foreground mb-4">
-             Current application environment and configuration details
-           </p> 
+            Current application environment and configuration details
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -173,10 +196,8 @@ const ConfigurationTab = () => {
             </div>
           )}
           
-          <p className="text-sm text-left text-muted-foreground mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             The application is currently running in <strong>{environment}</strong> mode.
-          </p>
-          <p className="text-sm text-left text-muted-foreground mb-4">
             Webhooks and other environment-specific settings are configured accordingly.
           </p>
           
@@ -210,7 +231,17 @@ const ConfigurationTab = () => {
                 </tr>
                 <tr>
                   <td className="px-4 py-3 text-sm">Base URL</td>
-                  <td className="px-4 py-3 text-sm">{window.location.origin}</td>
+                  <td className="px-4 py-3 text-sm flex items-center gap-2">
+                    {window.location.origin}
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="size-5"
+                      onClick={() => copyToClipboard(window.location.origin)}
+                    >
+                      <Copy className="size-3" />
+                    </Button>
+                  </td>
                 </tr>
                 {webhookState.configData && (
                   <tr>
@@ -268,6 +299,7 @@ const ConfigurationTab = () => {
                         <tr>
                           <th className="px-4 py-2 text-left text-sm font-medium">Webhook Type</th>
                           <th className="px-4 py-2 text-left text-sm font-medium">URL</th>
+                          <th className="px-4 py-2 text-center text-sm font-medium">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -275,8 +307,32 @@ const ConfigurationTab = () => {
                           Object.entries(webhookState.configData.currentWebhooks).map(([type, url]) => (
                             <tr key={type}>
                               <td className="px-4 py-3 text-sm">{formatWebhookName(type)}</td>
-                              <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[500px]">
+                              <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
                                 {typeof url === 'string' ? url : 'N/A'}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex justify-center gap-2">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-8"
+                                    onClick={() => typeof url === 'string' && copyToClipboard(url)}
+                                    disabled={typeof url !== 'string'}
+                                  >
+                                    <Copy className="h-3 w-3 mr-1" />
+                                    Copy
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-8"
+                                    onClick={() => typeof url === 'string' && window.open(url, '_blank')}
+                                    disabled={typeof url !== 'string'}
+                                  >
+                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                    Open
+                                  </Button>
+                                </div>
                               </td>
                             </tr>
                           ))
@@ -323,8 +379,18 @@ const ConfigurationTab = () => {
                                 {env}
                               </Badge>
                             </td>
-                            <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
-                              {typeof url === 'string' ? url : 'N/A'}
+                            <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px] relative group">
+                              <div className="flex items-center">
+                                <span className="mr-2 truncate">{typeof url === 'string' ? url : 'N/A'}</span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="size-5 opacity-0 group-hover:opacity-100"
+                                  onClick={() => typeof url === 'string' && copyToClipboard(url)}
+                                >
+                                  <Copy className="size-3" />
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -359,8 +425,7 @@ const ConfigurationTab = () => {
               To update your edge functions on Supabase, you need to explicitly deploy them:
             </p>
             
-            
-            <div className="bg-amber-50 border border-amber-200 p-4 rounded-md text-amber-800 text-left">
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-md text-amber-800">
               <h3 className="font-medium mb-2">Updating Edge Functions</h3>
               <ol className="list-decimal list-inside space-y-2">
                 <li>Changes to edge function code in your local project are NOT automatically deployed to Supabase</li>
@@ -371,7 +436,7 @@ const ConfigurationTab = () => {
               </ol>
             </div>
             
-            <div className="bg-blue-50 border border-blue-200 p-4 rounded-md text-blue-800 mt-4 text-left">
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-md text-blue-800 mt-4">
               <h3 className="font-medium mb-2">Testing Edge Function Changes</h3>
               <p className="mb-2">To verify your edge function version and configuration:</p>
               <ol className="list-decimal list-inside space-y-2">
