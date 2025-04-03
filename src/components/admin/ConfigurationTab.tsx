@@ -19,8 +19,7 @@ import {
   CheckCircle, 
   Clock, 
   Copy, 
-  ExternalLink,
-  RefreshCcw
+  ExternalLink 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -39,16 +38,15 @@ const ConfigurationTab = () => {
     'report': '',
     'note': ''
   });
+  const [supabsaseSecrets, setSupabaseSecrets] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<boolean>(true);
-  const [refreshKey, setRefreshKey] = useState<number>(0);
 
   useEffect(() => {
     const init = async () => {
       setLoading(true);
       try {
-        // Force getting current environment (no caching)
+        // Get current environment
         const env = getCurrentEnvironment();
-        console.log('ConfigurationTab: Current environment:', env);
         setEnvironment(env);
         
         // Get all webhook configurations
@@ -59,19 +57,6 @@ const ConfigurationTab = () => {
         const urls = getAllWebhookUrls(env);
         setCurrentWebhookUrls(urls);
         
-        // Try to get webhook configuration from the edge function
-        try {
-          const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/config', {
-            body: { env }
-          });
-          
-          if (!error && data) {
-            console.log('Received edge function webhook config:', data);
-          }
-        } catch (edgeFnError) {
-          console.warn('Failed to get webhook config from edge function:', edgeFnError);
-        }
-        
       } catch (error) {
         console.error('Error initializing config tab:', error);
         toast.error('Failed to load configuration data');
@@ -81,7 +66,7 @@ const ConfigurationTab = () => {
     };
 
     init();
-  }, [refreshKey]);
+  }, []);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -108,11 +93,6 @@ const ConfigurationTab = () => {
       .join(' ');
   };
 
-  const refreshConfig = () => {
-    setRefreshKey(prevKey => prevKey + 1);
-    toast.success('Configuration refreshed');
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center p-6">
@@ -128,23 +108,12 @@ const ConfigurationTab = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <span>Environment Settings</span>
-              <Badge className={getEnvBadgeColor(environment)}>
-                {environment.toUpperCase()}
-              </Badge>
-            </CardTitle>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={refreshConfig} 
-              className="h-8"
-            >
-              <RefreshCcw className="h-3 w-3 mr-1" />
-              Refresh
-            </Button>
-          </div>
+          <CardTitle className="flex items-center justify-between">
+            <span>Environment Settings</span>
+            <Badge className={getEnvBadgeColor(environment)}>
+              {environment.toUpperCase()}
+            </Badge>
+          </CardTitle>
           <CardDescription>
             Current application environment and configuration details
           </CardDescription>
@@ -167,10 +136,6 @@ const ConfigurationTab = () => {
                 <tr>
                   <td className="px-4 py-3 text-sm">App Environment</td>
                   <td className="px-4 py-3 text-sm">{environment}</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-3 text-sm">Env Variable</td>
-                  <td className="px-4 py-3 text-sm">{import.meta.env.VITE_APP_ENVIRONMENT || 'Not set'}</td>
                 </tr>
                 <tr>
                   <td className="px-4 py-3 text-sm">Host Name</td>
@@ -302,32 +267,6 @@ const ConfigurationTab = () => {
               </div>
             </TabsContent>
           </Tabs>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Edge Function Status</CardTitle>
-          <CardDescription>
-            Deployment status of webhook edge functions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              To update your edge functions on Supabase, you need to explicitly deploy them:
-            </p>
-            
-            <div className="bg-amber-50 border border-amber-200 p-4 rounded-md text-amber-800">
-              <h3 className="font-medium mb-2">Updating Edge Functions</h3>
-              <ol className="list-decimal list-inside space-y-2">
-                <li>Changes to edge function code in your local project are NOT automatically deployed to Supabase</li>
-                <li>You need to manually deploy edge functions using the Supabase CLI</li>
-                <li>Run: <code className="bg-amber-100 px-2 py-1 rounded">supabase functions deploy n8n-webhook-proxy</code></li>
-                <li>Or deploy through the Supabase Dashboard UI by uploading the updated file</li>
-              </ol>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

@@ -8,9 +8,6 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-// Version tracking to help identify if deployment was successful
-const FUNCTION_VERSION = "1.1.0";
-
 // The actual n8n webhook URLs for note operations
 const NOTE_DEV_WEBHOOK_URL = "https://n8n-01.imagicrafterai.com/webhook-test/62d6d438-48ae-47db-850e-5fc52f54e843";
 const NOTE_PROD_WEBHOOK_URL = "https://n8n-01.imagicrafterai.com/webhook/62d6d438-48ae-47db-850e-5fc52f54e843";
@@ -57,25 +54,8 @@ serve(async (req) => {
   console.log(`Processing request for endpoint: ${endpoint}`);
   
   try {
-    // Status endpoint - check if function is responsive
-    if (endpoint === 'status') {
-      return new Response(
-        JSON.stringify({ 
-          status: "ok", 
-          version: FUNCTION_VERSION,
-          timestamp: new Date().toISOString(),
-          config: {
-            availableEndpoints: ["status", "config", "proxy"] 
-          }
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        }
-      );
-    }
     // Configuration endpoint
-    else if (endpoint === 'config') {
+    if (endpoint === 'config') {
       return handleConfigRequest(req, url);
     } 
     // Proxy endpoint
@@ -127,8 +107,6 @@ async function handleConfigRequest(req: Request, url: URL) {
       environment: env,
       webhooks: webhookConfigs,
       currentWebhooks,
-      version: FUNCTION_VERSION,
-      timestamp: new Date().toISOString()
     }),
     {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
