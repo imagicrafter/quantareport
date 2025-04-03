@@ -158,6 +158,7 @@ const Templates = () => {
         image_module: template.image_module,
         report_module: template.report_module,
         layout_module: template.layout_module,
+        html_module: template.html_module,
         is_public: false,
         domain_id: template.domain_id,
         user_id: profile.id,

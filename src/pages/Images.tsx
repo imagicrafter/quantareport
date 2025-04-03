@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -21,6 +22,7 @@ const Images = () => {
   const [allProjects, setAllProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectName, setSelectedProjectName] = useState<string>('');
   const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
   const { toast } = useToast();
 
@@ -115,8 +117,9 @@ const Images = () => {
     }
   };
 
-  const handleProjectClick = (projectId: string) => {
-    setSelectedProjectId(projectId);
+  const handleProjectClick = (project: ProjectWithImageCount) => {
+    setSelectedProjectId(project.id);
+    setSelectedProjectName(project.name);
     setIsFilesModalOpen(true);
   };
 
@@ -153,7 +156,7 @@ const Images = () => {
                 <Card 
                   key={project.id} 
                   className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => handleProjectClick(project.id)}
+                  onClick={() => handleProjectClick(project)}
                 >
                   <CardHeader>
                     <CardTitle>{project.name}</CardTitle>
@@ -184,11 +187,14 @@ const Images = () => {
             <>
               <div className="mb-4 flex-shrink-0">
                 <h2 className="text-xl font-bold">
-                  {projects.find(p => p.id === selectedProjectId)?.name} - Files
+                  {selectedProjectName} - Files
                 </h2>
               </div>
               <div className="flex-grow overflow-hidden">
-                <FilesSection projectId={selectedProjectId} />
+                <FilesSection 
+                  projectId={selectedProjectId} 
+                  projectName={selectedProjectName}
+                />
               </div>
             </>
           )}

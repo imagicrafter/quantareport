@@ -47,6 +47,7 @@ export const formSchema = z.object({
       },
       { message: "Invalid JSON format" }
     ),
+  html_module: z.string().optional().nullable(),
 });
 
 export type FormValues = z.infer<typeof formSchema>;

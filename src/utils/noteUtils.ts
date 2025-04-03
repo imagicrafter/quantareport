@@ -1,10 +1,7 @@
 
 import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
-
-// Get n8n webhook URLs from environment variables with fallbacks
-export const NOTE_DEV_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_DEV_WEBHOOK || 'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=dev';
-export const NOTE_PROD_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_PROD_WEBHOOK || 'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=prod';
+import { getWebhookUrl } from './webhookConfig';
 
 export interface NoteFileRelationshipWithType extends NoteFileRelationship {
   file_type: string;
@@ -14,14 +11,15 @@ export interface NoteFileRelationshipWithType extends NoteFileRelationship {
 // Define Note interface to fix missing export error
 export interface Note {
   id: string;
+  name: string;
   title: string;
   content: string | null;
-  name: string;
-  position: number;
-  created_at: string;
-  project_id: string;
+  analysis: string | null;
+  created_at: string | null;
   user_id: string;
-  analysis?: string | null;
+  project_id: string;
+  position: number | null;
+  files_relationships_is_locked?: boolean;
 }
 
 // Title to camelCase conversion utility function
@@ -86,7 +84,7 @@ export const submitImageAnalysis = async (
   isTestMode: boolean
 ): Promise<boolean> => {
   try {
-    const webhookUrl = isTestMode ? NOTE_DEV_WEBHOOK_URL : NOTE_PROD_WEBHOOK_URL;
+    console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project`);
     
     const payload = {
       note_id: noteId,
@@ -95,17 +93,17 @@ export const submitImageAnalysis = async (
       timestamp: new Date().toISOString()
     };
     
-    console.log(`Submitting analysis request to ${webhookUrl}`);
-    
-    const { error } = await supabase.functions.invoke('n8n-proxy', {
+    // Use the consolidated n8n-webhook-proxy function directly
+    const { error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
       body: {
-        env: isTestMode ? 'dev' : 'prod',
-        payload
+        env: isTestMode ? 'development' : 'production',
+        payload,
+        type: 'note'
       }
     });
     
     if (error) {
-      console.error('Error invoking n8n-proxy function:', error);
+      console.error('Error invoking n8n-webhook-proxy function:', error);
       return false;
     }
     

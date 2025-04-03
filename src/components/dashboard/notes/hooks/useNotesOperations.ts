@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -286,18 +287,18 @@ export const useNotesOperations = ({
         
       if (error) {
         console.error('Error fetching note status:', error);
-        return false;
+        return { completed: false, analysis: null };
       }
       
       if (data && data.analysis) {
         console.log('Analysis completed:', data.analysis.substring(0, 50) + '...');
-        return true;
+        return { completed: true, analysis: data.analysis };
       }
       
-      return false;
+      return { completed: false, analysis: null };
     } catch (error) {
       console.error('Error checking analysis status:', error);
-      return false;
+      return { completed: false, analysis: null };
     }
   };
 
@@ -313,31 +314,32 @@ export const useNotesOperations = ({
       attempts++;
       console.log(`Checking analysis status: attempt ${attempts}/${maxAttempts}`);
       
-      const isComplete = await checkAnalysisStatus(noteId);
+      const { completed, analysis } = await checkAnalysisStatus(noteId);
       
-      if (isComplete) {
+      if (completed && analysis) {
         clearInterval(intervalId);
         setPollingInterval(null);
         setAnalyzingImages(false);
         
-        const { data, error } = await supabase
-          .from('notes')
-          .select('*')
-          .eq('id', noteId)
-          .single();
-          
-        if (!error && data) {
-          if (isAdd) {
-            form.setValue('analysis', data.analysis || '');
-          } else {
-            editForm.setValue('analysis', data.analysis || '');
-            setSelectedNote(prevNote => prevNote ? { ...prevNote, analysis: data.analysis } : null);
-          }
-          toast({
-            title: 'Success',
-            description: 'Image analysis completed',
+        // Update form values immediately with the new analysis
+        if (isAdd) {
+          form.setValue('analysis', analysis);
+        } else {
+          editForm.setValue('analysis', analysis);
+        }
+        
+        // Update the selectedNote state
+        if (!isAdd) {
+          setSelectedNote(prevNote => {
+            if (!prevNote) return null;
+            return { ...prevNote, analysis: analysis };
           });
         }
+        
+        toast({
+          title: 'Success',
+          description: 'Image analysis completed',
+        });
       } else if (attempts >= maxAttempts) {
         clearInterval(intervalId);
         setPollingInterval(null);

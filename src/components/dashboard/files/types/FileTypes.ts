@@ -1,5 +1,5 @@
 
-import { FileType } from '../FileItem';
+export type FileType = 'image' | 'audio' | 'text' | 'folder' | 'transcription' | 'other';
 
 export interface FileFormValues {
   name: string;
