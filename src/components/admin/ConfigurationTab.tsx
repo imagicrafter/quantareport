@@ -2,10 +2,8 @@
 import { useState, useEffect } from 'react';
 import { 
   getCurrentEnvironment,
-  getFullWebhookConfig,
-  getFullDirectWebhookConfig,
-  getAllWebhookUrls, 
-  getAllDirectWebhookUrls,
+  fetchWebhookConfig,
+  getAllWebhookUrls,
   WebhookType,
   isProxyUrl,
 } from '@/utils/webhookConfig';
@@ -33,52 +31,40 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 // Define proper types for webhook configurations
-interface WebhookConfigState {
-  proxy: Record<WebhookType, any>;
-  direct: Record<WebhookType, any>;
+interface WebhookConfigData {
+  environment: string;
+  webhooks: Record<WebhookType, Record<string, string>>;
+  currentWebhooks: Record<WebhookType, string>;
+  version: string;
+  timestamp: string;
 }
 
-interface CurrentWebhookUrlsState {
-  proxy: Record<WebhookType, string>;
-  direct: Record<WebhookType, string>;
+interface WebhookState {
+  proxyUrls: Record<WebhookType, string>;
+  configData: WebhookConfigData | null;
+  loading: boolean;
+  error: string | null;
 }
 
 const ConfigurationTab = () => {
   const [environment, setEnvironment] = useState<string>('');
-  // Initialize with proper type structures
-  const [webhookConfig, setWebhookConfig] = useState<WebhookConfigState>({
-    proxy: {
-      'file-analysis': {},
-      'report': {},
-      'note': {}
-    },
-    direct: {
-      'file-analysis': {},
-      'report': {},
-      'note': {}
-    }
-  });
-  
-  const [currentWebhookUrls, setCurrentWebhookUrls] = useState<CurrentWebhookUrlsState>({
-    proxy: {
+  const [webhookState, setWebhookState] = useState<WebhookState>({
+    proxyUrls: {
       'file-analysis': '',
       'report': '',
       'note': ''
     },
-    direct: {
-      'file-analysis': '',
-      'report': '',
-      'note': ''
-    }
+    configData: null,
+    loading: true,
+    error: null
   });
   
-  const [loading, setLoading] = useState<boolean>(true);
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [envVarValue, setEnvVarValue] = useState<string>('Not set');
 
   useEffect(() => {
     const init = async () => {
-      setLoading(true);
+      setWebhookState(prev => ({ ...prev, loading: true, error: null }));
       try {
         // Force getting current environment (no caching)
         const env = getCurrentEnvironment();
@@ -89,41 +75,39 @@ const ConfigurationTab = () => {
         const envVar = import.meta.env.VITE_APP_ENVIRONMENT;
         setEnvVarValue(envVar || 'Not set');
         
-        // Get all webhook configurations
-        const config = getFullWebhookConfig();
-        const directConfig = getFullDirectWebhookConfig();
-        setWebhookConfig({
-          proxy: config,
-          direct: directConfig
-        });
-        
-        // Get current webhook URLs
-        const urls = getAllWebhookUrls(env);
-        const directUrls = getAllDirectWebhookUrls(env);
-        setCurrentWebhookUrls({
-          proxy: urls,
-          direct: directUrls
-        });
+        // Get current webhook URLs (proxy URLs generated on client side)
+        const proxyUrls = getAllWebhookUrls(env);
         
         // Try to get webhook configuration from the edge function
         try {
-          const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/config', {
-            body: { env }
-          });
-          
-          if (!error && data) {
-            console.log('Received edge function webhook config:', data);
-            // You could potentially use this to update the configuration if needed
+          const configData = await fetchWebhookConfig(env);
+          if (configData) {
+            console.log('Received edge function webhook config:', configData);
+            setWebhookState({
+              proxyUrls,
+              configData,
+              loading: false,
+              error: null
+            });
           }
         } catch (edgeFnError) {
           console.warn('Failed to get webhook config from edge function:', edgeFnError);
+          setWebhookState({
+            proxyUrls,
+            configData: null,
+            loading: false,
+            error: `Failed to load edge function config: ${edgeFnError instanceof Error ? edgeFnError.message : String(edgeFnError)}`
+          });
         }
         
       } catch (error) {
         console.error('Error initializing config tab:', error);
         toast.error('Failed to load configuration data');
-      } finally {
-        setLoading(false);
+        setWebhookState(prev => ({
+          ...prev,
+          loading: false,
+          error: `Error: ${error instanceof Error ? error.message : String(error)}`
+        }));
       }
     };
 
@@ -160,7 +144,7 @@ const ConfigurationTab = () => {
     window.location.reload();
   };
 
-  if (loading) {
+  if (webhookState.loading) {
     return (
       <div className="flex items-center justify-center p-6">
         <div className="flex items-center space-x-2">
@@ -259,6 +243,12 @@ const ConfigurationTab = () => {
                     </Button>
                   </td>
                 </tr>
+                {webhookState.configData && (
+                  <tr>
+                    <td className="px-4 py-3 text-sm">Edge Function Version</td>
+                    <td className="px-4 py-3 text-sm">{webhookState.configData.version || 'Unknown'}</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -273,11 +263,20 @@ const ConfigurationTab = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {webhookState.error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-start">
+              <AlertTriangle className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-800">Error fetching webhook configuration</p>
+                <p className="text-xs text-red-700 mt-1">{webhookState.error}</p>
+              </div>
+            </div>
+          )}
+
           <Tabs defaultValue="current">
             <TabsList className="mb-4">
               <TabsTrigger value="current">Current Environment</TabsTrigger>
               <TabsTrigger value="all">All Environments</TabsTrigger>
-              <TabsTrigger value="direct">Direct URLs</TabsTrigger>
             </TabsList>
             
             <TabsContent value="current">
@@ -302,7 +301,7 @@ const ConfigurationTab = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {currentWebhookUrls.proxy && Object.entries(currentWebhookUrls.proxy).map(([type, url]) => (
+                    {Object.entries(webhookState.proxyUrls).map(([type, url]) => (
                       <tr key={type}>
                         <td className="px-4 py-3 text-sm">{formatWebhookName(type)}</td>
                         <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
@@ -340,106 +339,60 @@ const ConfigurationTab = () => {
             </TabsContent>
             
             <TabsContent value="all">
-              <div className="border rounded-md overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-sm font-medium">Webhook Type</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium">Environment</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium">URL</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {webhookConfig.proxy && Object.entries(webhookConfig.proxy).map(([type, envUrls]) => 
-                      Object.entries(envUrls).map(([env, url]) => (
-                        <tr key={`${type}-${env}`}>
-                          <td className="px-4 py-3 text-sm">
-                            {formatWebhookName(type)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge 
-                              variant={env === environment ? "default" : "outline"}
-                              className={env === environment ? getEnvBadgeColor(env) : ""}
-                            >
-                              {env}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px] relative group">
-                            <div className="flex items-center">
-                              <span className="mr-2 truncate">{typeof url === 'string' ? url : 'N/A'}</span>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="size-5 opacity-0 group-hover:opacity-100"
-                                onClick={() => typeof url === 'string' && copyToClipboard(url)}
+              {webhookState.configData ? (
+                <div className="border rounded-md overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-sm font-medium">Webhook Type</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium">Environment</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium">URL</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {webhookState.configData.webhooks && 
+                       Object.entries(webhookState.configData.webhooks).flatMap(([type, envUrls]) => 
+                        Object.entries(envUrls).map(([env, url]) => (
+                          <tr key={`${type}-${env}`}>
+                            <td className="px-4 py-3 text-sm">
+                              {formatWebhookName(type)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge 
+                                variant={env === environment ? "default" : "outline"}
+                                className={env === environment ? getEnvBadgeColor(env) : ""}
                               >
-                                <Copy className="size-3" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="direct">
-              <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                <div className="flex items-center mb-2">
-                  <Server className="h-4 w-4 text-amber-500 mr-2" />
-                  <p className="text-sm font-medium text-amber-800">Direct Webhook URLs</p>
+                                {env}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px] relative group">
+                              <div className="flex items-center">
+                                <span className="mr-2 truncate">{typeof url === 'string' ? url : 'N/A'}</span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="size-5 opacity-0 group-hover:opacity-100"
+                                  onClick={() => typeof url === 'string' && copyToClipboard(url)}
+                                >
+                                  <Copy className="size-3" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-                <p className="text-xs text-amber-700">
-                  These are the direct URLs to the n8n webhook endpoints without going through the proxy.
-                  These URLs are generally only used for reference or advanced debugging.
-                </p>
-              </div>
-            
-              <div className="border rounded-md overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-sm font-medium">Webhook Type</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium">Environment</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium">Direct URL</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {webhookConfig.direct && Object.entries(webhookConfig.direct).map(([type, envUrls]) => 
-                      Object.entries(envUrls).map(([env, url]) => (
-                        <tr key={`direct-${type}-${env}`}>
-                          <td className="px-4 py-3 text-sm">
-                            {formatWebhookName(type)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge 
-                              variant={env === environment ? "default" : "outline"}
-                              className={env === environment ? getEnvBadgeColor(env) : ""}
-                            >
-                              {env}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px] relative group">
-                            <div className="flex items-center">
-                              <span className="mr-2 truncate">{typeof url === 'string' ? url : 'N/A'}</span>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="size-5 opacity-0 group-hover:opacity-100"
-                                onClick={() => typeof url === 'string' && copyToClipboard(url)}
-                              >
-                                <Copy className="size-3" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              ) : (
+                <div className="p-6 flex justify-center items-center border rounded-md">
+                  <p className="text-sm text-muted-foreground">
+                    {webhookState.error ? 
+                      "Failed to load webhook configuration from edge function." : 
+                      "No configuration data available. Try refreshing."}
+                  </p>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
