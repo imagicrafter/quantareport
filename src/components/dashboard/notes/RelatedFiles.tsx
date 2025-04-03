@@ -7,14 +7,13 @@ import FilePicker from './FilePicker';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
 
 interface RelatedFilesProps {
-  files: NoteFileRelationshipWithType[];
-  noteId?: string;
-  projectId?: string;
-  onRelationshipsChanged?: (newRelationship?: NoteFileRelationshipWithType) => void;
-  compact?: boolean;
+  noteId: string;
+  projectId: string;
+  relationships: NoteFileRelationshipWithType[];
+  onRelationshipsChanged: (newRelationship?: NoteFileRelationshipWithType) => void;
 }
 
-const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged, compact = false }: RelatedFilesProps) => {
+const RelatedFiles = ({ noteId, projectId, relationships, onRelationshipsChanged }: RelatedFilesProps) => {
   const [removingFileId, setRemovingFileId] = useState<string | null>(null);
 
   const handleRemoveFile = async (relationshipId: string) => {
@@ -26,12 +25,12 @@ const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged, compac
       
       if (isTemporaryRelationship) {
         // For temporary relationships, just notify the parent to update the list
-        onRelationshipsChanged?.();
+        onRelationshipsChanged();
       } else {
         // For permanent relationships, remove from database
         const success = await removeFileFromNote(relationshipId);
         if (success) {
-          onRelationshipsChanged?.();
+          onRelationshipsChanged();
         }
       }
     } finally {
@@ -52,54 +51,25 @@ const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged, compac
     }
   };
 
-  // Render compact version (only file count)
-  if (compact) {
-    return (
-      <div className="space-y-2">
-        {noteId && projectId && onRelationshipsChanged && (
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">Related Files</h3>
-            <FilePicker 
-              projectId={projectId} 
-              noteId={noteId}
-              onFileAdded={onRelationshipsChanged}
-              relatedFiles={files}
-            />
-          </div>
-        )}
-        
-        <div className="flex items-center">
-          <FileText size={18} className="mr-2 text-muted-foreground" />
-          <span className="text-sm">
-            {files.length === 0 ? 'No files attached' : `${files.length} ${files.length === 1 ? 'file' : 'files'} attached`}
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  // Render full version (list of files)
   return (
     <div className="space-y-2">
-      {noteId && projectId && onRelationshipsChanged && (
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">Related Files</h3>
-          <FilePicker 
-            projectId={projectId} 
-            noteId={noteId}
-            onFileAdded={onRelationshipsChanged}
-            relatedFiles={files}
-          />
-        </div>
-      )}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Related Files</h3>
+        <FilePicker 
+          projectId={projectId} 
+          noteId={noteId}
+          onFileAdded={onRelationshipsChanged}
+          relatedFiles={relationships}
+        />
+      </div>
       
-      {files.length === 0 ? (
+      {relationships.length === 0 ? (
         <div className="text-muted-foreground text-sm italic">
           No files associated with this note
         </div>
       ) : (
         <div className="space-y-2">
-          {files.map((rel) => (
+          {relationships.map((rel) => (
             <div 
               key={rel.id} 
               className="bg-secondary/30 rounded-md p-3 flex items-center justify-between"
@@ -117,19 +87,17 @@ const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged, compac
                   </div>
                 </div>
               </div>
-              {onRelationshipsChanged && (
-                <button
-                  className="text-muted-foreground hover:text-destructive p-1 rounded-full"
-                  onClick={() => handleRemoveFile(rel.id)}
-                  disabled={removingFileId === rel.id}
-                >
-                  {removingFileId === rel.id ? (
-                    <span className="h-4 w-4 block rounded-full border-2 border-t-transparent border-muted-foreground animate-spin" />
-                  ) : (
-                    <X size={16} />
-                  )}
-                </button>
-              )}
+              <button
+                className="text-muted-foreground hover:text-destructive p-1 rounded-full"
+                onClick={() => handleRemoveFile(rel.id)}
+                disabled={removingFileId === rel.id}
+              >
+                {removingFileId === rel.id ? (
+                  <span className="h-4 w-4 block rounded-full border-2 border-t-transparent border-muted-foreground animate-spin" />
+                ) : (
+                  <X size={16} />
+                )}
+              </button>
             </div>
           ))}
         </div>

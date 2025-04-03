@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'link';
-  size?: 'sm' | 'md' | 'lg' | 'icon'; // Added 'icon' as a valid size
+  size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   icon?: ReactNode;
   iconPosition?: 'left' | 'right';
@@ -26,8 +26,7 @@ const Button: FC<ButtonProps> = ({
   const sizeClasses = {
     sm: "px-3 py-1.5 text-sm",
     md: "px-4 py-2 text-sm",
-    lg: "px-5 py-2.5 text-base",
-    icon: "p-2" // Added icon size
+    lg: "px-5 py-2.5 text-base"
   };
   
   const variantClasses = {

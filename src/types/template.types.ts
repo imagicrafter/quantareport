@@ -6,7 +6,6 @@ export interface Template {
   image_module: any | null;
   report_module: any | null;
   layout_module: any | null;
-  html_module: any | null;
   is_public: boolean | null;
   domain_id: string | null;
   user_id: string | null;

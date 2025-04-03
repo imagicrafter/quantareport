@@ -26,10 +26,10 @@ import {
 } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import Button from '../../ui-elements/Button';
-import { FileType } from './types/FileTypes';
+import { FileType } from './FileItem';
 import AudioRecorder from './AudioRecorder';
 
-export interface AddFileDialogProps {
+interface AddFileDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onAddFile: (values: z.infer<typeof formSchema>) => Promise<void>;

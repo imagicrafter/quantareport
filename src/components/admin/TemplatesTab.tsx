@@ -184,7 +184,6 @@ const TemplatesTab = () => {
       image_module: null,
       report_module: null,
       layout_module: null,
-      html_module: null,
       is_public: false,
       domain_id: null,
       user_id: null,
@@ -213,7 +212,6 @@ const TemplatesTab = () => {
     if (template.image_module) types.push("Image");
     if (template.report_module) types.push("Report");
     if (template.layout_module) types.push("Layout");
-    if (template.html_module) types.push("HTML");
     return types.length > 0 ? types.join(", ") : "—";
   };
 

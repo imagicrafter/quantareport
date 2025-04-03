@@ -61,7 +61,6 @@ const TemplateEditForm = ({
   const [isPublic, setIsPublic] = useState(currentTemplate?.is_public || false);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteName, setNoteName] = useState("");
-  const [htmlModule, setHtmlModule] = useState(currentTemplate?.html_module || "");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -71,7 +70,6 @@ const TemplateEditForm = ({
       image_module: formatJsonForDisplay(currentTemplate?.image_module) || "",
       report_module: formatJsonForDisplay(currentTemplate?.report_module) || "",
       layout_module: formatJsonForDisplay(currentTemplate?.layout_module) || "",
-      html_module: currentTemplate?.html_module || "",
       is_public: currentTemplate?.is_public || false,
       domain_id: currentTemplate?.domain_id || null,
     },
@@ -148,7 +146,6 @@ const TemplateEditForm = ({
         image_module: values.image_module ? JSON.parse(values.image_module) : null,
         report_module: values.report_module ? JSON.parse(values.report_module) : null,
         layout_module: values.layout_module ? JSON.parse(values.layout_module) : null,
-        html_module: values.html_module || null,
         is_public: values.is_public,
         domain_id: values.domain_id || null,
         ...(currentTemplate?.parent_template_id && { parent_template_id: currentTemplate.parent_template_id }),
@@ -495,28 +492,6 @@ const TemplateEditForm = ({
                   </AlertDescription>
                 </Alert>
               )}
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="html_module"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>HTML Module Content</FormLabel>
-              <FormControl>
-                <Textarea
-                  className="font-mono text-sm min-h-[150px]"
-                  placeholder="Enter HTML content here"
-                  {...field}
-                  value={field.value || ""}
-                />
-              </FormControl>
-              <FormDescription>
-                Enter HTML content for the template
-              </FormDescription>
-              <FormMessage />
             </FormItem>
           )}
         />

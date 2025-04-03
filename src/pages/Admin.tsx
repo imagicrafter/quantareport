@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SignupCodesTab from '@/components/admin/SignupCodesTab';
 import TemplatesTab from '@/components/admin/TemplatesTab';
 import AdminProjectsTab from '@/components/admin/AdminProjectsTab';
-import ConfigurationTab from '@/components/admin/ConfigurationTab';
 
 const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -75,7 +74,6 @@ const Admin = () => {
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="signup-codes">Signup Codes</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="configuration">Configuration</TabsTrigger>
           </TabsList>
           
           <TabsContent value="projects" className="bg-card border rounded-lg p-6">
@@ -88,10 +86,6 @@ const Admin = () => {
           
           <TabsContent value="templates" className="bg-card border rounded-lg p-6">
             <TemplatesTab />
-          </TabsContent>
-
-          <TabsContent value="configuration" className="bg-card border rounded-lg p-6">
-            <ConfigurationTab />
           </TabsContent>
         </Tabs>
       </div>

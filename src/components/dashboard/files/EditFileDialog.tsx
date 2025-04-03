@@ -21,10 +21,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Button from '../../ui-elements/Button';
-import { ProjectFile } from './FileItem';
+import { ProjectFile, FileType } from './FileItem';
 import AudioRecorder from './AudioRecorder';
 
-export interface EditFileDialogProps {
+interface EditFileDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onEditFile: (values: z.infer<typeof formSchema>) => Promise<void>;
@@ -45,16 +45,16 @@ const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: selectedFile?.title || selectedFile?.name || '',
+      title: selectedFile?.name || '',
       description: selectedFile?.description || '',
       type: (selectedFile?.type as any) || 'image',
     },
   });
 
   // Update form values when selected file changes
-  if (selectedFile && form.getValues('title') !== (selectedFile.title || selectedFile.name)) {
+  if (selectedFile && form.getValues('title') !== selectedFile.name) {
     form.reset({
-      title: selectedFile.title || selectedFile.name, // Fallback to name if title is not available
+      title: selectedFile.name,
       description: selectedFile.description || '',
       type: (selectedFile.type as any),
     });
