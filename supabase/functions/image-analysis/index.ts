@@ -11,9 +11,9 @@ const corsHeaders = {
 
 // Get n8n webhook URLs from environment variables with fallbacks
 const DEV_IMAGE_ANALYSIS_WEBHOOK_URL = Deno.env.get("DEV_IMAGE_ANALYSIS_WEBHOOK_URL") || 
-  "https://n8n-01.imagicrafterai.com/webhook-test/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0";
+  "https://n8n-01.imagicrafterai.com/webhook-test/d42cb7ac-c4e1-4f0e-a084-0f6f85807b65";
 const PROD_IMAGE_ANALYSIS_WEBHOOK_URL = Deno.env.get("PROD_IMAGE_ANALYSIS_WEBHOOK_URL") || 
-  "https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0";
+  "https://n8n-01.imagicrafterai.com/webhook/d42cb7ac-c4e1-4f0e-a084-0f6f85807b65";
 
 serve(async (req) => {
   // Handle CORS preflight requests
