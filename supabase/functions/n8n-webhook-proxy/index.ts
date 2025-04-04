@@ -31,11 +31,11 @@ const webhookConfigs = {
   },
   "report": {
     development: Deno.env.get("DEV_REPORT_WEBHOOK_URL") || 
-      "https://n8n-01.imagicrafterai.com/webhook-test/fee2fa15-4df5-49e2-a274-c88b2540c20a",
+      "https://n8n-01.imagicrafterai.com/webhook-test/785af48f-c1b1-484e-8bea-21920dee1146",
     staging: Deno.env.get("STAGING_REPORT_WEBHOOK_URL") || 
-      "https://n8n-01.imagicrafterai.com/webhook-staging/fee2fa15-4df5-49e2-a274-c88b2540c20a",
+      "https://n8n-01.imagicrafterai.com/webhook-staging/785af48f-c1b1-484e-8bea-21920dee1146",
     production: Deno.env.get("PROD_REPORT_WEBHOOK_URL") || 
-      "https://n8n-01.imagicrafterai.com/webhook/fee2fa15-4df5-49e2-a274-c88b2540c20a",
+      "https://n8n-01.imagicrafterai.com/webhook/785af48f-c1b1-484e-8bea-21920dee1146",
   },
 };
 
@@ -160,19 +160,16 @@ async function handleProxyRequest(req: Request, url: URL) {
   try {
     // Try to get parameters from request body
     const body = await req.json();
-    payload = body.payload || body; // Accept both {payload: {...}} and direct payload
+    payload = body.payload;
     
     // If not in query params, try to get from body
     if (!type) type = body.type;
     if (!env) env = body.env;
-    
-    console.log("Received payload:", JSON.stringify(payload));
   } catch (e) {
-    console.error("Error parsing request body:", e);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: "Invalid request body - could not parse payload" 
+        error: "Invalid request body - missing payload" 
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
