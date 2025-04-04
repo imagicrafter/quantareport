@@ -72,8 +72,38 @@ const ConfigurationTab = () => {
         // Get current webhook URLs (proxy URLs generated on client side)
         const proxyUrls = getAllWebhookUrls(env);
         
+        // Create fallback configuration with client-side generated URLs
+        const fallbackConfig: WebhookConfigData = {
+          environment: env,
+          webhooks: {
+            'note': {
+              'development': proxyUrls.note,
+              'staging': proxyUrls.note,
+              'production': proxyUrls.note
+            },
+            'file-analysis': {
+              'development': proxyUrls['file-analysis'],
+              'staging': proxyUrls['file-analysis'],
+              'production': proxyUrls['file-analysis']
+            },
+            'report': {
+              'development': proxyUrls.report,
+              'staging': proxyUrls.report,
+              'production': proxyUrls.report
+            }
+          },
+          currentWebhooks: {
+            'note': proxyUrls.note,
+            'file-analysis': proxyUrls['file-analysis'],
+            'report': proxyUrls.report
+          },
+          version: 'client-generated',
+          timestamp: new Date().toISOString()
+        };
+        
         // Try to get webhook configuration from the edge function
         try {
+          console.log('Attempting to fetch webhook config from edge function...');
           const configData = await fetchWebhookConfig(env);
           if (configData) {
             console.log('Received edge function webhook config:', configData);
@@ -83,12 +113,20 @@ const ConfigurationTab = () => {
               loading: false,
               error: null
             });
+          } else {
+            console.warn('Edge function returned empty config, using fallback');
+            setWebhookState({
+              proxyUrls,
+              configData: fallbackConfig,
+              loading: false,
+              error: 'Edge function returned empty configuration. Using client-generated fallback.'
+            });
           }
         } catch (edgeFnError) {
           console.warn('Failed to get webhook config from edge function:', edgeFnError);
           setWebhookState({
             proxyUrls,
-            configData: null,
+            configData: fallbackConfig,
             loading: false,
             error: `Failed to load edge function config: ${edgeFnError instanceof Error ? edgeFnError.message : String(edgeFnError)}`
           });
@@ -171,7 +209,7 @@ const ConfigurationTab = () => {
             </div>
           )}
           
-          <p className="text-sm text-muted-foreground mb-4">
+          <p className="text-sm text-muted-foreground mb-2">
             The application is currently running in <strong>{environment}</strong> mode.
           </p>
           <p className="text-sm text-muted-foreground mb-4">
@@ -210,10 +248,10 @@ const ConfigurationTab = () => {
                   <td className="px-4 py-3 text-sm">Base URL</td>
                   <td className="px-4 py-3 text-sm">{window.location.origin}</td>
                 </tr>
-                {webhookState.configData && (
+                {webhookState.configData && webhookState.configData.version && (
                   <tr>
                     <td className="px-4 py-3 text-sm">Edge Function Version</td>
-                    <td className="px-4 py-3 text-sm">{webhookState.configData.version || 'Unknown'}</td>
+                    <td className="px-4 py-3 text-sm">{webhookState.configData.version}</td>
                   </tr>
                 )}
               </tbody>
@@ -231,11 +269,11 @@ const ConfigurationTab = () => {
         </CardHeader>
         <CardContent>
           {webhookState.error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-start">
-              <AlertTriangle className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md flex items-start">
+              <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-red-800">Error fetching webhook configuration</p>
-                <p className="text-xs text-red-700 mt-1">{webhookState.error}</p>
+                <p className="text-sm font-medium text-yellow-800">Warning: Using fallback configuration</p>
+                <p className="text-xs text-yellow-700 mt-1">{webhookState.error}</p>
               </div>
             </div>
           )}

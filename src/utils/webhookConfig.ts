@@ -40,9 +40,7 @@ export const getCurrentEnvironment = (): Environment => {
 
 // Get the Supabase project URL from config
 const getSupabaseProjectUrl = () => {
-  // This can be overridden by an environment variable if needed
-  return import.meta.env.VITE_SUPABASE_URL || 
-    "https://vtaufnxworztolfdwlll.supabase.co";
+  return "https://vtaufnxworztolfdwlll.supabase.co";
 };
 
 // Base URL for the proxy function
@@ -71,16 +69,25 @@ export const isProxyUrl = (url: string): boolean => {
   return url.includes(getProxyBaseUrl());
 };
 
-// Fetch webhook configuration from the edge function
+// Fetch webhook configuration from the edge function with timeout
 export const fetchWebhookConfig = async (env?: Environment): Promise<any> => {
   const environment = env || getCurrentEnvironment();
+  
+  // Set a timeout for the fetch request (5 seconds)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  
   try {
+    console.log(`Fetching webhook config for ${environment} environment`);
     const response = await fetch(`${getProxyBaseUrl()}/config?env=${environment}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
@@ -88,6 +95,7 @@ export const fetchWebhookConfig = async (env?: Environment): Promise<any> => {
     
     return await response.json();
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error('Error fetching webhook config:', error);
     throw error;
   }
