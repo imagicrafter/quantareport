@@ -7,8 +7,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import Button from '../../ui-elements/Button';
+import { ProjectFile } from './FileItem';
 
-interface DeleteFileDialogProps {
+export interface DeleteFileDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onDelete: () => Promise<void>;

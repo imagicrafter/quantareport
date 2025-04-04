@@ -1,129 +1,87 @@
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import ReportGenerationProgress from '@/components/reports/ReportGenerationProgress';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
 
-interface ImageAnalysisProgressModalProps {
+export interface ImageAnalysisProgressModalProps {
   isOpen: boolean;
   onClose: () => void;
   jobId: string | null;
   projectId: string;
-  fileCount: number;
+  fileCount?: number;
 }
 
-const ImageAnalysisProgressModal = ({
-  isOpen,
-  onClose,
-  jobId,
+const ImageAnalysisProgressModal = ({ 
+  isOpen, 
+  onClose, 
+  jobId, 
   projectId,
-  fileCount
+  fileCount = 0
 }: ImageAnalysisProgressModalProps) => {
-  const [status, setStatus] = useState<'idle' | 'generating' | 'completed' | 'error'>('idle');
   const [progress, setProgress] = useState(0);
-  const [message, setMessage] = useState('Starting image analysis...');
-  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
+  const [status, setStatus] = useState('');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    if (isOpen && jobId) {
-      setStatus('generating');
-      startPolling();
-    } else {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        setPollingInterval(null);
-      }
-    }
+    if (!isOpen || !jobId) return;
 
+    let subscription: any = null;
+
+    const subscribe = async () => {
+      subscription = supabase
+        .channel(`analysis_job_${jobId}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'report_progress',
+          filter: `job=eq.${jobId}`
+        }, payload => {
+          const { progress: newProgress, status: newStatus, message: newMessage } = payload.new;
+          setProgress(newProgress || 0);
+          setStatus(newStatus);
+          setMessage(newMessage);
+          
+          if (newStatus === 'completed') {
+            setTimeout(() => {
+              onClose();
+            }, 2000);
+          }
+        })
+        .subscribe();
+    };
+
+    subscribe();
+    
     return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
+      if (subscription) {
+        supabase.removeChannel(subscription);
       }
     };
-  }, [isOpen, jobId]);
-
-  const startPolling = () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-    }
-
-    const checkInterval = window.setInterval(async () => {
-      if (!jobId) return;
-      await checkProgress(jobId);
-    }, 1500);
-
-    setPollingInterval(checkInterval);
-  };
-
-  const checkProgress = async (job: string) => {
-    try {
-      // Check for job progress
-      const { data, error } = await supabase
-        .from('report_progress')
-        .select('*')
-        .eq('job', job)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (error) {
-        console.error('Error checking job progress:', error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        const latestProgress = data[0];
-        setMessage(latestProgress.message || 'Processing images...');
-        setProgress(latestProgress.progress || 0);
-        setStatus(latestProgress.status as any);
-
-        if (latestProgress.status === 'completed' || latestProgress.status === 'error') {
-          // Check if we still have unprocessed files
-          const { data: filesData, error: filesError } = await supabase
-            .from('files_not_processed')
-            .select('id')
-            .eq('project_id', projectId)
-            .limit(1);
-
-          if (!filesError) {
-            if (!filesData || filesData.length === 0) {
-              // No more unprocessed files, close the modal after a delay
-              setTimeout(() => {
-                onClose();
-                toast.success('All images analyzed successfully');
-              }, 1500);
-            } else {
-              // Some files failed to process
-              setMessage('Some images could not be processed. You can try analyzing again.');
-            }
-          }
-
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
-            setPollingInterval(null);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error in progress checking:', error);
-    }
-  };
+  }, [isOpen, jobId, onClose]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Analyzing Images</DialogTitle>
         </DialogHeader>
-        <div className="py-6">
-          <ReportGenerationProgress
-            progress={progress}
-            message={message}
-            status={status}
-          />
-          <p className="text-sm text-muted-foreground mt-4">
-            {fileCount} {fileCount === 1 ? 'image' : 'images'} queued for analysis
-          </p>
+        <div className="py-4">
+          <div className="space-y-4">
+            <Progress value={progress} className="h-2" />
+            <div className="flex items-center justify-between text-sm">
+              <span>{status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Processing'}</span>
+              <span>{progress}%</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {message || 'Please wait while we analyze your images. This may take 3-5 minutes.'}
+            </p>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

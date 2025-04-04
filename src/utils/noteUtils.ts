@@ -1,9 +1,7 @@
+
 import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
-
-// Get n8n webhook URLs from environment variables with fallbacks
-export const NOTE_DEV_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_DEV_WEBHOOK || 'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=dev';
-export const NOTE_PROD_WEBHOOK_URL = import.meta.env.VITE_N8N_NOTE_PROD_WEBHOOK || 'https://vtaufnxworztolfdwlll.supabase.co/functions/v1/n8n-proxy?env=prod';
+import { getWebhookUrl } from './webhookConfig';
 
 export interface NoteFileRelationshipWithType extends NoteFileRelationship {
   file_type: string;
@@ -95,15 +93,17 @@ export const submitImageAnalysis = async (
       timestamp: new Date().toISOString()
     };
     
-    const { error } = await supabase.functions.invoke('n8n-proxy', {
+    // Use the consolidated n8n-webhook-proxy function directly
+    const { error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
       body: {
-        env: isTestMode ? 'dev' : 'prod',
-        payload
+        env: isTestMode ? 'development' : 'production',
+        payload,
+        type: 'note'
       }
     });
     
     if (error) {
-      console.error('Error invoking n8n-proxy function:', error);
+      console.error('Error invoking n8n-webhook-proxy function:', error);
       return false;
     }
     

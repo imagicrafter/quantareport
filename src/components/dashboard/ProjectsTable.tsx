@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { Copy } from 'lucide-react';
 import { 
   Table, 
   TableBody, 
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/table';
 import Button from '../ui-elements/Button';
 import ProjectViewDrawer from './ProjectViewDrawer';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Template {
   id: string;
@@ -130,6 +132,14 @@ const ProjectsTable = ({ onRefresh }: ProjectsTableProps) => {
     fetchProjects();
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: 'Success',
+      description: 'Project ID copied to clipboard',
+    });
+  };
+
   return (
     <>
       <div className="glass-card overflow-hidden">
@@ -137,7 +147,7 @@ const ProjectsTable = ({ onRefresh }: ProjectsTableProps) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[30%]">Name</TableHead>
+                <TableHead className="w-[25%]">Name</TableHead>
                 <TableHead>Date Created</TableHead>
                 <TableHead className="w-[20%]">Template</TableHead>
                 <TableHead>Images</TableHead>
@@ -149,13 +159,13 @@ const ProjectsTable = ({ onRefresh }: ProjectsTableProps) => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={8} className="text-center py-8">
                     Loading projects...
                   </TableCell>
                 </TableRow>
               ) : projects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={8} className="text-center py-8">
                     No projects found. Create your first project to get started.
                   </TableCell>
                 </TableRow>
