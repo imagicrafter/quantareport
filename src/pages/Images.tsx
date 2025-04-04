@@ -1,151 +1,115 @@
 
 import { useState, useEffect } from 'react';
-import { useToast } from '@/components/ui/use-toast';
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { supabase } from '@/integrations/supabase/client';
-import { ProjectFile } from '@/components/dashboard/files/FileItem';
-import { Folder, FileImage, X } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import FilesSection from '@/components/dashboard/FilesSection';
-import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
 import StatCards from '@/components/dashboard/StatCards';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-// Define a type that matches what the StatCards component expects
-interface ProjectForStatCards {
+interface ProjectWithImageCount {
   id: string;
   name: string;
   description: string | null;
-  created_at: string; // Adding the missing property
-  status: string;     // Adding the missing property
-  imageCount?: number; // Optional as it's our custom property
-  lastUpdated?: Date | null; // Optional as it's our custom property
+  image_count: number;
+  last_updated: string;
 }
 
 const Images = () => {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const [projects, setProjects] = useState<ProjectForStatCards[]>([]);
+  const [projects, setProjects] = useState<ProjectWithImageCount[]>([]);
+  const [allProjects, setAllProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedProject, setSelectedProject] = useState<{id: string; name: string} | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectName, setSelectedProjectName] = useState<string>('');
   const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
-  const [stats, setStats] = useState({
-    projects: 0,
-    images: 0,
-    notes: 0,
-    reports: 0
-  });
+  const { toast } = useToast();
 
-  // Fetch stats for the cards at the top
-  const fetchStats = async () => {
-    const { data: session } = await supabase.auth.getSession();
-    if (!session.session) return;
+  useEffect(() => {
+    fetchProjectsWithImages();
+  }, []);
 
-    try {
-      // Get project count
-      const { count: projectCount, error: projectError } = await supabase
-        .from('projects')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', session.session.user.id);
-
-      if (projectError) throw projectError;
-
-      // Get image count
-      const { count: imageCount, error: imageError } = await supabase
-        .from('files')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', session.session.user.id)
-        .eq('type', 'image');
-
-      if (imageError) throw imageError;
-
-      // Get note count
-      const { count: noteCount, error: noteError } = await supabase
-        .from('notes')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', session.session.user.id);
-
-      if (noteError) throw noteError;
-
-      // Get report count
-      const { count: reportCount, error: reportError } = await supabase
-        .from('reports')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', session.session.user.id);
-
-      if (reportError) throw reportError;
-
-      setStats({
-        projects: projectCount || 0,
-        images: imageCount || 0,
-        notes: noteCount || 0,
-        reports: reportCount || 0
-      });
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  };
-
-  // Fetch projects with image counts
-  const fetchProjects = async () => {
+  const fetchProjectsWithImages = async () => {
     try {
       setLoading(true);
       const { data: session } = await supabase.auth.getSession();
-      if (!session.session) return;
+      
+      if (!session.session) {
+        window.location.href = '/signin';
+        return;
+      }
 
-      const { data: projects, error: projectError } = await supabase
+      const { data: allProjectsData, error: allProjectsError } = await supabase
         .from('projects')
-        .select('id, name, description, created_at, status')
-        .eq('user_id', session.session.user.id)
-        .order('created_at', { ascending: false });
+        .select('*')
+        .eq('user_id', session.session.user.id);
 
-      if (projectError) throw projectError;
+      if (!allProjectsError) {
+        setAllProjects(allProjectsData || []);
+      }
 
-      // Get image counts for each project
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          id,
+          name,
+          description,
+          created_at
+        `)
+        .eq('user_id', session.session.user.id);
+
+      if (error) throw error;
+
       const projectsWithImageCounts = await Promise.all(
-        projects.map(async (project) => {
-          const { count: imageCount, error } = await supabase
+        data.map(async (project) => {
+          const { count, error: countError } = await supabase
             .from('files')
             .select('id', { count: 'exact', head: true })
             .eq('project_id', project.id)
+            .eq('user_id', session.session.user.id)
             .eq('type', 'image');
 
-          if (error) {
-            console.error('Error getting image count:', error);
+          if (countError) {
+            console.error('Error fetching image count:', countError);
             return {
               ...project,
-              imageCount: 0,
-              lastUpdated: new Date(project.created_at)
+              image_count: 0,
+              last_updated: project.created_at,
             };
           }
 
-          // Get the last updated file for this project
-          const { data: latestFile, error: latestError } = await supabase
+          const { data: lastImageData, error: lastImageError } = await supabase
             .from('files')
             .select('created_at')
             .eq('project_id', project.id)
+            .eq('user_id', session.session.user.id)
+            .eq('type', 'image')
             .order('created_at', { ascending: false })
             .limit(1);
 
-          const lastUpdated = latestFile && latestFile.length > 0 
-            ? new Date(latestFile[0].created_at) 
-            : new Date(project.created_at);
+          const lastUpdated = lastImageData && lastImageData.length > 0 
+            ? lastImageData[0].created_at 
+            : project.created_at;
 
           return {
             ...project,
-            imageCount: imageCount || 0,
-            lastUpdated
+            image_count: count || 0,
+            last_updated: lastUpdated,
           };
         })
       );
 
-      setProjects(projectsWithImageCounts);
+      const filteredProjects = projectsWithImageCounts
+        .filter(project => project.image_count > 0)
+        .sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
+
+      setProjects(filteredProjects);
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      console.error('Error fetching projects with images:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load projects. Please try again.',
+        description: 'Failed to load image data. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -153,137 +117,90 @@ const Images = () => {
     }
   };
 
-  const handleProjectClick = (project: ProjectForStatCards) => {
-    setSelectedProject({
-      id: project.id,
-      name: project.name
-    });
+  const handleProjectClick = (project: ProjectWithImageCount) => {
+    setSelectedProjectId(project.id);
+    setSelectedProjectName(project.name);
     setIsFilesModalOpen(true);
   };
 
-  const handleCloseFilesModal = () => {
+  const handleCloseModal = () => {
     setIsFilesModalOpen(false);
-    setSelectedProject(null);
+    fetchProjectsWithImages();
   };
-
-  const handleCardClick = (path: string) => {
-    navigate(`/dashboard/${path}`);
-  };
-
-  useEffect(() => {
-    fetchStats();
-    fetchProjects();
-  }, []);
 
   return (
-    <>
+    <div className="min-h-screen">
       <DashboardHeader title="Images" toggleSidebar={() => {}} />
       
-      <div className="container mx-auto p-4 max-w-7xl">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div 
-            className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border cursor-pointer hover:border-primary transition-all"
-            onClick={() => handleCardClick('projects')}
-          >
-            <h3 className="font-medium text-muted-foreground mb-1">Projects</h3>
-            <p className="text-3xl font-bold">{stats.projects}</p>
-          </div>
-          <div 
-            className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border cursor-pointer hover:border-primary transition-all"
-            onClick={() => handleCardClick('notes')}
-          >
-            <h3 className="font-medium text-muted-foreground mb-1">Notes</h3>
-            <p className="text-3xl font-bold">{stats.notes}</p>
-          </div>
-          <div 
-            className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border cursor-pointer hover:border-primary transition-all"
-            onClick={() => handleCardClick('images')}
-          >
-            <h3 className="font-medium text-muted-foreground mb-1">Images</h3>
-            <p className="text-3xl font-bold">{stats.images}</p>
-          </div>
-          <div 
-            className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border cursor-pointer hover:border-primary transition-all"
-            onClick={() => handleCardClick('reports')}
-          >
-            <h3 className="font-medium text-muted-foreground mb-1">Reports</h3>
-            <p className="text-3xl font-bold">{stats.reports}</p>
-          </div>
+      <div className="container mx-auto py-8 space-y-8">
+        <StatCards projects={allProjects} />
+        
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Images</h1>
         </div>
         
-        <h2 className="text-2xl font-semibold mb-4">Images</h2>
-
-        {/* Recent Files Section */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex-1"></div>
-          <h3 className="text-xl font-medium">Recent Files</h3>
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-40 bg-gray-100 animate-pulse rounded-lg"></div>
-            ))}
-          </div>
-        ) : projects.length === 0 ? (
-          <div className="text-center p-8 border rounded-lg">
-            <p className="text-muted-foreground">
-              No projects with images found. Create a project and add images to get started.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {projects.map((project) => (
-              <div 
-                key={project.id} 
-                className="border rounded-lg p-6 cursor-pointer hover:border-primary transition-colors"
-                onClick={() => handleProjectClick(project)}
-              >
-                <h3 className="font-semibold text-lg mb-1">{project.name}</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {project.description || "No description"}
-                </p>
-                
-                <p className="font-medium">
-                  {project.imageCount} {project.imageCount === 1 ? 'image' : 'images'}
-                </p>
-                
-                <p className="text-xs text-muted-foreground mt-4">
-                  Last updated: {project.lastUpdated ? format(project.lastUpdated, 'M/d/yyyy') : 'Never'}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      
-      {/* Files Modal for selected project */}
-      {selectedProject && (
-        <Dialog open={isFilesModalOpen} onOpenChange={handleCloseFilesModal}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <DialogHeader className="flex items-center justify-between">
-              <DialogTitle>{selectedProject.name} - Files</DialogTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleCloseFilesModal}
-                className="absolute right-4 top-4"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogHeader>
-            
-            <div className="flex-1 overflow-y-auto">
-              <FilesSection 
-                projectId={selectedProject.id} 
-                projectName={selectedProject.name} 
-              />
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">Recent Images</h2>
+          
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="h-44 animate-pulse">
+                  <CardHeader className="bg-gray-200 h-full rounded-md"></CardHeader>
+                </Card>
+              ))}
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
-    </>
+          ) : projects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.map((project) => (
+                <Card 
+                  key={project.id} 
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleProjectClick(project)}
+                >
+                  <CardHeader>
+                    <CardTitle>{project.name}</CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      {project.description || 'No description'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xl font-bold">{project.image_count} images</p>
+                  </CardContent>
+                  <CardFooter className="text-sm text-muted-foreground">
+                    Last updated: {new Date(project.last_updated).toLocaleDateString()}
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">No images found. Upload images to your projects to see them here.</p>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      <Dialog open={isFilesModalOpen} onOpenChange={setIsFilesModalOpen}>
+        <DialogContent className="max-w-4xl h-[90vh] p-6 flex flex-col overflow-hidden">
+          {selectedProjectId && (
+            <>
+              <div className="mb-4 flex-shrink-0">
+                <h2 className="text-xl font-bold">
+                  {selectedProjectName} - Files
+                </h2>
+              </div>
+              <div className="flex-grow overflow-hidden">
+                <FilesSection 
+                  projectId={selectedProjectId} 
+                  projectName={selectedProjectName}
+                />
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 
