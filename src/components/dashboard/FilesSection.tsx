@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DropResult } from 'react-beautiful-dnd';
 import FilesSectionHeader from './files/components/FilesSectionHeader';
 import FilesContainer from './files/components/FilesContainer';
@@ -49,10 +49,12 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     isProgressModalOpen,
     checkUnprocessedFiles,
     analyzeFiles,
-    closeProgressModal
+    closeProgressModal,
+    handleAnalysisComplete
   } = useImageAnalysis(projectId, projectName);
 
   const [analyzedFileIds, setAnalyzedFileIds] = useState<Set<string>>(new Set());
+  const refreshInProgressRef = useRef(false);
 
   // Check for unprocessed files when the component mounts or files are updated
   useEffect(() => {
@@ -60,7 +62,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
       checkUnprocessedFiles();
       fetchAnalyzedFiles();
     }
-  }, [projectId, checkUnprocessedFiles, files]);
+  }, [projectId, checkUnprocessedFiles]);
 
   // Get project name if not provided
   const [fetchedProjectName, setFetchedProjectName] = useState('');
@@ -137,10 +139,22 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     }
   };
 
-  const handleAnalysisComplete = () => {
-    console.log("Analysis complete, refreshing files list");
+  const onAnalysisComplete = () => {
+    if (refreshInProgressRef.current) {
+      return; // Prevent multiple refreshes
+    }
+    
+    console.log("Refreshing files after analysis completion");
+    refreshInProgressRef.current = true;
+    
+    // Execute the refresh
     loadFiles();
     fetchAnalyzedFiles();
+    
+    // Reset the flag after a delay to allow for future refreshes
+    setTimeout(() => {
+      refreshInProgressRef.current = false;
+    }, 2000);
   };
 
   // Add isAnalyzed property to files
@@ -211,7 +225,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         jobId={analysisJobId}
         projectId={projectId}
         fileCount={unprocessedFileCount}
-        onAnalysisComplete={handleAnalysisComplete}
+        onAnalysisComplete={onAnalysisComplete}
       />
     </div>
   );

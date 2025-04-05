@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,6 +11,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
   const [unprocessedFileCount, setUnprocessedFileCount] = useState(0);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [analysisInProgress, setAnalysisInProgress] = useState(false);
+  const refreshInProgressRef = useRef(false);
 
   const checkUnprocessedFiles = useCallback(async () => {
     if (!projectId) return false;
@@ -159,8 +160,19 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
 
   const closeProgressModal = useCallback(() => {
     setIsProgressModalOpen(false);
-    checkUnprocessedFiles();
-  }, [checkUnprocessedFiles]);
+    refreshInProgressRef.current = false;
+  }, []);
+  
+  const handleAnalysisComplete = useCallback(() => {
+    if (refreshInProgressRef.current) {
+      return; // Prevent multiple refreshes
+    }
+    
+    console.log("Analysis complete, refreshing files list (once)");
+    refreshInProgressRef.current = true;
+    
+    // This will be called by FilesSection.tsx
+  }, []);
 
   return {
     isAnalyzing,
@@ -172,6 +184,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
     checkUnprocessedFiles,
     analyzeFiles,
     analyzeImage,
-    closeProgressModal
+    closeProgressModal,
+    handleAnalysisComplete
   };
 };

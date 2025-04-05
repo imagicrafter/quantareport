@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,14 +25,16 @@ const FileAnalysisProgressModal = ({
   const [status, setStatus] = useState<'idle' | 'generating' | 'completed' | 'error'>('idle');
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('Starting file analysis...');
-  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
   const [subscription, setSubscription] = useState<any>(null);
+  const hasRefreshedRef = useRef(false);
+  const analysisCompletedRef = useRef(false);
 
   useEffect(() => {
     if (isOpen && jobId) {
       setStatus('generating');
+      hasRefreshedRef.current = false;
+      analysisCompletedRef.current = false;
       setupRealtimeSubscription();
-      startPolling();
     } else {
       cleanupSubscriptions();
     }
@@ -42,11 +45,19 @@ const FileAnalysisProgressModal = ({
   }, [isOpen, jobId]);
 
   useEffect(() => {
-    if (status === 'completed') {
+    // Handle completion state
+    if (status === 'completed' && !analysisCompletedRef.current) {
+      analysisCompletedRef.current = true;
+      
+      // Execute onAnalysisComplete only once
+      if (!hasRefreshedRef.current && onAnalysisComplete) {
+        console.log('Analysis completed, triggering refresh');
+        hasRefreshedRef.current = true;
+        onAnalysisComplete();
+      }
+      
+      // Close the modal after a short delay
       setTimeout(() => {
-        if (onAnalysisComplete) {
-          onAnalysisComplete();
-        }
         onClose();
       }, 1500);
     }
@@ -86,9 +97,7 @@ const FileAnalysisProgressModal = ({
           // If progress is 100%, also consider it complete even if status hasn't changed yet
           if (latestProgress.progress === 100 && latestProgress.status === 'generating') {
             setMessage('Image Processing Completed');
-            setTimeout(() => {
-              handleAnalysisCompletion(true);
-            }, 1500);
+            handleAnalysisCompletion(true);
           }
         }
       )
@@ -146,9 +155,7 @@ const FileAnalysisProgressModal = ({
       // If progress is 100%, also consider it complete
       if (latestProgress.progress === 100) {
         setMessage('Image Processing Completed');
-        setTimeout(() => {
-          handleAnalysisCompletion(true);
-        }, 1500);
+        handleAnalysisCompletion(true);
       }
     }
   };
@@ -159,81 +166,27 @@ const FileAnalysisProgressModal = ({
       supabase.removeChannel(subscription);
       setSubscription(null);
     }
-    
-    if (pollingInterval) {
-      console.log('Clearing polling interval');
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
-    }
   };
 
-  const startPolling = () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-    }
-
-    const checkInterval = window.setInterval(async () => {
-      if (!jobId) return;
-      await checkProgress(jobId);
-    }, 3000); // Check every 3 seconds as a fallback
-
-    setPollingInterval(checkInterval);
-  };
-
-  const checkProgress = async (job: string) => {
-    try {
-      // Check for job progress
-      const { data, error } = await supabase
-        .from('report_progress')
-        .select('*')
-        .eq('job', job)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (error) {
-        console.error('Error checking job progress:', error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        const latestProgress = data[0];
-        setMessage(latestProgress.message || 'Processing files...');
-        setProgress(latestProgress.progress || 0);
-        setStatus(latestProgress.status as any);
-
-        // Log progress updates for debugging
-        console.log("Progress update received:", {
-          status: latestProgress.status,
-          progress: latestProgress.progress,
-          message: latestProgress.message
-        });
-
-        if (latestProgress.status === 'completed' || latestProgress.status === 'error') {
-          handleAnalysisCompletion(latestProgress.status === 'completed');
-        }
-        
-        // If progress is 100%, also consider it complete
-        if (latestProgress.progress === 100) {
-          setMessage('Image Processing Completed');
-          setTimeout(() => {
-            handleAnalysisCompletion(true);
-          }, 1500);
-        }
-      }
-    } catch (error) {
-      console.error('Error in progress checking:', error);
-    }
-  };
-  
   const handleAnalysisCompletion = async (isSuccess: boolean) => {
-    // Stop polling and clean up subscriptions
+    // Prevent multiple executions
+    if (analysisCompletedRef.current) {
+      return;
+    }
+    
+    analysisCompletedRef.current = true;
+    console.log('Analysis completion handler executed, success:', isSuccess);
+    
+    // Clean up subscriptions
     cleanupSubscriptions();
     
-    // Check if we still have unprocessed files
+    // Check for remaining unprocessed files only once
     await checkRemainingFiles();
     
-    // If successful, trigger onAnalysisComplete callback to refresh files
-    if (isSuccess && onAnalysisComplete) {
+    // If successful and not refreshed yet, trigger onAnalysisComplete callback to refresh files
+    if (isSuccess && !hasRefreshedRef.current && onAnalysisComplete) {
+      console.log('Triggering onAnalysisComplete callback');
+      hasRefreshedRef.current = true;
       onAnalysisComplete();
     }
     
@@ -252,20 +205,12 @@ const FileAnalysisProgressModal = ({
 
       if (!filesError) {
         if (!filesData || filesData.length === 0) {
-          // No more unprocessed files, close the modal after a delay
-          setTimeout(() => {
-            onClose();
-            toast.success('All files analyzed successfully');
-          }, 1500);
+          // No more unprocessed files
+          toast.success('All files analyzed successfully');
         } else {
           // Some files failed to process
           setMessage('Some files could not be processed. You can try analyzing again.');
         }
-      }
-      
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        setPollingInterval(null);
       }
     } catch (error) {
       console.error('Error checking remaining files:', error);
@@ -273,7 +218,9 @@ const FileAnalysisProgressModal = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) onClose();
+    }}>
       <DialogContent className="sm:max-w-md" aria-describedby="analysis-progress-description">
         <DialogHeader>
           <DialogTitle>Analyzing Files</DialogTitle>
