@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { DropResult } from 'react-beautiful-dnd';
 import FilesSectionHeader from './files/components/FilesSectionHeader';
@@ -50,13 +49,6 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     analyzeFiles,
     closeProgressModal
   } = useImageAnalysis(projectId, projectName);
-
-  // Check for unprocessed files when the component mounts or files are updated
-  useEffect(() => {
-    if (projectId) {
-      checkUnprocessedFiles();
-    }
-  }, [projectId, checkUnprocessedFiles, files]);
 
   // Get project name if not provided
   const [fetchedProjectName, setFetchedProjectName] = useState('');
