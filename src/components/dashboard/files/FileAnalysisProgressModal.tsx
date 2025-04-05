@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -41,6 +40,17 @@ const FileAnalysisProgressModal = ({
       cleanupSubscriptions();
     };
   }, [isOpen, jobId]);
+
+  useEffect(() => {
+    if (status === 'completed') {
+      setTimeout(() => {
+        if (onAnalysisComplete) {
+          onAnalysisComplete();
+        }
+        onClose();
+      }, 1500);
+    }
+  }, [status, onClose, onAnalysisComplete]);
 
   const setupRealtimeSubscription = () => {
     if (!jobId) return;
@@ -226,6 +236,9 @@ const FileAnalysisProgressModal = ({
     if (isSuccess && onAnalysisComplete) {
       onAnalysisComplete();
     }
+    
+    // Set status to completed to trigger modal close
+    setStatus('completed');
   };
   
   const checkRemainingFiles = async () => {

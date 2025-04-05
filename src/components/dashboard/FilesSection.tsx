@@ -12,6 +12,7 @@ import { useFiles } from './files/hooks/useFiles';
 import { useFileOperations } from './files/hooks/useFileOperations';
 import { useImageAnalysis } from './files/hooks/useImageAnalysis';
 import { supabase } from '@/integrations/supabase/client';
+import { ProjectFile } from './files/FileItem';
 
 interface FilesSectionProps {
   projectId: string;
@@ -51,10 +52,13 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     closeProgressModal
   } = useImageAnalysis(projectId, projectName);
 
-   // Check for unprocessed files when the component mounts or files are updated
-   useEffect(() => {
+  const [analyzedFileIds, setAnalyzedFileIds] = useState<Set<string>>(new Set());
+
+  // Check for unprocessed files when the component mounts or files are updated
+  useEffect(() => {
     if (projectId) {
       checkUnprocessedFiles();
+      fetchAnalyzedFiles();
     }
   }, [projectId, checkUnprocessedFiles, files]);
 
@@ -79,6 +83,51 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     }
   }, [projectId, projectName]);
 
+  // Fetch files that have been analyzed
+  const fetchAnalyzedFiles = async () => {
+    if (!projectId) return;
+    
+    try {
+      // Get all files for this project that are NOT in the unprocessed table
+      const { data: unprocessedFiles, error: unprocessedError } = await supabase
+        .from('files_not_processed')
+        .select('id')
+        .eq('project_id', projectId);
+        
+      if (unprocessedError) {
+        console.error('Error fetching unprocessed files:', unprocessedError);
+        return;
+      }
+      
+      // Create a set of unprocessed file IDs
+      const unprocessedFileIds = new Set(unprocessedFiles?.map(file => file.id) || []);
+      
+      // Get all file IDs for this project
+      const { data: allFiles, error: allFilesError } = await supabase
+        .from('files')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('type', 'image');
+        
+      if (allFilesError) {
+        console.error('Error fetching all files:', allFilesError);
+        return;
+      }
+      
+      // Files that have been analyzed are those that exist in all files but not in unprocessed files
+      const analyzedIds = new Set(
+        allFiles
+          ?.filter(file => !unprocessedFileIds.has(file.id))
+          .map(file => file.id) || []
+      );
+      
+      setAnalyzedFileIds(analyzedIds);
+      
+    } catch (error) {
+      console.error('Error in fetchAnalyzedFiles:', error);
+    }
+  };
+
   const effectiveProjectName = projectName || fetchedProjectName;
 
   const onReorderFiles = async (result: DropResult) => {
@@ -91,7 +140,14 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
   const handleAnalysisComplete = () => {
     console.log("Analysis complete, refreshing files list");
     loadFiles();
+    fetchAnalyzedFiles();
   };
+
+  // Add isAnalyzed property to files
+  const filesWithAnalysisStatus: ProjectFile[] = files.map(file => ({
+    ...file,
+    isAnalyzed: file.type === 'image' && analyzedFileIds.has(file.id)
+  }));
 
   return (
     <div className="flex flex-col h-full">
@@ -104,7 +160,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
       />
 
       <FilesContainer 
-        files={files}
+        files={filesWithAnalysisStatus}
         loading={loading}
         onEditFile={(file) => {
           setSelectedFile(file);
