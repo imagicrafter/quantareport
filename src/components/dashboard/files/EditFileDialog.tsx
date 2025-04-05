@@ -129,6 +129,7 @@ const EditFileDialog = ({ isOpen, onClose, onEditFile, selectedFile, uploading }
                           placeholder="Enter description" 
                           {...field} 
                           value={field.value || ''}
+                          rows={10} // Increase this number to make it taller initially
                         />
                       </FormControl>
                     )}
