@@ -22,13 +22,15 @@ const FilesContainer = ({
   return (
     <div className="flex-grow mt-4 overflow-hidden">
       <ScrollArea className="h-[calc(100vh-250px)]">
-        <FilesList 
-          files={files}
-          loading={loading}
-          onEditFile={onEditFile}
-          onDeleteFile={onDeleteFile}
-          onReorderFiles={onReorderFiles}
-        />
+        <div className="pb-8">
+          <FilesList 
+            files={files}
+            loading={loading}
+            onEditFile={onEditFile}
+            onDeleteFile={onDeleteFile}
+            onReorderFiles={onReorderFiles}
+          />
+        </div>
       </ScrollArea>
     </div>
   );
