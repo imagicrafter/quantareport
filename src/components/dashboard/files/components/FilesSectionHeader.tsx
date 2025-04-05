@@ -20,6 +20,7 @@ const FilesSectionHeader = ({
     <div className="flex justify-between items-center mb-4 p-4 border-b">
       <h2 className="text-lg font-semibold">Files</h2>
       <FileActions 
+        key={`file-actions-${hasUnprocessedFiles ? 'unprocessed' : 'processed'}`}
         onAddFile={onAddFile}
         onBulkUpload={onBulkUpload}
         onAnalyzeImages={onAnalyzeFiles}

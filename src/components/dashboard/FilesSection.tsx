@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { DropResult } from 'react-beautiful-dnd';
 import FilesSectionHeader from './files/components/FilesSectionHeader';
@@ -80,6 +81,11 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     }
   };
 
+  const handleAnalysisComplete = () => {
+    console.log("Analysis complete, refreshing files list");
+    loadFiles();
+  };
+
   return (
     <div className="flex flex-col h-full">
       <FilesSectionHeader 
@@ -142,6 +148,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
         jobId={analysisJobId}
         projectId={projectId}
         fileCount={unprocessedFileCount}
+        onAnalysisComplete={handleAnalysisComplete}
       />
     </div>
   );

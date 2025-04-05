@@ -11,6 +11,7 @@ interface FileAnalysisProgressModalProps {
   jobId: string | null;
   projectId: string;
   fileCount: number;
+  onAnalysisComplete?: () => void;
 }
 
 const FileAnalysisProgressModal = ({
@@ -18,7 +19,8 @@ const FileAnalysisProgressModal = ({
   onClose,
   jobId,
   projectId,
-  fileCount
+  fileCount,
+  onAnalysisComplete
 }: FileAnalysisProgressModalProps) => {
   const [status, setStatus] = useState<'idle' | 'generating' | 'completed' | 'error'>('idle');
   const [progress, setProgress] = useState(0);
@@ -68,7 +70,15 @@ const FileAnalysisProgressModal = ({
           setStatus(latestProgress.status as any);
 
           if (latestProgress.status === 'completed' || latestProgress.status === 'error') {
-            checkRemainingFiles();
+            handleAnalysisCompletion(latestProgress.status === 'completed');
+          }
+          
+          // If progress is 100%, also consider it complete even if status hasn't changed yet
+          if (latestProgress.progress === 100 && latestProgress.status === 'generating') {
+            setMessage('Image Processing Completed');
+            setTimeout(() => {
+              handleAnalysisCompletion(true);
+            }, 1500);
           }
         }
       )
@@ -120,7 +130,15 @@ const FileAnalysisProgressModal = ({
       console.log('Found existing progress record:', latestProgress);
       
       if (latestProgress.status === 'completed' || latestProgress.status === 'error') {
-        checkRemainingFiles();
+        handleAnalysisCompletion(latestProgress.status === 'completed');
+      }
+      
+      // If progress is 100%, also consider it complete
+      if (latestProgress.progress === 100) {
+        setMessage('Image Processing Completed');
+        setTimeout(() => {
+          handleAnalysisCompletion(true);
+        }, 1500);
       }
     }
   };
@@ -181,11 +199,32 @@ const FileAnalysisProgressModal = ({
         });
 
         if (latestProgress.status === 'completed' || latestProgress.status === 'error') {
-          checkRemainingFiles();
+          handleAnalysisCompletion(latestProgress.status === 'completed');
+        }
+        
+        // If progress is 100%, also consider it complete
+        if (latestProgress.progress === 100) {
+          setMessage('Image Processing Completed');
+          setTimeout(() => {
+            handleAnalysisCompletion(true);
+          }, 1500);
         }
       }
     } catch (error) {
       console.error('Error in progress checking:', error);
+    }
+  };
+  
+  const handleAnalysisCompletion = async (isSuccess: boolean) => {
+    // Stop polling and clean up subscriptions
+    cleanupSubscriptions();
+    
+    // Check if we still have unprocessed files
+    await checkRemainingFiles();
+    
+    // If successful, trigger onAnalysisComplete callback to refresh files
+    if (isSuccess && onAnalysisComplete) {
+      onAnalysisComplete();
     }
   };
   
@@ -222,10 +261,10 @@ const FileAnalysisProgressModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby="analysis-progress-description">
         <DialogHeader>
           <DialogTitle>Analyzing Files</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="analysis-progress-description">
             Processing files for analysis. This may take a few minutes depending on the number of files.
           </DialogDescription>
         </DialogHeader>
