@@ -23,4 +23,4 @@ dist
 *.sw?
 
 # Local Env 
-.env.development.local
+*.env.development.local
