@@ -20,7 +20,7 @@ const ReportGenerationProgress = ({
           {status === 'generating' && (
             <div className="flex items-center">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating report...
+              Analyzing...
             </div>
           )}
           {status === 'completed' && "Report generated successfully!"}

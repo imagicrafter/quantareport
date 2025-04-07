@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,6 +11,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
   const [unprocessedFileCount, setUnprocessedFileCount] = useState(0);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [analysisInProgress, setAnalysisInProgress] = useState(false);
+  const refreshInProgressRef = useRef(false);
 
   const checkUnprocessedFiles = useCallback(async () => {
     if (!projectId) return false;
@@ -52,8 +53,23 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       
       // Generate a new job ID using uuid package
       const jobId = uuidv4();
+      setAnalysisJobId(jobId);
       
       console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
+      
+      // Create initial progress record for better UX
+      const { error: progressError } = await supabase
+        .from('report_progress')
+        .insert({
+          job: jobId,
+          status: 'generating',
+          message: 'Starting file analysis...',
+          progress: 5
+        });
+      
+      if (progressError) {
+        console.error('Error creating initial progress record:', progressError);
+      }
       
       // Call the file-analysis edge function using the new consolidated proxy
       const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
@@ -82,7 +98,6 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       console.log('File analysis response:', data);
       
       if (data.success) {
-        setAnalysisJobId(data.jobId || jobId);
         setIsProgressModalOpen(true);
         toast.success('File analysis started');
       } else {
@@ -145,8 +160,19 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
 
   const closeProgressModal = useCallback(() => {
     setIsProgressModalOpen(false);
-    checkUnprocessedFiles();
-  }, [checkUnprocessedFiles]);
+    refreshInProgressRef.current = false;
+  }, []);
+  
+  const handleAnalysisComplete = useCallback(() => {
+    if (refreshInProgressRef.current) {
+      return; // Prevent multiple refreshes
+    }
+    
+    console.log("Analysis complete, refreshing files list (once)");
+    refreshInProgressRef.current = true;
+    
+    // This will be called by FilesSection.tsx
+  }, []);
 
   return {
     isAnalyzing,
@@ -158,6 +184,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
     checkUnprocessedFiles,
     analyzeFiles,
     analyzeImage,
-    closeProgressModal
+    closeProgressModal,
+    handleAnalysisComplete
   };
 };

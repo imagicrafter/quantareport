@@ -193,7 +193,7 @@ const EditNoteDialog = ({
                             placeholder="Analysis will appear here after processing images" 
                             {...field} 
                             value={field.value || ''}
-                            className="min-h-[100px]"
+                            className="min-h-[210px]"
                           />
                         </FormControl>
                         <FormMessage />
