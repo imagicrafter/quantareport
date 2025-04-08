@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,7 +59,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       console.log(`Setting up subscription for report progress updates on report ${reportCreated.id}`);
       
-      // Get initial status to handle cases where events might have been missed
       try {
         const { data: initialStatus, error: initialStatusError } = await supabase
           .from('report_progress')
@@ -74,7 +72,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           const update = initialStatus[0] as ProgressUpdate;
           setProgressUpdate(update);
           
-          // If report is already complete, navigate to it
           if (update.status === 'completed' || update.progress >= 100) {
             console.log('Report already completed, navigating to editor...');
             navigateToReport();
@@ -85,11 +82,9 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         console.error('Error checking initial status:', err);
       }
       
-      // Create a unique channel name with timestamp to avoid conflicts
       const channelName = `report-progress-${reportCreated.id}-${Date.now()}`;
       console.log(`Creating channel with name: ${channelName}`);
       
-      // Set up real-time subscription
       subscription = supabase
         .channel(channelName)
         .on(
@@ -117,10 +112,9 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         
       console.log('Subscription set up successfully');
       
-      // Set up polling interval as backup
       contentCheckInterval = window.setInterval(() => {
         checkReportContent();
-      }, 5000); // Check every 5 seconds
+      }, 5000);
     };
     
     if (reportCreated?.id) {
@@ -146,7 +140,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       console.log(`Report ${reportCreated.id} completed, navigating to editor...`);
       const report = await fetchReportById(reportCreated.id);
       
-      // Update report status from 'processing' to 'draft' when complete
       if (report.status === 'processing') {
         await updateReport(report.id, { status: 'draft' });
       }
@@ -190,35 +183,34 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         return;
       }
 
-      // First try to get projects with last_update from v_projects_last_update
       try {
-        // Join projects with v_projects_last_update to get last update time and sort by it
         const { data: projectsWithLastUpdate, error: joinError } = await supabase
           .from('projects')
           .select(`
             id, 
             name, 
             description, 
-            template_id,
-            v_projects_last_update!inner(last_update)
+            template_id
           `)
           .eq('user_id', session.session.user.id);
 
         if (!joinError && projectsWithLastUpdate) {
-          console.log('Successfully fetched projects with last_update:', projectsWithLastUpdate);
+          console.log('Successfully fetched projects:', projectsWithLastUpdate);
           
-          // Map and sort projects by last_update
-          const projectsMapped = projectsWithLastUpdate.map(project => ({
-            id: project.id,
-            name: project.name,
-            description: project.description,
-            template_id: project.template_id,
-            // Extract the last_update from the joined table
-            last_update: project.v_projects_last_update?.last_update || null
+          const projectsWithUpdateTime = await Promise.all(projectsWithLastUpdate.map(async (project) => {
+            const { data: updateData, error: updateError } = await supabase
+              .from('v_projects_last_update')
+              .select('last_update')
+              .eq('project_id', project.id)
+              .single();
+              
+            return {
+              ...project,
+              last_update: updateError ? null : (updateData?.last_update || null)
+            };
           }));
 
-          // Sort projects by last_update (newest first)
-          const sortedProjects = projectsMapped.sort((a, b) => {
+          const sortedProjects = projectsWithUpdateTime.sort((a, b) => {
             if (!a.last_update) return 1;  // null values go last
             if (!b.last_update) return -1;
             return new Date(b.last_update).getTime() - new Date(a.last_update).getTime();
@@ -232,7 +224,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         // Fall back to regular project fetching without sorting
       }
 
-      // Fallback: Get projects without sorting if the joined query failed
       console.log('Falling back to regular project fetching');
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
@@ -250,9 +241,16 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
     }
   };
 
-  // Helper function to process projects data with image and notes counts
   const processProjects = async (projectsData: any[]) => {
     try {
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (!session.session) {
+        console.error('No active session');
+        setError('Authentication required. Please sign in.');
+        return;
+      }
+      
       const { data: reports, error: reportsError } = await supabase
         .from('reports')
         .select('project_id')
@@ -343,10 +341,8 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         </div>
       `;
       
-      // Generate report title - add testing tag if requested via project name
       const isTestReport = project.name.toLowerCase().includes('test');
       
-      // Only apply test mode in development environment
       const shouldUseTestMode = isDevelopmentEnvironment() && isTestReport;
       
       const reportTitle = shouldUseTestMode 
@@ -358,7 +354,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         content: initialContent,
         project_id: projectId,
         user_id: userId,
-        status: 'processing' as ReportStatus, // Start with 'processing' status
+        status: 'processing' as ReportStatus,
         image_urls: imageUrls,
         template_id: project.template_id || null
       };
@@ -375,7 +371,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       const jobUuid = uuidv4();
       console.log(`Generated job UUID: ${jobUuid}`);
       
-      // Create initial progress record
       const { error: progressError } = await supabase
         .from('report_progress')
         .insert({
@@ -392,16 +387,13 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       toast.success('Report created. Generating content...');
       
-      // Get the current app environment
       const environment = getCurrentEnvironment();
       console.log(`Current app environment: ${environment}, Test mode: ${shouldUseTestMode}`);
       
-      // If it's a test report in development, use the test-specific webhook
       const reportWebhookUrl = getWebhookUrl('report', environment, shouldUseTestMode);
       
       console.log(`Using webhook URL: ${reportWebhookUrl} (Test mode: ${shouldUseTestMode}, Environment: ${environment})`);
       
-      // Use the Supabase edge function URL directly instead of a frontend route
       const supabaseProjectUrl = import.meta.env.VITE_SUPABASE_URL || "https://vtaufnxworztolfdwlll.supabase.co";
       const callbackUrl = `${supabaseProjectUrl}/functions/v1/report-progress/${newReport.id}`;
       
@@ -424,11 +416,9 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       console.log('Webhook payload:', webhookPayload);
       
-      // Send webhook request with proper CORS handling
       try {
         console.log(`Sending webhook to: ${reportWebhookUrl}`);
         
-        // Add mode: 'cors' and proper headers for CORS
         const postResponse = await fetch(reportWebhookUrl, {
           method: 'POST',
           headers: {
@@ -436,7 +426,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
             'Accept': 'application/json',
             'Origin': window.location.origin
           },
-          mode: 'cors', // Explicitly set CORS mode
+          mode: 'cors',
           body: JSON.stringify(webhookPayload)
         });
         
@@ -445,7 +435,6 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         } else {
           console.error(`Webhook POST response error for ${reportWebhookUrl}:`, await postResponse.text());
           
-          // Fallback to GET request
           const getUrl = new URL(reportWebhookUrl);
           Object.entries(webhookPayload).forEach(([key, value]) => {
             getUrl.searchParams.append(key, String(value));
@@ -457,7 +446,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
               'Accept': 'application/json',
               'Origin': window.location.origin
             },
-            mode: 'cors' // Explicitly set CORS mode
+            mode: 'cors'
           });
           
           if (getResponse.ok) {
