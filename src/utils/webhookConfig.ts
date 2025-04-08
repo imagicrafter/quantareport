@@ -76,7 +76,7 @@ export const getTestWebhookUrl = (type: WebhookType): string | null => {
 export const getWebhookUrl = (type: WebhookType, env?: Environment, isTestMode: boolean = false): string => {
   const environment = env || getCurrentEnvironment();
   
-  // Check if we should use test-specific webhook URLs
+  // Check if we should use test-specific webhook URLs (only in development environment)
   if (isTestMode && environment === 'development') {
     const testWebhookUrl = getTestWebhookUrl(type);
     if (testWebhookUrl) {
@@ -86,7 +86,7 @@ export const getWebhookUrl = (type: WebhookType, env?: Environment, isTestMode: 
     console.log(`No test-specific webhook URL found for ${type}, falling back to regular development webhook`);
   }
   
-  return `${getProxyBaseUrl()}/proxy?env=${environment}&type=${type}`;
+  return `${getProxyBaseUrl()}/proxy?env=${environment}&type=${type}${isTestMode ? '&isTestMode=true' : ''}`;
 };
 
 // Get all webhook URLs for current environment

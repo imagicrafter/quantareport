@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 // CORS headers for all responses
@@ -8,7 +9,7 @@ const corsHeaders = {
 };
 
 // Version tracking to help identify if deployment was successful
-const FUNCTION_VERSION = "1.3.1";
+const FUNCTION_VERSION = "1.4.0";
 
 // The actual n8n webhook URLs for various operations
 const webhookConfigs = {
@@ -19,6 +20,10 @@ const webhookConfigs = {
       "https://n8n-01.imagicrafterai.com/webhook/62d6d438-48ae-47db-850e-5fc52f54e843",
     production: Deno.env.get("PROD_NOTE_WEBHOOK_URL") || 
       "https://n8n-01.imagicrafterai.com/webhook/62d6d438-48ae-47db-850e-5fc52f54e843",
+    // Add test-specific webhook for notes
+    developmentTest: Deno.env.get("DEV_NOTE_TEST_WEBHOOK_URL") || 
+      Deno.env.get("DEV_NOTE_WEBHOOK_URL") || 
+      "https://n8n-01.imagicrafterai.com/webhook-test/62d6d438-48ae-47db-850e-5fc52f54e843",
   },
   "file-analysis": {
     development: Deno.env.get("DEV_FILE_ANALYSIS_WEBHOOK_URL") || 
@@ -27,6 +32,10 @@ const webhookConfigs = {
       "https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0",
     production: Deno.env.get("PROD_FILE_ANALYSIS_WEBHOOK_URL") || 
       "https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0",
+    // Add test-specific webhook for file analysis
+    developmentTest: Deno.env.get("DEV_FILE_ANALYSIS_TEST_WEBHOOK_URL") || 
+      Deno.env.get("DEV_FILE_ANALYSIS_WEBHOOK_URL") || 
+      "https://n8n-01.imagicrafterai.com/webhook-test/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0",
   },
   "report": {
     development: Deno.env.get("DEV_REPORT_WEBHOOK_URL") || 
@@ -35,6 +44,10 @@ const webhookConfigs = {
       "https://n8n-02.imagicrafterai.com/webhook-test/fee2fa15-4df5-49e2-a274-c88b2540c20a",
     production: Deno.env.get("PROD_REPORT_WEBHOOK_URL") || 
       "https://n8n-01.imagicrafterai.com/webhook/785af48f-c1b1-484e-8bea-21920dee1146",
+    // Add test-specific webhook for reports
+    developmentTest: Deno.env.get("DEV_REPORT_TEST_WEBHOOK_URL") || 
+      Deno.env.get("DEV_REPORT_WEBHOOK_URL") || 
+      "https://n8n-01.imagicrafterai.com/webhook-test/b260e5d6-3a5b-4cbf-8b5a-e8a95ed8e340",
   },
 };
 
@@ -142,11 +155,22 @@ async function handleConfigRequest(req: Request, url: URL) {
     currentWebhooks[type] = environments[env] || environments["production"];
   }
   
+  // Add test-specific webhooks to the response
+  const testWebhooks = {};
+  if (env === "development") {
+    for (const [type, environments] of Object.entries(webhookConfigs)) {
+      if (environments["developmentTest"]) {
+        testWebhooks[type] = environments["developmentTest"];
+      }
+    }
+  }
+  
   return new Response(
     JSON.stringify({
       environment: env,
       webhooks: webhookConfigs,
       currentWebhooks,
+      testWebhooks,
       version: FUNCTION_VERSION,
       timestamp: new Date().toISOString()
     }),
@@ -159,11 +183,12 @@ async function handleConfigRequest(req: Request, url: URL) {
 
 // Handle proxy requests
 async function handleProxyRequest(req: Request, url: URL) {
-  let payload, type, env;
+  let payload, type, env, isTestMode = false;
   
   // Check if parameters are in URL query params
   type = url.searchParams.get("type");
   env = url.searchParams.get("env");
+  isTestMode = url.searchParams.get("isTestMode") === "true";
   
   try {
     // Try to get parameters from request body
@@ -188,6 +213,7 @@ async function handleProxyRequest(req: Request, url: URL) {
         // If not in query params, try to get from body
         if (!type) type = body.type;
         if (!env) env = body.env;
+        if (isTestMode === false) isTestMode = body.isTestMode === true;
       } else {
         console.error("Invalid JSON body:", body);
         throw new Error("Invalid JSON body - expected an object");
@@ -203,6 +229,7 @@ async function handleProxyRequest(req: Request, url: URL) {
         payload = body.payload || body;
         if (!type) type = body.type;
         if (!env) env = body.env;
+        if (isTestMode === false) isTestMode = body.isTestMode === true;
       } catch (e) {
         console.error("Failed to parse body as JSON:", e);
         
@@ -247,12 +274,16 @@ async function handleProxyRequest(req: Request, url: URL) {
        env === "prod" ? "production" : 
        env || "production";
   
-  console.log(`Proxying ${type} request for ${env} environment`);
+  console.log(`Proxying ${type} request for ${env} environment. Test mode: ${isTestMode ? 'Yes' : 'No'}`);
   
   // Determine which webhook URL to use
   let webhookUrl;
   
-  if (webhookConfigs[type] && webhookConfigs[type][env]) {
+  // Use test-specific webhook if in development environment and test mode is enabled
+  if (env === "development" && isTestMode && webhookConfigs[type] && webhookConfigs[type]["developmentTest"]) {
+    webhookUrl = webhookConfigs[type]["developmentTest"];
+    console.log(`Using test-specific webhook URL for ${type} in development environment`);
+  } else if (webhookConfigs[type] && webhookConfigs[type][env]) {
     webhookUrl = webhookConfigs[type][env];
   } else {
     // Fallback to the note webhook for backward compatibility

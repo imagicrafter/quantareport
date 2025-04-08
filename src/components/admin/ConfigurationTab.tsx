@@ -6,6 +6,8 @@ import {
   getAllWebhookUrls,
   WebhookType,
   isProxyUrl,
+  getTestWebhookUrl,
+  isDevelopmentEnvironment
 } from '@/utils/webhookConfig';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -21,6 +23,7 @@ import {
   Clock, 
   AlertTriangle,
   Globe,
+  Beaker
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +33,7 @@ interface WebhookConfigData {
   environment: string;
   webhooks: Record<WebhookType, Record<string, string>>;
   currentWebhooks: Record<WebhookType, string>;
+  testWebhooks?: Record<WebhookType, string>;
   version: string;
   timestamp: string;
 }
@@ -72,6 +76,14 @@ const ConfigurationTab = () => {
         // Get current webhook URLs (proxy URLs generated on client side)
         const proxyUrls = getAllWebhookUrls(env);
         
+        // Get test webhooks if in development environment
+        const isDevelopment = isDevelopmentEnvironment();
+        const clientTestWebhooks: Record<WebhookType, string | null> = {
+          'note': isDevelopment ? getTestWebhookUrl('note') : null,
+          'file-analysis': isDevelopment ? getTestWebhookUrl('file-analysis') : null,
+          'report': isDevelopment ? getTestWebhookUrl('report') : null
+        };
+        
         // Create fallback configuration with client-side generated URLs
         const fallbackConfig: WebhookConfigData = {
           environment: env,
@@ -97,6 +109,12 @@ const ConfigurationTab = () => {
             'file-analysis': proxyUrls['file-analysis'],
             'report': proxyUrls.report
           },
+          testWebhooks: Object.entries(clientTestWebhooks)
+            .filter(([_, url]) => url !== null)
+            .reduce((acc, [key, url]) => {
+              acc[key as WebhookType] = url as string;
+              return acc;
+            }, {} as Record<WebhookType, string>),
           version: 'client-generated',
           timestamp: new Date().toISOString()
         };
@@ -178,6 +196,8 @@ const ConfigurationTab = () => {
   }
 
   const envMismatch = envVarValue && envVarValue !== 'Not set' && envVarValue !== environment;
+  const hasTestWebhooks = webhookState.configData?.testWebhooks && 
+    Object.keys(webhookState.configData.testWebhooks).length > 0;
 
   return (
     <div className="space-y-6">
@@ -281,6 +301,9 @@ const ConfigurationTab = () => {
           <Tabs defaultValue="current">
             <TabsList className="mb-4">
               <TabsTrigger value="current">Current Environment</TabsTrigger>
+              {environment === 'development' && hasTestWebhooks && (
+                <TabsTrigger value="test">Test Webhooks</TabsTrigger>
+              )}
               <TabsTrigger value="all">All Environments</TabsTrigger>
             </TabsList>
             
@@ -332,6 +355,46 @@ const ConfigurationTab = () => {
               )}
             </TabsContent>
             
+            {environment === 'development' && hasTestWebhooks && (
+              <TabsContent value="test">
+                <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-md">
+                  <div className="flex items-center mb-2">
+                    <Beaker className="h-4 w-4 text-purple-500 mr-2" />
+                    <p className="text-sm font-medium text-purple-800">Test-Specific Webhook URLs</p>
+                  </div>
+                  <p className="text-xs text-purple-700">
+                    These special webhook URLs are used in development environment when processing test projects 
+                    (projects with "test" in their name). These override the regular development environment webhooks.
+                  </p>
+                </div>
+                
+                {webhookState.configData && webhookState.configData.testWebhooks && (
+                  <div className="border rounded-md overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-sm font-medium">Webhook Type</th>
+                          <th className="px-4 py-2 text-left text-sm font-medium">Test URL</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {Object.entries(webhookState.configData.testWebhooks).map(([type, url]) => (
+                          <tr key={type}>
+                            <td className="px-4 py-3 text-sm">
+                              {formatWebhookName(type)} <Badge variant="outline" className="ml-2 bg-purple-100 text-purple-800 border-purple-200">Test</Badge>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[500px]">
+                              {typeof url === 'string' ? url : 'N/A'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </TabsContent>
+            )}
+            
             <TabsContent value="all">
               {webhookState.configData ? (
                 <div className="border rounded-md overflow-hidden">
@@ -346,25 +409,57 @@ const ConfigurationTab = () => {
                     <tbody className="divide-y">
                       {webhookState.configData.webhooks && 
                        Object.entries(webhookState.configData.webhooks).flatMap(([type, envUrls]) => 
-                        Object.entries(envUrls).map(([env, url]) => (
-                          <tr key={`${type}-${env}`}>
-                            <td className="px-4 py-3 text-sm">
-                              {formatWebhookName(type)}
-                            </td>
-                            <td className="px-4 py-3">
-                              <Badge 
-                                variant={env === environment ? "default" : "outline"}
-                                className={env === environment ? getEnvBadgeColor(env) : ""}
-                              >
-                                {env}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
-                              {typeof url === 'string' ? url : 'N/A'}
-                            </td>
-                          </tr>
-                        ))
+                        Object.entries(envUrls).map(([env, url]) => {
+                          // Skip the developmentTest entries in the all view as they're shown in the test tab
+                          if (env === 'developmentTest') return null;
+                          
+                          return (
+                            <tr key={`${type}-${env}`}>
+                              <td className="px-4 py-3 text-sm">
+                                {formatWebhookName(type)}
+                              </td>
+                              <td className="px-4 py-3">
+                                <Badge 
+                                  variant={env === environment ? "default" : "outline"}
+                                  className={env === environment ? getEnvBadgeColor(env) : ""}
+                                >
+                                  {env}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
+                                {typeof url === 'string' ? url : 'N/A'}
+                              </td>
+                            </tr>
+                          );
+                        }).filter(Boolean)
                       )}
+                      
+                      {/* Add test-specific webhooks to the all view with special badge */}
+                      {webhookState.configData.webhooks && 
+                        Object.entries(webhookState.configData.webhooks).flatMap(([type, envUrls]) => {
+                          if (envUrls['developmentTest']) {
+                            return [(
+                              <tr key={`${type}-developmentTest`}>
+                                <td className="px-4 py-3 text-sm">
+                                  {formatWebhookName(type)}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <Badge 
+                                    variant="outline"
+                                    className="bg-purple-100 text-purple-800 border-purple-200"
+                                  >
+                                    development-test
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-muted-foreground truncate max-w-[300px]">
+                                  {envUrls['developmentTest']}
+                                </td>
+                              </tr>
+                            )];
+                          }
+                          return [];
+                        })
+                      }
                     </tbody>
                   </table>
                 </div>
