@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +20,7 @@ interface ProjectDetails {
   notes_count: number;
   has_report: boolean;
   template_id: string | null;
+  last_update?: string; // Added for sorting purposes
 }
 
 interface ProgressUpdate {
@@ -188,6 +190,50 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         return;
       }
 
+      // First try to get projects with last_update from v_projects_last_update
+      try {
+        // Join projects with v_projects_last_update to get last update time and sort by it
+        const { data: projectsWithLastUpdate, error: joinError } = await supabase
+          .from('projects')
+          .select(`
+            id, 
+            name, 
+            description, 
+            template_id,
+            v_projects_last_update!inner(last_update)
+          `)
+          .eq('user_id', session.session.user.id);
+
+        if (!joinError && projectsWithLastUpdate) {
+          console.log('Successfully fetched projects with last_update:', projectsWithLastUpdate);
+          
+          // Map and sort projects by last_update
+          const projectsMapped = projectsWithLastUpdate.map(project => ({
+            id: project.id,
+            name: project.name,
+            description: project.description,
+            template_id: project.template_id,
+            // Extract the last_update from the joined table
+            last_update: project.v_projects_last_update?.last_update || null
+          }));
+
+          // Sort projects by last_update (newest first)
+          const sortedProjects = projectsMapped.sort((a, b) => {
+            if (!a.last_update) return 1;  // null values go last
+            if (!b.last_update) return -1;
+            return new Date(b.last_update).getTime() - new Date(a.last_update).getTime();
+          });
+
+          await processProjects(sortedProjects);
+          return;
+        }
+      } catch (sortError) {
+        console.error('Error sorting projects by last_update:', sortError);
+        // Fall back to regular project fetching without sorting
+      }
+
+      // Fallback: Get projects without sorting if the joined query failed
+      console.log('Falling back to regular project fetching');
       const { data: projects, error: projectsError } = await supabase
         .from('projects')
         .select('id, name, description, template_id')
@@ -195,6 +241,18 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
 
       if (projectsError) throw projectsError;
 
+      await processProjects(projects || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setError('Failed to load projects. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper function to process projects data with image and notes counts
+  const processProjects = async (projectsData: any[]) => {
+    try {
       const { data: reports, error: reportsError } = await supabase
         .from('reports')
         .select('project_id')
@@ -202,9 +260,9 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
 
       if (reportsError) throw reportsError;
 
-      const projectsWithReports = new Set(reports.map(report => report.project_id));
+      const projectsWithReports = new Set(reports?.map(report => report.project_id) || []);
 
-      const projectDetails = await Promise.all(projects.map(async (project) => {
+      const projectDetails = await Promise.all(projectsData.map(async (project) => {
         const { count: imageCount, error: imageError } = await supabase
           .from('files')
           .select('id', { count: 'exact', head: true })
@@ -234,10 +292,8 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
 
       setProjects(projectDetails);
     } catch (error) {
-      console.error('Error fetching projects:', error);
-      setError('Failed to load projects. Please try again.');
-    } finally {
-      setLoading(false);
+      console.error('Error processing projects:', error);
+      throw error;
     }
   };
 

@@ -114,6 +114,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
+          {
             foreignKeyName: "files_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -170,18 +177,21 @@ export type Database = {
           created_at: string
           file_id: string
           id: string
+          match_score: number | null
           note_id: string
         }
         Insert: {
           created_at?: string
           file_id: string
           id?: string
+          match_score?: number | null
           note_id: string
         }
         Update: {
           created_at?: string
           file_id?: string
           id?: string
+          match_score?: number | null
           note_id?: string
         }
         Relationships: [
@@ -222,6 +232,7 @@ export type Database = {
           created_at: string | null
           files_relationships_is_locked: boolean | null
           id: string
+          last_edited_at: string | null
           metadata: Json | null
           name: string
           position: number | null
@@ -235,6 +246,7 @@ export type Database = {
           created_at?: string | null
           files_relationships_is_locked?: boolean | null
           id?: string
+          last_edited_at?: string | null
           metadata?: Json | null
           name: string
           position?: number | null
@@ -248,6 +260,7 @@ export type Database = {
           created_at?: string | null
           files_relationships_is_locked?: boolean | null
           id?: string
+          last_edited_at?: string | null
           metadata?: Json | null
           name?: string
           position?: number | null
@@ -262,6 +275,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "notes_user_id_fkey"
@@ -363,6 +383,7 @@ export type Database = {
           description: string | null
           domain_id: string | null
           id: string
+          last_edited_at: string | null
           name: string
           status: string
           template_id: string | null
@@ -373,6 +394,7 @@ export type Database = {
           description?: string | null
           domain_id?: string | null
           id?: string
+          last_edited_at?: string | null
           name: string
           status?: string
           template_id?: string | null
@@ -383,6 +405,7 @@ export type Database = {
           description?: string | null
           domain_id?: string | null
           id?: string
+          last_edited_at?: string | null
           name?: string
           status?: string
           template_id?: string | null
@@ -492,6 +515,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
+          {
             foreignKeyName: "reports_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -584,6 +614,7 @@ export type Database = {
           id: string
           image_module: Json | null
           is_public: boolean | null
+          last_edited_at: string | null
           layout_module: Json | null
           name: string
           parent_template_id: string | null
@@ -598,6 +629,7 @@ export type Database = {
           id?: string
           image_module?: Json | null
           is_public?: boolean | null
+          last_edited_at?: string | null
           layout_module?: Json | null
           name: string
           parent_template_id?: string | null
@@ -612,6 +644,7 @@ export type Database = {
           id?: string
           image_module?: Json | null
           is_public?: boolean | null
+          last_edited_at?: string | null
           layout_module?: Json | null
           name?: string
           parent_template_id?: string | null
@@ -651,6 +684,13 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
         ]
       }
       files_not_processed: {
@@ -669,6 +709,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "files_user_id_fkey"
@@ -721,6 +768,13 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
         ]
       }
       v_notes_with_image_relationships: {
@@ -746,7 +800,21 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
         ]
+      }
+      v_projects_last_update: {
+        Row: {
+          last_update: string | null
+          project_id: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {
