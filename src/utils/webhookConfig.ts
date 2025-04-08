@@ -38,6 +38,11 @@ export const getCurrentEnvironment = (): Environment => {
   }
 };
 
+// Check if we're in development environment
+export const isDevelopmentEnvironment = (): boolean => {
+  return getCurrentEnvironment() === 'development';
+};
+
 // Get the Supabase project URL from config
 const getSupabaseProjectUrl = () => {
   return "https://vtaufnxworztolfdwlll.supabase.co";
@@ -48,9 +53,39 @@ const getProxyBaseUrl = () => {
   return `${getSupabaseProjectUrl()}/functions/v1/n8n-webhook-proxy`;
 };
 
+// Get test-specific webhook URL for development environment
+export const getTestWebhookUrl = (type: WebhookType): string | null => {
+  // Only return test webhooks in development environment
+  if (!isDevelopmentEnvironment()) {
+    return null;
+  }
+  
+  switch (type) {
+    case 'note':
+      return import.meta.env.VITE_DEV_NOTE_TEST_WEBHOOK_URL || null;
+    case 'file-analysis':
+      return import.meta.env.VITE_DEV_FILE_ANALYSIS_TEST_WEBHOOK_URL || null;
+    case 'report':
+      return import.meta.env.VITE_DEV_REPORT_TEST_WEBHOOK_URL || null;
+    default:
+      return null;
+  }
+};
+
 // Get webhook URL for specified type and environment
-export const getWebhookUrl = (type: WebhookType, env?: Environment): string => {
+export const getWebhookUrl = (type: WebhookType, env?: Environment, isTestMode: boolean = false): string => {
   const environment = env || getCurrentEnvironment();
+  
+  // Check if we should use test-specific webhook URLs
+  if (isTestMode && environment === 'development') {
+    const testWebhookUrl = getTestWebhookUrl(type);
+    if (testWebhookUrl) {
+      console.log(`Using test-specific webhook URL for ${type} in development environment`);
+      return testWebhookUrl;
+    }
+    console.log(`No test-specific webhook URL found for ${type}, falling back to regular development webhook`);
+  }
+  
   return `${getProxyBaseUrl()}/proxy?env=${environment}&type=${type}`;
 };
 

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, AlertCircle } from 'lucide-react';
 import ReportGenerationProgress from './ReportGenerationProgress';
 import { v4 as uuidv4 } from 'uuid';
-import { getWebhookUrl, getCurrentEnvironment } from '@/utils/webhookConfig'; 
+import { getWebhookUrl, getCurrentEnvironment, isDevelopmentEnvironment } from '@/utils/webhookConfig'; 
 
 interface ProjectDetails {
   id: string;
@@ -289,7 +289,11 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       // Generate report title - add testing tag if requested via project name
       const isTestReport = project.name.toLowerCase().includes('test');
-      const reportTitle = isTestReport 
+      
+      // Only apply test mode in development environment
+      const shouldUseTestMode = isDevelopmentEnvironment() && isTestReport;
+      
+      const reportTitle = shouldUseTestMode 
         ? `##TESTING## ${project.name} Report` 
         : `${project.name} Report`;
       
@@ -332,13 +336,14 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       
       toast.success('Report created. Generating content...');
       
-      // Get the right webhook URL for report generation based on the environment and whether it's a test
+      // Get the current app environment
       const environment = getCurrentEnvironment();
-      // If it's a test report, always use development webhook regardless of environment
-      const webhookEnv = isTestReport ? 'development' : environment;
-      const reportWebhookUrl = getWebhookUrl('report', webhookEnv);
+      console.log(`Current app environment: ${environment}, Test mode: ${shouldUseTestMode}`);
       
-      console.log(`Using ${isTestReport ? 'TESTING' : environment.toUpperCase()} webhook URL from environment ${webhookEnv}: ${reportWebhookUrl}`);
+      // If it's a test report in development, use the test-specific webhook
+      const reportWebhookUrl = getWebhookUrl('report', environment, shouldUseTestMode);
+      
+      console.log(`Using webhook URL: ${reportWebhookUrl} (Test mode: ${shouldUseTestMode}, Environment: ${environment})`);
       
       // Use the Supabase edge function URL directly instead of a frontend route
       const supabaseProjectUrl = import.meta.env.VITE_SUPABASE_URL || "https://vtaufnxworztolfdwlll.supabase.co";
@@ -358,7 +363,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
         action: 'generate_report',
         callback_url: callbackUrl,
         job: jobUuid,
-        is_test: isTestReport
+        is_test: shouldUseTestMode
       };
       
       console.log('Webhook payload:', webhookPayload);

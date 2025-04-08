@@ -3,6 +3,7 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
+import { isDevelopmentEnvironment } from '@/utils/webhookConfig';
 
 export const useImageAnalysis = (projectId?: string, projectName?: string) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -47,9 +48,13 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       setIsAnalyzing(true);
       setAnalysisInProgress(true);
       
-      // Determine if this is a test project
+      // Determine if this is a test project based on name
       const isTestMode = projectName.toLowerCase().includes('test');
-      console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project: ${projectName}`);
+      
+      // Only apply test mode in development environment
+      const shouldUseTestMode = isDevelopmentEnvironment() && isTestMode;
+      
+      console.log(`Using ${shouldUseTestMode ? 'TEST' : 'REGULAR'} mode for project: ${projectName} (App Environment: ${isDevelopmentEnvironment() ? 'Development' : 'Production/Staging'})`);
       
       // Generate a new job ID using uuid package
       const jobId = uuidv4();
@@ -75,13 +80,13 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
         body: {
           project_id: projectId,
-          isTestMode,
+          isTestMode: shouldUseTestMode,
           job: jobId,
           type: 'file-analysis',
-          env: isTestMode ? 'development' : 'production',
+          env: shouldUseTestMode ? 'development' : isDevelopmentEnvironment() ? 'development' : 'production',
           payload: {
             project_id: projectId,
-            isTestMode,
+            isTestMode: shouldUseTestMode,
             job: jobId
           }
         }
@@ -129,7 +134,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
           file_id: fileId,
           project_id: projectId,
           type: 'file-analysis', // Using file-analysis webhook type
-          env: 'production',
+          env: isDevelopmentEnvironment() ? 'development' : 'production',
           payload: {
             file_id: fileId,
             project_id: projectId
