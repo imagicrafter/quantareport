@@ -41,6 +41,7 @@ interface Project {
   user?: {
     email: string;
   } | null;
+  size: number; // Total size in bytes
 }
 
 const pageSizeOptions = [10, 25, 50, 100];
@@ -92,7 +93,7 @@ const AdminProjectsTab = () => {
         return;
       }
 
-      // Get notes count and image count for each project
+      // Get notes count, image count, and total size for each project
       const projectsWithCounts = await Promise.all((projectData || []).map(async (project) => {
         // Count notes
         const { count: noteCount, error: noteError } = await supabase
@@ -110,6 +111,16 @@ const AdminProjectsTab = () => {
           .eq('type', 'image');
 
         if (imageError) console.error('Error counting images:', imageError);
+        
+        // Calculate total size of all files
+        const { data: filesData, error: filesError } = await supabase
+          .from('files')
+          .select('size')
+          .eq('project_id', project.id);
+          
+        if (filesError) console.error('Error fetching file sizes:', filesError);
+        
+        const totalSize = filesData?.reduce((sum, file) => sum + (file.size || 0), 0) || 0;
 
         return {
           id: project.id,
@@ -118,6 +129,7 @@ const AdminProjectsTab = () => {
           reportStatus: project.status,
           noteCount: noteCount || 0,
           imageCount: imageCount || 0,
+          size: totalSize,
           template: project.templates,
           user: project.profiles
         };
@@ -213,6 +225,12 @@ const AdminProjectsTab = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Project ID copied to clipboard');
+  };
+  
+  // Format file size to MB with 2 decimal places
+  const formatSizeInMB = (bytes: number) => {
+    const megabytes = bytes / (1024 * 1024);
+    return megabytes.toFixed(2) + ' MB';
   };
   
   // Calculate paginated projects
@@ -327,6 +345,7 @@ const AdminProjectsTab = () => {
                 <TableHead className="w-[15%]">Template</TableHead>
                 <TableHead>Images</TableHead>
                 <TableHead>Notes</TableHead>
+                <TableHead>Size</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -334,13 +353,13 @@ const AdminProjectsTab = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
+                  <TableCell colSpan={10} className="text-center py-8">
                     Loading projects...
                   </TableCell>
                 </TableRow>
               ) : paginatedProjects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
+                  <TableCell colSpan={10} className="text-center py-8">
                     No projects found.
                   </TableCell>
                 </TableRow>
@@ -386,6 +405,9 @@ const AdminProjectsTab = () => {
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
                       {project.noteCount}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {formatSizeInMB(project.size)}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
