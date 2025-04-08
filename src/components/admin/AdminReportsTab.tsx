@@ -24,7 +24,24 @@ import {
 import { Input } from '@/components/ui/input';
 import Button from '../ui-elements/Button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Report } from '../reports/ReportService';
+import { ReportStatus } from '../reports/ReportService';
+
+// Extended report interface for admin view with display properties
+interface AdminReport {
+  id: string;
+  title: string;
+  status: ReportStatus;
+  created_at: string;
+  last_edited_at: string | null;
+  project_id: string;
+  user_id: string;
+  content: string;
+  // Display properties
+  owner: string;
+  project: string;
+  template: string;
+  template_id: string;
+}
 
 interface Profile {
   email: string;
@@ -39,8 +56,8 @@ interface Template {
 const pageSizeOptions = [10, 25, 50, 100];
 
 const AdminReportsTab = () => {
-  const [reports, setReports] = useState<Report[]>([]);
-  const [filteredReports, setFilteredReports] = useState<Report[]>([]);
+  const [reports, setReports] = useState<AdminReport[]>([]);
+  const [filteredReports, setFilteredReports] = useState<AdminReport[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Pagination state
@@ -74,6 +91,7 @@ const AdminReportsTab = () => {
           project_id,
           template_id,
           user_id,
+          content,
           templates(id, name),
           profiles(email),
           projects(name)
@@ -91,15 +109,17 @@ const AdminReportsTab = () => {
       const formattedReports = reportData.map(report => ({
         id: report.id,
         title: report.title,
-        status: report.status,
+        status: report.status as ReportStatus,
         created_at: report.created_at,
         last_edited_at: report.last_edited_at,
+        project_id: report.project_id,
+        user_id: report.user_id,
+        content: report.content || '',
+        // Display properties
         owner: report.profiles?.email || 'Unknown',
-        ownerId: report.user_id,
         project: report.projects?.name || 'Unknown',
-        projectId: report.project_id,
         template: report.templates?.name || 'None',
-        templateId: report.template_id
+        template_id: report.template_id
       }));
 
       setReports(formattedReports);
@@ -147,14 +167,14 @@ const AdminReportsTab = () => {
     // Apply owner filter
     if (selectedOwner && selectedOwner !== 'all') {
       result = result.filter(report => 
-        report.ownerId === selectedOwner
+        report.user_id === selectedOwner
       );
     }
     
     // Apply template filter
     if (selectedTemplate && selectedTemplate !== 'all') {
       result = result.filter(report => 
-        report.templateId === selectedTemplate
+        report.template_id === selectedTemplate
       );
     }
     
