@@ -28,9 +28,20 @@ const ReportWizardContainer = () => {
   
   const currentStepIndex = getCurrentStepIndex();
   
+  // Debug log for every render
+  console.log('ReportWizardContainer render:', {
+    currentStep: step,
+    currentStepIndex,
+    locationState: location.state,
+    storedProjectId: localStorage.getItem('currentProjectId')
+  });
+  
   const handleStepClick = (index: number) => {
     // Get the project ID from state or localStorage
     const projectId = location.state?.projectId || localStorage.getItem('currentProjectId');
+    
+    console.log('handleStepClick - Project ID:', projectId);
+    console.log('handleStepClick - Trying to navigate to index:', index);
     
     // Check if we're trying to navigate forward but don't have a project ID
     if (index > 0 && !projectId) {
@@ -52,6 +63,7 @@ const ReportWizardContainer = () => {
     
     // Otherwise, allow navigation to previous steps
     // Preserve any state when navigating between steps
+    console.log('Navigation approved to step:', steps[index].path);
     navigate(`/dashboard/report-wizard/${steps[index].path}`, { 
       state: { projectId: projectId } 
     });
@@ -59,7 +71,10 @@ const ReportWizardContainer = () => {
   
   // Initialize the wizard at the first step if no step is specified
   useEffect(() => {
+    console.log('Step effect triggered. Current step:', step);
+    
     if (!step) {
+      console.log('No step specified, navigating to first step');
       navigate(`/dashboard/report-wizard/${steps[0].path}`);
       return;
     }
@@ -72,11 +87,14 @@ const ReportWizardContainer = () => {
       console.log('Project ID from state or localStorage:', projectId);
       
       if (!projectId) {
+        console.log('No project ID found, redirecting to step 1');
         toast({
           description: "Please start a new report first.",
           variant: "destructive"
         });
         navigate(`/dashboard/report-wizard/${steps[0].path}`);
+      } else {
+        console.log('Project ID found, staying on current step:', step);
       }
     }
   }, [step, navigate, currentStepIndex, location.state]);

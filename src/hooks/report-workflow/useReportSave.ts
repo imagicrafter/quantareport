@@ -46,6 +46,7 @@ export const useReportSave = () => {
     }
 
     setIsSaving(true);
+    console.log('Starting report save operation...', { reportMode, reportName, templateId, selectedProjectId });
 
     try {
       let projectId = selectedProjectId;
@@ -58,6 +59,7 @@ export const useReportSave = () => {
           throw new Error('You must be signed in to create a report');
         }
         
+        console.log('Creating new project in the database');
         const { data: projectData, error: projectError } = await supabase
           .from('projects')
           .insert({
@@ -69,12 +71,17 @@ export const useReportSave = () => {
           .select()
           .single();
           
-        if (projectError) throw projectError;
+        if (projectError) {
+          console.error('Error creating project:', projectError);
+          throw projectError;
+        }
         
         projectId = projectData.id;
+        console.log('New project created with ID:', projectId);
         
         // Store the templateNotes to database if they exist
         if (templateNotes && templateNotes.length > 0 && templateNoteValues) {
+          console.log('Saving template notes for project');
           // Convert templateNoteValues to notes
           const notes = templateNotes.map((noteTemplate) => {
             return {
@@ -93,8 +100,12 @@ export const useReportSave = () => {
             
           if (notesError) {
             console.error('Error saving template notes:', notesError);
+          } else {
+            console.log('Template notes saved successfully');
           }
         }
+      } else if (reportMode === 'update') {
+        console.log('Using existing project with ID:', projectId);
       }
       
       // Store current project ID in localStorage for access between steps
@@ -104,12 +115,16 @@ export const useReportSave = () => {
         
         // Navigate to the next step with the project ID in state
         // Use a timeout to ensure the state update completes before navigation
+        console.log('Preparing to navigate to files step...');
         setTimeout(() => {
+          console.log('Navigating to files step with projectId:', projectId);
           navigate('/dashboard/report-wizard/files', { 
             state: { projectId: projectId },
-            replace: false
+            replace: true // Use replace to prevent back button issues
           });
-        }, 100);
+        }, 300); // Increase timeout to ensure state is properly set
+      } else {
+        console.error('No project ID available after save operation');
       }
       
       toast({

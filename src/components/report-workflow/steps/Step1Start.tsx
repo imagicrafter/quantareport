@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import InstructionsPanel from '../start-report/InstructionsPanel';
 import ReportModeSelector from '../start-report/ReportModeSelector';
 import ReportNameInput from '../start-report/ReportNameInput';
@@ -16,6 +16,13 @@ import { Button } from '@/components/ui/button';
 const Step1Start = () => {
   const [reportMode, setReportMode] = useState<'new' | 'update'>('new');
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Capture any project ID from location state (for when we return from other steps)
+  const projectIdFromState = location.state?.projectId;
+  
+  console.log('Step1Start - Location state:', location.state);
+  console.log('Step1Start - Project ID from state:', projectIdFromState);
   
   // Custom hooks for data and operations
   const {
@@ -44,10 +51,20 @@ const Step1Start = () => {
   
   // Reset form when report mode changes
   useEffect(() => {
+    console.log('Step1Start - Report mode changed to:', reportMode);
     if (reportMode === 'new') {
       // Reset form to initial state
       resetForm();
       resetTemplateNoteValues();
+      // Only clear localStorage when explicitly starting a new report
+      localStorage.removeItem('currentProjectId');
+      console.log('Step1Start - Cleared project ID from localStorage (new report mode)');
+    } else if (reportMode === 'update' && projectIdFromState) {
+      // If we're in update mode and have a project ID from state, select it
+      console.log('Step1Start - Setting selected project ID from state:', projectIdFromState);
+      setSelectedProjectId(projectIdFromState);
+      // Also update localStorage
+      localStorage.setItem('currentProjectId', projectIdFromState);
     }
   }, [reportMode]);
 
@@ -64,6 +81,7 @@ const Step1Start = () => {
   };
   
   const handleSave = () => {
+    console.log('Step1Start - Save button clicked');
     saveReport({
       reportMode,
       reportName,
@@ -81,6 +99,10 @@ const Step1Start = () => {
   };
 
   const handleProjectSelection = (projectId: string) => {
+    console.log('Step1Start - Project selected:', projectId);
+    // Update localStorage immediately when project is selected
+    localStorage.setItem('currentProjectId', projectId);
+    
     handleProjectSelect(
       projectId, 
       (loading: boolean) => isLoading, 
@@ -89,12 +111,6 @@ const Step1Start = () => {
       setTemplateNoteValues
     );
   };
-
-  useEffect(() => {
-    // Clear localStorage projectId when landing on step 1
-    // This ensures we don't have stale project IDs
-    localStorage.removeItem('currentProjectId');
-  }, []);
 
   return (
     <div>

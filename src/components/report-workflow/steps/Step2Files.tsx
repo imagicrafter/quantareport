@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -24,36 +23,60 @@ const Step2Files = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const initialRenderRef = useRef(true);
   
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<FileUploadProgress[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasProjectId, setHasProjectId] = useState(false);
   
   // Get project ID from URL state or localStorage
   const projectId = location.state?.projectId || localStorage.getItem('currentProjectId');
   
   console.log('Step2Files - Project ID from state or localStorage:', projectId);
+  console.log('Step2Files - Location state:', location.state);
+  console.log('Step2Files - Initial render:', initialRenderRef.current);
   
+  // Special effect that only runs once on mount to ensure projectId exists
   useEffect(() => {
-    if (projectId) {
+    if (initialRenderRef.current) {
+      initialRenderRef.current = false;
+      
+      if (!projectId) {
+        console.log('Step2Files - No project ID found on initial render, navigating back to step 1');
+        toast({
+          title: "Error",
+          description: "No project found. Please start a new report.",
+          variant: "destructive"
+        });
+        navigate('/dashboard/report-wizard/start');
+      } else {
+        console.log('Step2Files - Project ID found on initial render:', projectId);
+        setHasProjectId(true);
+        fetchUploadedFiles();
+      }
+    }
+  }, []);
+  
+  // Regular effect to fetch files whenever projectId changes
+  useEffect(() => {
+    if (!initialRenderRef.current && projectId) {
+      console.log('Step2Files - Project ID changed, fetching files for:', projectId);
+      setHasProjectId(true);
       fetchUploadedFiles();
-    } else {
-      // If no project ID is found, redirect back to step 1
-      toast({
-        title: "Error",
-        description: "No project found. Please start a new report.",
-        variant: "destructive"
-      });
-      navigate('/dashboard/report-wizard/start');
     }
   }, [projectId]);
   
   const fetchUploadedFiles = async () => {
-    if (!projectId) return;
+    if (!projectId) {
+      console.log('Step2Files - fetchUploadedFiles called but no projectId available');
+      return;
+    }
     
     setLoading(true);
+    console.log('Step2Files - Fetching files for project:', projectId);
     
     try {
       const { data, error } = await supabase
@@ -62,9 +85,12 @@ const Step2Files = () => {
         .eq('project_id', projectId)
         .order('position', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Step2Files - Error fetching files:', error);
+        throw error;
+      }
       
-      console.log('Fetched files for project:', projectId, data);
+      console.log('Step2Files - Fetched files for project:', projectId, data);
       
       // Convert the string type to FileType
       const typedFiles = data?.map(file => ({
@@ -74,7 +100,7 @@ const Step2Files = () => {
       
       setUploadedFiles(typedFiles);
     } catch (error) {
-      console.error('Error fetching files:', error);
+      console.error('Step2Files - Error fetching files:', error);
       toast({
         title: "Error",
         description: "Failed to fetch uploaded files.",
@@ -266,12 +292,14 @@ const Step2Files = () => {
   };
   
   const handleBack = () => {
+    console.log('Step2Files - Navigating back to start with projectId:', projectId);
     navigate('/dashboard/report-wizard/start', {
       state: { projectId }
     });
   };
   
   const handleNext = () => {
+    console.log('Step2Files - Navigating to process step with projectId:', projectId);
     navigate('/dashboard/report-wizard/process', {
       state: { projectId }
     });
@@ -280,6 +308,14 @@ const Step2Files = () => {
   const handleClearSelected = () => {
     setSelectedFiles([]);
   };
+  
+  // If we don't have a project ID, return null or redirect
+  if (!hasProjectId) {
+    console.log('Step2Files - No project ID, not rendering content');
+    return null;
+  }
+  
+  console.log('Step2Files - Rendering content with projectId:', projectId);
   
   return (
     <div>
