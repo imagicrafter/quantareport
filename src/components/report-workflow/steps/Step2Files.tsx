@@ -1,26 +1,92 @@
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import InstructionsPanel from '../start-report/InstructionsPanel';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, FileText, Image } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Upload, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
+import InstructionsPanel from '../start-report/InstructionsPanel';
+import FileUploadArea from '../file-upload/FileUploadArea';
+import UploadedFilesTable from '../file-upload/UploadedFilesTable';
+import { ProjectFile } from '@/components/dashboard/files/FileItem';
+
+interface FileUploadProgress {
+  file: File;
+  progress: number;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  error?: string;
+}
 
 const Step2Files = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
-  const [isUploading, setIsUploading] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFiles(Array.from(e.target.files));
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<FileUploadProgress[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<ProjectFile[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  // Get project ID from URL state or localStorage
+  const projectId = location.state?.projectId || localStorage.getItem('currentProjectId');
+  
+  useEffect(() => {
+    if (projectId) {
+      fetchUploadedFiles();
+    } else {
+      // If no project ID is found, redirect back to step 1
+      toast({
+        title: "Error",
+        description: "No project found. Please start a new report.",
+        variant: "destructive"
+      });
+      navigate('/dashboard/report-wizard/start');
+    }
+  }, [projectId]);
+  
+  const fetchUploadedFiles = async () => {
+    if (!projectId) return;
+    
+    setLoading(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('position', { ascending: true });
+      
+      if (error) throw error;
+      
+      setUploadedFiles(data || []);
+    } catch (error) {
+      console.error('Error fetching files:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch uploaded files.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   };
   
-  const handleUpload = () => {
-    if (files.length === 0) {
+  const handleFilesSelected = (files: File[]) => {
+    setSelectedFiles(prevFiles => {
+      // Filter out any duplicate files by name
+      const existingFileNames = prevFiles.map(f => f.name);
+      const newFiles = files.filter(file => !existingFileNames.includes(file.name));
+      
+      return [...prevFiles, ...newFiles];
+    });
+  };
+  
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) {
       toast({
         title: "No files selected",
         description: "Please select at least one file to upload.",
@@ -29,75 +95,210 @@ const Step2Files = () => {
       return;
     }
     
+    if (!projectId) {
+      toast({
+        title: "Error",
+        description: "No project ID found. Please start a new report.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsUploading(true);
     
-    // Simulate file upload
-    setTimeout(() => {
-      setIsUploading(false);
+    // Initialize progress tracking for each file
+    const initialProgress: FileUploadProgress[] = selectedFiles.map(file => ({
+      file,
+      progress: 0,
+      status: 'pending'
+    }));
+    
+    setUploadProgress(initialProgress);
+    
+    // Upload each file
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      
+      try {
+        // Update status to uploading
+        setUploadProgress(prev => 
+          prev.map((item, idx) => 
+            idx === i ? { ...item, status: 'uploading' } : item
+          )
+        );
+        
+        // Determine file type and bucket
+        const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+        const fileType = getFileType(fileExt);
+        const bucketName = fileType === 'image' ? 'pub_images' : 'pub_documents';
+        
+        // Generate a unique filename
+        const fileName = `${uuidv4()}.${fileExt}`;
+        const filePath = `${projectId}/${fileName}`;
+        
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+          .from(bucketName)
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+            onUploadProgress: (progress) => {
+              const percent = Math.round((progress.loaded / progress.total) * 100);
+              setUploadProgress(prev => 
+                prev.map((item, idx) => 
+                  idx === i ? { ...item, progress: percent } : item
+                )
+              );
+            }
+          });
+          
+        if (error) throw error;
+        
+        // Get public URL
+        const { data: urlData } = await supabase.storage
+          .from(bucketName)
+          .getPublicUrl(filePath);
+          
+        // Save file record to database
+        const { error: dbError } = await supabase
+          .from('files')
+          .insert({
+            name: file.name,
+            file_path: urlData.publicUrl,
+            type: fileType,
+            size: file.size,
+            user_id: (await supabase.auth.getUser()).data.user?.id,
+            project_id: projectId,
+            position: uploadedFiles.length + i,
+          });
+          
+        if (dbError) throw dbError;
+        
+        // Update progress status
+        setUploadProgress(prev => 
+          prev.map((item, idx) => 
+            idx === i ? { ...item, status: 'success', progress: 100 } : item
+          )
+        );
+      } catch (error) {
+        console.error(`Error uploading file ${file.name}:`, error);
+        
+        // Update progress with error
+        setUploadProgress(prev => 
+          prev.map((item, idx) => 
+            idx === i ? { 
+              ...item, 
+              status: 'error', 
+              error: error instanceof Error ? error.message : 'Upload failed' 
+            } : item
+          )
+        );
+        
+        toast({
+          title: "Upload Error",
+          description: `Failed to upload ${file.name}. Please try again.`,
+          variant: "destructive"
+        });
+      }
+    }
+    
+    // Refresh the files list
+    await fetchUploadedFiles();
+    
+    // Reset the selected files after upload is complete
+    setSelectedFiles([]);
+    setIsUploading(false);
+    
+    // Show success message if at least one file was uploaded successfully
+    const successCount = uploadProgress.filter(item => item.status === 'success').length;
+    if (successCount > 0) {
       toast({
-        title: "Files uploaded",
-        description: `Successfully uploaded ${files.length} files.`
+        title: "Upload Complete",
+        description: `Successfully uploaded ${successCount} file${successCount > 1 ? 's' : ''}.`,
       });
-      // In a real implementation, we would save the files to storage
-      navigate('/dashboard/report-wizard/process');
-    }, 2000);
+    }
+  };
+  
+  const getFileType = (extension: string): 'image' | 'text' | 'other' => {
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
+    const textExtensions = ['txt', 'doc', 'docx', 'pdf', 'md'];
+    
+    if (imageExtensions.includes(extension)) return 'image';
+    if (textExtensions.includes(extension)) return 'text';
+    return 'other';
+  };
+  
+  const getOverallProgress = (): number => {
+    if (uploadProgress.length === 0) return 0;
+    
+    const totalProgress = uploadProgress.reduce((sum, item) => sum + item.progress, 0);
+    return Math.round(totalProgress / uploadProgress.length);
   };
   
   const handleBack = () => {
     navigate('/dashboard/report-wizard/start');
   };
   
-  const handleSkip = () => {
-    toast({
-      description: "Skipping file upload step."
-    });
+  const handleNext = () => {
     navigate('/dashboard/report-wizard/process');
+  };
+  
+  const handleClearSelected = () => {
+    setSelectedFiles([]);
   };
   
   return (
     <div>
       <InstructionsPanel stepNumber={2} />
       
-      <div className="max-w-3xl mx-auto mb-8">
+      <div className="max-w-4xl mx-auto mb-8">
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col items-center p-6 border-2 border-dashed rounded-lg">
-              <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">Upload Files</h3>
-              <p className="text-sm text-muted-foreground mb-4 text-center">
-                Upload images, documents, or any other files that will be used in your report.
-                Supported formats: JPG, PNG, PDF, DOC, DOCX
-              </p>
-              
-              <label className="cursor-pointer">
-                <div className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md">
-                  Select Files
-                </div>
-                <input 
-                  type="file" 
-                  multiple 
-                  className="hidden" 
-                  onChange={handleFileChange}
-                  accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-                />
-              </label>
-            </div>
+            <FileUploadArea 
+              onFilesSelected={handleFilesSelected}
+              files={selectedFiles}
+            />
             
-            {files.length > 0 && (
-              <div className="mt-6">
-                <h4 className="font-medium mb-2">Selected Files ({files.length})</h4>
+            {selectedFiles.length > 0 && !isUploading && (
+              <div className="mt-4 flex justify-end space-x-2">
+                <Button variant="outline" onClick={handleClearSelected}>
+                  Clear Selection
+                </Button>
+                <Button onClick={handleUpload}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Files
+                </Button>
+              </div>
+            )}
+            
+            {/* Upload Progress */}
+            {isUploading && (
+              <div className="mt-6 space-y-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-medium">Uploading Files...</h4>
+                  <span className="text-sm text-muted-foreground">{getOverallProgress()}%</span>
+                </div>
+                
+                <Progress value={getOverallProgress()} className="h-2" />
+                
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                  {files.map((file, index) => (
+                  {uploadProgress.map((item, index) => (
                     <div key={index} className="flex items-center p-2 bg-muted rounded">
-                      {file.type.includes('image') ? (
-                        <Image className="h-5 w-5 mr-2 text-blue-500" />
-                      ) : (
-                        <FileText className="h-5 w-5 mr-2 text-green-500" />
-                      )}
-                      <span className="text-sm truncate">{file.name}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {(file.size / 1024).toFixed(1)} KB
-                      </span>
+                      <div className="flex-1 mr-2 truncate">{item.file.name}</div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs whitespace-nowrap">
+                          {item.status === 'pending' && 'Pending...'}
+                          {item.status === 'uploading' && `${item.progress}%`}
+                          {item.status === 'success' && 'Complete'}
+                          {item.status === 'error' && 'Failed'}
+                        </span>
+                        
+                        {item.status === 'pending' && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                        {item.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+                        {item.status === 'success' && <Check className="h-4 w-4 text-green-500" />}
+                        {item.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -107,29 +308,24 @@ const Step2Files = () => {
         </Card>
       </div>
       
-      <div className="flex justify-between max-w-3xl mx-auto">
+      {/* Uploaded Files Table */}
+      <div className="max-w-4xl mx-auto mb-8">
+        <h3 className="text-xl font-medium mb-4">Uploaded Files</h3>
+        <UploadedFilesTable files={uploadedFiles} loading={loading} />
+      </div>
+      
+      {/* Navigation Buttons */}
+      <div className="flex justify-between max-w-4xl mx-auto">
         <Button variant="outline" onClick={handleBack}>
           Back
         </Button>
         
-        <div className="space-x-2">
-          <Button variant="outline" onClick={handleSkip}>
-            Skip
-          </Button>
-          <Button 
-            onClick={handleUpload} 
-            disabled={isUploading || files.length === 0}
-          >
-            {isUploading ? (
-              <>
-                <span className="mr-2">Uploading</span>
-                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              </>
-            ) : (
-              'Next: Process Files'
-            )}
-          </Button>
-        </div>
+        <Button 
+          onClick={handleNext} 
+          disabled={isUploading || (uploadedFiles.length === 0)}
+        >
+          Next: Process Files
+        </Button>
       </div>
     </div>
   );

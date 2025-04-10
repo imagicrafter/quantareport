@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Outlet } from 'react-router-dom';
+import { useNavigate, useParams, Outlet, useLocation } from 'react-router-dom';
 import StepIndicator from './StepIndicator';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -15,6 +15,7 @@ const steps = [
 const ReportWizardContainer = () => {
   const { step } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   
   // Get current step number based on the route parameter
@@ -36,7 +37,10 @@ const ReportWizardContainer = () => {
     }
     
     // Otherwise, allow navigation to previous steps
-    navigate(`/dashboard/report-wizard/${steps[index].path}`);
+    // Preserve any state when navigating between steps
+    navigate(`/dashboard/report-wizard/${steps[index].path}`, { 
+      state: location.state 
+    });
   };
   
   // Initialize the wizard at the first step if no step is specified

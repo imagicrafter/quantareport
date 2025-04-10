@@ -1,23 +1,21 @@
 
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { useNavigate } from 'react-router-dom';
-import { TemplateNote } from './useTemplateData';
+import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
 
-interface SaveReportProps {
+interface ReportSaveProps {
   reportMode: 'new' | 'update';
   reportName: string;
-  templateId: string | null;
-  selectedProjectId: string;
-  templateNotes: TemplateNote[];
-  templateNoteValues: Record<string, string>;
+  templateId?: string;
+  selectedProjectId?: string;
+  templateNotes?: any[];
+  templateNoteValues?: Record<string, string>;
 }
 
 export const useReportSave = () => {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const saveReport = async ({
     reportMode,
@@ -26,159 +24,96 @@ export const useReportSave = () => {
     selectedProjectId,
     templateNotes,
     templateNoteValues
-  }: SaveReportProps): Promise<boolean> => {
+  }: ReportSaveProps): Promise<boolean> => {
+    if (reportMode === 'new' && (!reportName || !templateId)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a report name and select a template.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    if (reportMode === 'update' && !selectedProjectId) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please select a project to update.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    setIsSaving(true);
+
     try {
-      setIsSaving(true);
+      let projectId = selectedProjectId;
       
-      if (!reportName.trim()) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Please enter a report name.',
-        });
-        return false;
-      }
-      
-      if (!templateId) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'No template available. Please contact your administrator.',
-        });
-        return false;
-      }
-      
-      // Get the current user session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        navigate('/signin');
-        return false;
-      }
-      
+      // For new reports, create a new project
       if (reportMode === 'new') {
-        // Create new project
+        const user = await supabase.auth.getUser();
+        
+        if (!user.data.user) {
+          throw new Error('You must be signed in to create a report');
+        }
+        
         const { data: projectData, error: projectError } = await supabase
           .from('projects')
           .insert({
             name: reportName,
+            description: 'Created with Report Wizard',
             template_id: templateId,
-            user_id: session.user.id
+            user_id: user.data.user.id,
           })
-          .select('id')
+          .select()
           .single();
           
-        if (projectError) {
-          throw projectError;
-        }
+        if (projectError) throw projectError;
         
-        // Create notes for each template note
-        const notesPromises = templateNotes
-          .filter(note => note.name && templateNoteValues[note.id])
-          .map(note => {
-            return supabase
-              .from('notes')
-              .insert({
-                project_id: projectData.id,
-                user_id: session.user.id,
-                title: note.title,
-                name: note.name,
-                content: templateNoteValues[note.id]
-              });
+        projectId = projectData.id;
+        
+        // Store the templateNotes to database if they exist
+        if (templateNotes && templateNotes.length > 0 && templateNoteValues) {
+          // Convert templateNoteValues to notes
+          const notes = templateNotes.map((noteTemplate) => {
+            return {
+              project_id: projectId,
+              user_id: user.data.user.id,
+              title: noteTemplate.title,
+              name: noteTemplate.name,
+              content: templateNoteValues[noteTemplate.id] || '',
+            };
           });
           
-        await Promise.all(notesPromises);
-        
-        toast({
-          title: 'Success',
-          description: 'Project created successfully!',
-        });
-        
-        // Store the project ID in localStorage for the wizard flow
-        localStorage.setItem('currentProjectId', projectData.id);
-        
-        return true;
-      } else {
-        // Update existing project
-        if (!selectedProjectId) {
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Please select a project to update.',
-          });
-          return false;
-        }
-        
-        // Update project name if needed
-        const { error: projectError } = await supabase
-          .from('projects')
-          .update({ name: reportName })
-          .eq('id', selectedProjectId);
-          
-        if (projectError) {
-          throw projectError;
-        }
-        
-        // Update or insert notes
-        const { data: existingNotes, error: notesError } = await supabase
-          .from('notes')
-          .select('id, name')
-          .eq('project_id', selectedProjectId);
-          
-        if (notesError) throw notesError;
-        
-        // Create a map of existing notes by name
-        const existingNotesByName: Record<string, string> = {};
-        existingNotes?.forEach(note => {
-          if (note.name) {
-            existingNotesByName[note.name] = note.id;
-          }
-        });
-        
-        // Update or insert notes based on template notes
-        const notePromises = templateNotes
-          .filter(note => note.name && templateNoteValues[note.id])
-          .map(note => {
-            const existingNoteId = existingNotesByName[note.name];
+          // Insert notes
+          const { error: notesError } = await supabase
+            .from('notes')
+            .insert(notes);
             
-            if (existingNoteId) {
-              // Update existing note
-              return supabase
-                .from('notes')
-                .update({ content: templateNoteValues[note.id] })
-                .eq('id', existingNoteId);
-            } else {
-              // Insert new note
-              return supabase
-                .from('notes')
-                .insert({
-                  project_id: selectedProjectId,
-                  user_id: session.user.id,
-                  title: note.title,
-                  name: note.name,
-                  content: templateNoteValues[note.id]
-                });
-            }
-          });
-          
-        await Promise.all(notePromises);
-        
-        toast({
-          title: 'Success',
-          description: 'Project updated successfully!',
-        });
-        
-        // Store the project ID in localStorage for the wizard flow
-        localStorage.setItem('currentProjectId', selectedProjectId);
-        
-        return true;
+          if (notesError) {
+            console.error('Error saving template notes:', notesError);
+          }
+        }
       }
-    } catch (error) {
-      console.error('Error saving project:', error);
+      
+      // Store current project ID in localStorage for access between steps
+      if (projectId) {
+        localStorage.setItem('currentProjectId', projectId);
+      }
+      
       toast({
-        variant: 'destructive',
+        title: 'Success',
+        description: reportMode === 'new' 
+          ? 'New report created successfully' 
+          : 'Report updated successfully',
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving report:', error);
+      toast({
         title: 'Error',
-        description: 'Failed to save project. Please try again.',
+        description: 'Failed to save report. Please try again.',
+        variant: 'destructive',
       });
       return false;
     } finally {
@@ -186,8 +121,5 @@ export const useReportSave = () => {
     }
   };
 
-  return {
-    isSaving,
-    saveReport
-  };
+  return { isSaving, saveReport };
 };
