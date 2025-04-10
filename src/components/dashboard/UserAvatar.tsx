@@ -7,7 +7,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { toast } from 'sonner';
 
-const UserAvatar = () => {
+interface UserAvatarProps {
+  showName?: boolean;
+}
+
+const UserAvatar = ({ showName = false }: UserAvatarProps) => {
   const [userDetails, setUserDetails] = useState<{
     avatar_url?: string | null;
     email?: string | null;
@@ -92,55 +96,64 @@ const UserAvatar = () => {
   };
 
   return (
-    <HoverCard>
-      <HoverCardTrigger asChild>
-        <button className="p-1 rounded-full hover:bg-secondary transition-colors">
-          <Avatar className="h-8 w-8">
-            <AvatarImage 
-              src={userDetails.avatar_url || undefined} 
-              alt={userDetails.full_name || 'User'} 
-            />
-            <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-              {getInitials()}
-            </AvatarFallback>
-          </Avatar>
-        </button>
-      </HoverCardTrigger>
-      <HoverCardContent className="w-56 p-0">
-        <div className="p-3 space-y-2">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={userDetails.avatar_url || undefined} alt="Avatar" />
-              <AvatarFallback className="bg-primary text-primary-foreground">
+    <div className="flex items-center">
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button className="p-1 rounded-full hover:bg-secondary transition-colors">
+            <Avatar className="h-8 w-8">
+              <AvatarImage 
+                src={userDetails.avatar_url || undefined} 
+                alt={userDetails.full_name || 'User'} 
+              />
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                 {getInitials()}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <p className="text-sm font-medium">{userDetails.full_name || 'User'}</p>
-              <p className="text-xs text-muted-foreground truncate">{userDetails.email}</p>
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent className="w-56 p-0">
+          <div className="p-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={userDetails.avatar_url || undefined} alt="Avatar" />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {getInitials()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-medium">{userDetails.full_name || 'User'}</p>
+                <p className="text-xs text-muted-foreground truncate">{userDetails.email}</p>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="border-t border-border">
-          <div className="p-2">
-            <button 
-              onClick={() => navigate('/dashboard/settings')}
-              className="w-full flex items-center gap-2 text-sm px-3 py-2 hover:bg-secondary rounded-md"
-            >
-              <Settings size={16} />
-              <span>Settings</span>
-            </button>
-            <button 
-              onClick={handleSignOut}
-              className="w-full flex items-center gap-2 text-sm px-3 py-2 hover:bg-secondary rounded-md text-red-500 hover:text-red-600"
-            >
-              <LogOut size={16} />
-              <span>Sign out</span>
-            </button>
+          <div className="border-t border-border">
+            <div className="p-2">
+              <button 
+                onClick={() => navigate('/dashboard/settings')}
+                className="w-full flex items-center gap-2 text-sm px-3 py-2 hover:bg-secondary rounded-md"
+              >
+                <Settings size={16} />
+                <span>Settings</span>
+              </button>
+              <button 
+                onClick={handleSignOut}
+                className="w-full flex items-center gap-2 text-sm px-3 py-2 hover:bg-secondary rounded-md text-red-500 hover:text-red-600"
+              >
+                <LogOut size={16} />
+                <span>Sign out</span>
+              </button>
+            </div>
           </div>
-        </div>
-      </HoverCardContent>
-    </HoverCard>
+        </HoverCardContent>
+      </HoverCard>
+      
+      {/* Display name if showName is true */}
+      {showName && userDetails.full_name && (
+        <span className="ml-2 text-sm font-medium text-gray-700 truncate">
+          {userDetails.full_name}
+        </span>
+      )}
+    </div>
   );
 };
 
