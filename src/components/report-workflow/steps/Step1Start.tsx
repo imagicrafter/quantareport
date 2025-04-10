@@ -23,6 +23,9 @@ const Step1Start = () => {
   
   console.log('Step1Start - Location state:', location.state);
   console.log('Step1Start - Project ID from state:', projectIdFromState);
+  console.log('Step1Start - Location pathname:', location.pathname);
+  console.log('Step1Start - Location key:', location.key);
+  console.log('Step1Start - localStorage projectId:', localStorage.getItem('currentProjectId'));
   
   // Custom hooks for data and operations
   const {
@@ -59,14 +62,36 @@ const Step1Start = () => {
       // Only clear localStorage when explicitly starting a new report
       localStorage.removeItem('currentProjectId');
       console.log('Step1Start - Cleared project ID from localStorage (new report mode)');
-    } else if (reportMode === 'update' && projectIdFromState) {
-      // If we're in update mode and have a project ID from state, select it
-      console.log('Step1Start - Setting selected project ID from state:', projectIdFromState);
-      setSelectedProjectId(projectIdFromState);
-      // Also update localStorage
-      localStorage.setItem('currentProjectId', projectIdFromState);
+    } else if (reportMode === 'update') {
+      // If we're in update mode and have a project ID from state or localStorage, select it
+      const existingProjectId = projectIdFromState || localStorage.getItem('currentProjectId');
+      if (existingProjectId) {
+        console.log('Step1Start - Setting selected project ID from state/localStorage:', existingProjectId);
+        setSelectedProjectId(existingProjectId);
+      }
     }
   }, [reportMode]);
+
+  // Handle project ID from step return (coming back from Step 2, etc.)
+  useEffect(() => {
+    if (projectIdFromState) {
+      console.log('Step1Start - Detected project ID in location state:', projectIdFromState);
+      
+      // If user is coming back to Step 1 with a project ID, switch to update mode
+      // and pre-select the project
+      if (reportMode === 'new') {
+        console.log('Step1Start - Switching to update mode due to project ID in state');
+        setReportMode('update');
+      }
+      
+      // Pre-select the project
+      setSelectedProjectId(projectIdFromState);
+      
+      // Also store in localStorage for persistence
+      localStorage.setItem('currentProjectId', projectIdFromState);
+      console.log('Step1Start - Saved project ID to localStorage from state:', projectIdFromState);
+    }
+  }, [projectIdFromState]);
 
   // Separate useEffect for fetching template
   useEffect(() => {
@@ -102,6 +127,7 @@ const Step1Start = () => {
     console.log('Step1Start - Project selected:', projectId);
     // Update localStorage immediately when project is selected
     localStorage.setItem('currentProjectId', projectId);
+    console.log('Step1Start - Saved selected project ID to localStorage:', projectId);
     
     handleProjectSelect(
       projectId, 

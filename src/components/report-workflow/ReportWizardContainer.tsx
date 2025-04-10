@@ -28,11 +28,13 @@ const ReportWizardContainer = () => {
   
   const currentStepIndex = getCurrentStepIndex();
   
-  // Debug log for every render
+  // ENHANCED LOGGING: Log more details including full location object
   console.log('ReportWizardContainer render:', {
     currentStep: step,
     currentStepIndex,
     locationState: location.state,
+    locationPathname: location.pathname,
+    locationKey: location.key,
     storedProjectId: localStorage.getItem('currentProjectId')
   });
   
@@ -44,6 +46,7 @@ const ReportWizardContainer = () => {
     console.log('handleStepClick - Trying to navigate to index:', index);
     
     // Check if we're trying to navigate forward but don't have a project ID
+    // Only block navigation to steps after "start" if we don't have a project ID
     if (index > 0 && !projectId) {
       toast({
         description: "Please complete the first step before proceeding.",
@@ -54,6 +57,7 @@ const ReportWizardContainer = () => {
     }
     
     // Check if we're trying to navigate forward beyond the current step
+    // This prevents skipping steps
     if (index > currentStepIndex) {
       toast({
         description: "Please complete the current step before proceeding.",
@@ -65,13 +69,15 @@ const ReportWizardContainer = () => {
     // Preserve any state when navigating between steps
     console.log('Navigation approved to step:', steps[index].path);
     navigate(`/dashboard/report-wizard/${steps[index].path}`, { 
-      state: { projectId: projectId } 
+      state: { projectId } 
     });
   };
   
   // Initialize the wizard at the first step if no step is specified
   useEffect(() => {
     console.log('Step effect triggered. Current step:', step);
+    console.log('Current location state:', location.state);
+    console.log('Local storage project ID:', localStorage.getItem('currentProjectId'));
     
     if (!step) {
       console.log('No step specified, navigating to first step');
@@ -92,12 +98,22 @@ const ReportWizardContainer = () => {
           description: "Please start a new report first.",
           variant: "destructive"
         });
-        navigate(`/dashboard/report-wizard/${steps[0].path}`);
+        navigate(`/dashboard/report-wizard/${steps[0].path}`, { replace: true });
       } else {
         console.log('Project ID found, staying on current step:', step);
+        
+        // IMPORTANT FIX: If we have a project ID but it's not in location state,
+        // update the location state to include it
+        if (!location.state?.projectId) {
+          console.log('Project ID not in location state, updating location state');
+          navigate(`/dashboard/report-wizard/${step}`, {
+            state: { projectId },
+            replace: true
+          });
+        }
       }
     }
-  }, [step, navigate, currentStepIndex, location.state]);
+  }, [step, navigate, currentStepIndex, location]);
   
   return (
     <div className="container mx-auto px-4 pt-16 pb-12">

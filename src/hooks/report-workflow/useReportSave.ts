@@ -113,28 +113,28 @@ export const useReportSave = () => {
         localStorage.setItem('currentProjectId', projectId);
         console.log('Saved project ID to localStorage:', projectId);
         
-        // Navigate to the next step with the project ID in state
-        // Use a timeout to ensure the state update completes before navigation
-        console.log('Preparing to navigate to files step...');
+        // CRITICAL FIX: Need to delay navigation and ensure we get to the right route
         setTimeout(() => {
           console.log('Navigating to files step with projectId:', projectId);
+          // Use replace instead of push to avoid having Step1 in history
           navigate('/dashboard/report-wizard/files', { 
-            state: { projectId: projectId },
-            replace: true // Use replace to prevent back button issues
+            state: { projectId },
+            replace: true
           });
-        }, 300); // Increase timeout to ensure state is properly set
+        }, 100);
+
+        toast({
+          title: 'Success',
+          description: reportMode === 'new' 
+            ? 'New report created successfully' 
+            : 'Report updated successfully',
+        });
+        
+        return true;
       } else {
         console.error('No project ID available after save operation');
+        return false;
       }
-      
-      toast({
-        title: 'Success',
-        description: reportMode === 'new' 
-          ? 'New report created successfully' 
-          : 'Report updated successfully',
-      });
-      
-      return true;
     } catch (error) {
       console.error('Error saving report:', error);
       toast({

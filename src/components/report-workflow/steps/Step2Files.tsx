@@ -35,8 +35,11 @@ const Step2Files = () => {
   // Get project ID from URL state or localStorage
   const projectId = location.state?.projectId || localStorage.getItem('currentProjectId');
   
+  console.log('Step2Files - Render cycle');
   console.log('Step2Files - Project ID from state or localStorage:', projectId);
   console.log('Step2Files - Location state:', location.state);
+  console.log('Step2Files - Location pathname:', location.pathname);
+  console.log('Step2Files - Location key:', location.key);
   console.log('Step2Files - Initial render:', initialRenderRef.current);
   
   // Special effect that only runs once on mount to ensure projectId exists
@@ -51,10 +54,21 @@ const Step2Files = () => {
           description: "No project found. Please start a new report.",
           variant: "destructive"
         });
-        navigate('/dashboard/report-wizard/start');
+        navigate('/dashboard/report-wizard/start', { replace: true });
       } else {
         console.log('Step2Files - Project ID found on initial render:', projectId);
         setHasProjectId(true);
+        
+        // CRITICAL FIX: When we have a project ID but it's not in location state,
+        // add it to location state to maintain context throughout the wizard
+        if (!location.state?.projectId) {
+          console.log('Step2Files - Project ID not in location state, updating location state');
+          navigate(location.pathname, { 
+            state: { projectId },
+            replace: true 
+          });
+        }
+        
         fetchUploadedFiles();
       }
     }
