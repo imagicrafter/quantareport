@@ -53,7 +53,7 @@ const ReportWizardContainer = () => {
     // Otherwise, allow navigation to previous steps
     // Preserve any state when navigating between steps
     navigate(`/dashboard/report-wizard/${steps[index].path}`, { 
-      state: location.state 
+      state: { projectId: projectId } 
     });
   };
   
@@ -61,11 +61,16 @@ const ReportWizardContainer = () => {
   useEffect(() => {
     if (!step) {
       navigate(`/dashboard/report-wizard/${steps[0].path}`);
+      return;
     }
     
     // Check if we're beyond step 1 but don't have a project ID
     if (currentStepIndex > 0) {
       const projectId = location.state?.projectId || localStorage.getItem('currentProjectId');
+      
+      console.log('Current step index:', currentStepIndex);
+      console.log('Project ID from state or localStorage:', projectId);
+      
       if (!projectId) {
         toast({
           description: "Please start a new report first.",
@@ -74,7 +79,7 @@ const ReportWizardContainer = () => {
         navigate(`/dashboard/report-wizard/${steps[0].path}`);
       }
     }
-  }, [step, navigate, currentStepIndex]);
+  }, [step, navigate, currentStepIndex, location.state]);
   
   return (
     <div className="container mx-auto px-4 pt-16 pb-12">

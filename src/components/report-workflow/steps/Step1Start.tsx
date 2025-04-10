@@ -90,6 +90,12 @@ const Step1Start = () => {
     );
   };
 
+  useEffect(() => {
+    // Clear localStorage projectId when landing on step 1
+    // This ensures we don't have stale project IDs
+    localStorage.removeItem('currentProjectId');
+  }, []);
+
   return (
     <div>
       <InstructionsPanel stepNumber={1} />

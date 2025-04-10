@@ -100,11 +100,16 @@ export const useReportSave = () => {
       // Store current project ID in localStorage for access between steps
       if (projectId) {
         localStorage.setItem('currentProjectId', projectId);
+        console.log('Saved project ID to localStorage:', projectId);
         
         // Navigate to the next step with the project ID in state
-        navigate('/dashboard/report-wizard/files', { 
-          state: { projectId: projectId }
-        });
+        // Use a timeout to ensure the state update completes before navigation
+        setTimeout(() => {
+          navigate('/dashboard/report-wizard/files', { 
+            state: { projectId: projectId },
+            replace: false
+          });
+        }, 100);
       }
       
       toast({

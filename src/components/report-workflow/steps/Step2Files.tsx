@@ -34,6 +34,8 @@ const Step2Files = () => {
   // Get project ID from URL state or localStorage
   const projectId = location.state?.projectId || localStorage.getItem('currentProjectId');
   
+  console.log('Step2Files - Project ID from state or localStorage:', projectId);
+  
   useEffect(() => {
     if (projectId) {
       fetchUploadedFiles();
@@ -61,6 +63,8 @@ const Step2Files = () => {
         .order('position', { ascending: true });
       
       if (error) throw error;
+      
+      console.log('Fetched files for project:', projectId, data);
       
       // Convert the string type to FileType
       const typedFiles = data?.map(file => ({
@@ -262,11 +266,15 @@ const Step2Files = () => {
   };
   
   const handleBack = () => {
-    navigate('/dashboard/report-wizard/start');
+    navigate('/dashboard/report-wizard/start', {
+      state: { projectId }
+    });
   };
   
   const handleNext = () => {
-    navigate('/dashboard/report-wizard/process');
+    navigate('/dashboard/report-wizard/process', {
+      state: { projectId }
+    });
   };
   
   const handleClearSelected = () => {
