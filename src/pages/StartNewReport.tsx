@@ -213,7 +213,7 @@ const StartNewReport = () => {
       <h1 className="text-2xl font-semibold mb-6">Start New Report</h1>
       
       {/* Step Banners */}
-      <div className="flex mb-8 overflow-x-auto pb-2">
+      <div className="flex justify-center mb-8 overflow-x-auto pb-2">
         {[1, 2, 3, 4, 5, 6].map((step) => (
           <StepBanner 
             key={step}

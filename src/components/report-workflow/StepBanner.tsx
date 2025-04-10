@@ -13,21 +13,21 @@ const StepBanner: FC<StepBannerProps> = ({ step, isActive, onClick }) => {
   return (
     <div 
       className={cn(
-        "relative flex items-center px-4 py-2 min-w-[150px] cursor-pointer transition-colors",
+        "relative flex items-center justify-center px-4 py-2 min-w-[150px] cursor-pointer transition-colors border-t border-b",
         isActive 
-          ? "bg-quanta-blue text-white" 
-          : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+          ? "bg-quanta-blue text-white border-quanta-blue" 
+          : "bg-gray-200 hover:bg-gray-300 text-gray-700 border-gray-300"
       )}
       onClick={onClick}
     >
       <span className="font-medium mr-2">Step {step}</span>
       
       {/* Arrow */}
-      <div className="absolute -right-3 top-0 h-full flex items-center z-10">
+      <div className="absolute -right-3 top-0 h-full z-10 flex items-center">
         <ChevronRight 
           className={cn(
             "h-6 w-6",
-            isActive ? "text-quanta-blue" : "text-gray-200"
+            isActive ? "text-quanta-blue" : "text-gray-300"
           )}
         />
       </div>
@@ -35,8 +35,10 @@ const StepBanner: FC<StepBannerProps> = ({ step, isActive, onClick }) => {
       {/* Connector */}
       <div 
         className={cn(
-          "absolute right-0 top-0 h-full w-3",
-          isActive ? "bg-quanta-blue" : "bg-gray-200"
+          "absolute right-0 top-0 h-full w-3 border-t border-b",
+          isActive 
+            ? "bg-quanta-blue border-quanta-blue" 
+            : "bg-gray-200 border-gray-300"
         )}
       />
     </div>
