@@ -30,7 +30,6 @@ const StartNewReport = () => {
       try {
         setIsLoading(true);
         
-        // Get the current user session
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
@@ -38,25 +37,21 @@ const StartNewReport = () => {
           return;
         }
         
-        // Get the user's profile to determine domain_id
         const { data: profileData } = await supabase
           .from('profiles')
           .select('domain_id')
           .eq('id', session.user.id)
           .single();
           
-        // Check if returning from Step 2 with project context
         const returningFromStep2 = location.state?.returnToStep2;
         const projectIdFromStep2 = location.state?.projectId;
         
         if (returningFromStep2 && projectIdFromStep2) {
-          // Set mode to update and select the project
           setReportMode('update');
           setSelectedProjectId(projectIdFromStep2);
           await handleProjectSelect(projectIdFromStep2);
         }
         
-        // Fetch the default template for the user's domain
         const { data: templateData, error: templateError } = await supabase
           .from('templates')
           .select('*')
@@ -68,7 +63,6 @@ const StartNewReport = () => {
           throw templateError;
         }
         
-        // If no domain-specific default template is found, try to get a public default template
         if (!templateData) {
           const { data: publicTemplate, error: publicTemplateError } = await supabase
             .from('templates')
@@ -86,7 +80,6 @@ const StartNewReport = () => {
           setDefaultTemplate(templateData);
         }
         
-        // Load existing projects for the Update Report mode
         const { data: projects, error: projectsError } = await supabase
           .from('projects')
           .select('*')
@@ -99,7 +92,6 @@ const StartNewReport = () => {
         
         setExistingProjects(projects || []);
         
-        // Fetch template notes if we have a default template
         if (templateData || defaultTemplate) {
           const templateId = templateData?.id || defaultTemplate?.id;
           
@@ -109,10 +101,8 @@ const StartNewReport = () => {
               console.log('Template notes loaded:', notes);
               setTemplateNotes(notes || []);
               
-              // Initialize template note values with the custom_content values if they exist
               const initialValues: Record<string, string> = {};
               notes.forEach(note => {
-                // Pre-populate with custom_content value or empty string
                 initialValues[note.id] = note.custom_content || '';
               });
               setTemplateNoteValues(initialValues);
@@ -143,24 +133,20 @@ const StartNewReport = () => {
   
   useEffect(() => {
     if (reportMode === 'new') {
-      // Reset form to initial state
       setReportName('');
       setSelectedProjectId('');
       
-      // Reset template notes values
       const resetValues: Record<string, string> = {};
       templateNotes.forEach(note => {
         resetValues[note.id] = note.custom_content || '';
       });
       setTemplateNoteValues(resetValues);
       
-      // If we have a default template, reload its notes
       if (defaultTemplate?.id) {
         loadTemplateNotes(defaultTemplate.id)
           .then(notes => {
             setTemplateNotes(notes || []);
             
-            // Initialize template note values with the custom_content values
             const initialValues: Record<string, string> = {};
             notes.forEach(note => {
               initialValues[note.id] = note.custom_content || '';
@@ -186,7 +172,6 @@ const StartNewReport = () => {
     setIsLoading(true);
     
     try {
-      // Fetch project details
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .select('*, templates(*)')
@@ -195,10 +180,8 @@ const StartNewReport = () => {
         
       if (projectError) throw projectError;
       
-      // Set report name from project
       setReportName(project.name);
       
-      // Set template from project
       if (project.template_id) {
         const { data: template, error: templateError } = await supabase
           .from('templates')
@@ -209,11 +192,9 @@ const StartNewReport = () => {
         if (templateError) throw templateError;
         setDefaultTemplate(template);
         
-        // Load template notes structure first
         const templateNotes = await loadTemplateNotes(template.id);
         setTemplateNotes(templateNotes || []);
         
-        // Load existing notes content for this project
         const { data: notes, error: notesError } = await supabase
           .from('notes')
           .select('*')
@@ -221,22 +202,18 @@ const StartNewReport = () => {
           
         if (notesError) throw notesError;
         
-        // Map notes to template notes based on name match
-        if (notes && templateNotes) {
-          const noteValues: Record<string, string> = {};
-          
-          templateNotes.forEach(templateNote => {
-            // Find the corresponding project note
-            const matchingNote = notes.find(note => note.name === templateNote.name);
-            if (matchingNote) {
-              noteValues[templateNote.id] = matchingNote.content || '';
-            } else {
-              noteValues[templateNote.id] = '';
-            }
-          });
-          
-          setTemplateNoteValues(noteValues);
-        }
+        const noteValues: Record<string, string> = {};
+        
+        templateNotes.forEach(templateNote => {
+          const matchingNote = notes.find(note => note.name === templateNote.name);
+          if (matchingNote) {
+            noteValues[templateNote.id] = matchingNote.content || '';
+          } else {
+            noteValues[templateNote.id] = '';
+          }
+        });
+        
+        setTemplateNoteValues(noteValues);
       }
     } catch (error) {
       console.error('Error loading project:', error);
@@ -252,7 +229,6 @@ const StartNewReport = () => {
   
   const handleReportModeChange = (mode: 'new' | 'update') => {
     setReportMode(mode);
-    // The form reset is now handled in the useEffect
   };
   
   const handleSave = async (navigateToStep2: boolean = false) => {
@@ -277,7 +253,6 @@ const StartNewReport = () => {
         return;
       }
       
-      // Get the current user session
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -288,7 +263,6 @@ const StartNewReport = () => {
       let currentProjectId = "";
       
       if (reportMode === 'new') {
-        // Create new project
         const { data: projectData, error: projectError } = await supabase
           .from('projects')
           .insert({
@@ -305,7 +279,6 @@ const StartNewReport = () => {
         
         currentProjectId = projectData.id;
         
-        // Create notes for each template note
         const notesPromises = templateNotes
           .filter(note => note.name && templateNoteValues[note.id])
           .map(note => {
@@ -327,7 +300,6 @@ const StartNewReport = () => {
           description: 'Project created successfully!',
         });
       } else {
-        // Update existing project
         if (!selectedProjectId) {
           toast({
             variant: 'destructive',
@@ -339,7 +311,6 @@ const StartNewReport = () => {
         
         currentProjectId = selectedProjectId;
         
-        // Update project name if needed
         const { error: projectError } = await supabase
           .from('projects')
           .update({ name: reportName })
@@ -349,7 +320,6 @@ const StartNewReport = () => {
           throw projectError;
         }
         
-        // Update or insert notes
         const { data: existingNotes, error: notesError } = await supabase
           .from('notes')
           .select('id, name')
@@ -357,7 +327,6 @@ const StartNewReport = () => {
           
         if (notesError) throw notesError;
         
-        // Create a map of existing notes by name
         const existingNotesByName: Record<string, string> = {};
         existingNotes?.forEach(note => {
           if (note.name) {
@@ -365,20 +334,17 @@ const StartNewReport = () => {
           }
         });
         
-        // Update or insert notes based on template notes
         const notePromises = templateNotes
           .filter(note => note.name && templateNoteValues[note.id])
           .map(note => {
             const existingNoteId = existingNotesByName[note.name];
             
             if (existingNoteId) {
-              // Update existing note
               return supabase
                 .from('notes')
                 .update({ content: templateNoteValues[note.id] })
                 .eq('id', existingNoteId);
             } else {
-              // Insert new note
               return supabase
                 .from('notes')
                 .insert({
@@ -399,14 +365,11 @@ const StartNewReport = () => {
         });
       }
       
-      // Navigate to the next step if requested
       if (navigateToStep2) {
         navigate(`/dashboard/upload-and-prepare-files?projectId=${currentProjectId}`);
       } else if (!navigateToStep2) {
-        // Navigate to the projects dashboard if not going to step 2
         navigate('/dashboard/projects');
       }
-      
     } catch (error) {
       console.error('Error saving project:', error);
       toast({
@@ -423,7 +386,6 @@ const StartNewReport = () => {
     setReportName('');
     setSelectedProjectId('');
     
-    // Reset template note values
     const resetValues: Record<string, string> = {};
     templateNotes.forEach(note => {
       resetValues[note.id] = '';
@@ -433,9 +395,7 @@ const StartNewReport = () => {
 
   const handleStepClick = (step: number) => {
     if (step === 1) {
-      // Already on step 1, do nothing
     } else if (step === 2) {
-      // Navigate to step 2 if we have a project
       if (reportMode === 'new' && !reportName.trim()) {
         toast({
           variant: 'destructive',
@@ -454,14 +414,16 @@ const StartNewReport = () => {
         return;
       }
       
-      // Save the project first, then navigate
       handleSave(true);
     } else {
-      // Future steps
       toast({
         description: `Step ${step} will be implemented in a future update.`,
       });
     }
+  };
+
+  const handleSaveClick = () => {
+    handleSave(false);
   };
 
   return (
@@ -470,7 +432,6 @@ const StartNewReport = () => {
         {reportMode === 'new' ? 'Start New Report' : 'Update Report'}
       </h1>
       
-      {/* Step Indicator */}
       <div className="mb-8">
         <StepIndicator 
           currentStep={1}
@@ -479,12 +440,10 @@ const StartNewReport = () => {
         />
       </div>
       
-      {/* Instructions Placeholder */}
       <div className="bg-accent/30 p-4 rounded-md mb-6">
         <p className="text-muted-foreground text-center">[Instructions for Step 1 will be added here]</p>
       </div>
       
-      {/* Report Mode Selection */}
       <div className="w-full max-w-3xl mx-auto mb-6">
         <RadioGroup
           value={reportMode}
@@ -509,7 +468,6 @@ const StartNewReport = () => {
         </div>
       ) : (
         <>
-          {/* Report Name and Template Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-3xl mx-auto">
             <div>
               <label htmlFor="reportName" className="block text-sm font-medium mb-1 text-left">
@@ -548,7 +506,6 @@ const StartNewReport = () => {
             </div>
           </div>
           
-          {/* Template Notes Form - shown for both modes when data is available */}
           {(reportMode === 'new' || (reportMode === 'update' && selectedProjectId)) && (
             <>
               {templateNotes.length > 0 ? (
@@ -565,7 +522,6 @@ const StartNewReport = () => {
             </>
           )}
           
-          {/* Action Buttons */}
           <div className="flex justify-end gap-4 mt-8 max-w-3xl mx-auto">
             <Button
               variant="outline"
@@ -575,7 +531,7 @@ const StartNewReport = () => {
               Cancel
             </Button>
             <Button
-              onClick={handleSave}
+              onClick={handleSaveClick}
               disabled={isSaving || (reportMode === 'update' && !selectedProjectId)}
             >
               {isSaving ? (

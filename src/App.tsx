@@ -1,18 +1,19 @@
+
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from '@/components/ui/toaster';
-import { useAuth } from '@/integrations/auth/AuthProvider';
-import SignIn from '@/pages/SignIn';
-import SignUp from '@/pages/SignUp';
-import Dashboard from '@/pages/Dashboard';
-import Projects from '@/pages/Projects';
-import StartNewReport from '@/pages/StartNewReport';
-import Settings from '@/pages/Settings';
-import DashboardLayout from '@/layouts/DashboardLayout';
-import PublicPageLayout from '@/layouts/PublicPageLayout';
-import Pricing from '@/pages/Pricing';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
+import { Toaster } from './components/ui/toaster';
+import { useAuth } from './integrations/auth/AuthProvider';
+import SignIn from './pages/SignIn';
+import SignUp from './pages/SignUp';
+import Dashboard from './pages/Dashboard';
+import Projects from './pages/Projects';
+import StartNewReport from './pages/StartNewReport';
+import Settings from './pages/Settings';
+import DashboardLayout from './components/layout/DashboardLayout';
+import PublicPageLayout from './layouts/PublicPageLayout';
+import Pricing from './pages/Pricing';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import UploadAndPrepareFiles from './pages/UploadAndPrepareFiles';
 
 function App() {
