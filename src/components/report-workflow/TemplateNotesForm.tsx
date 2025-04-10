@@ -48,7 +48,7 @@ const TemplateNotesForm: FC<TemplateNotesFormProps> = ({
                 onChange={(e) => onChange(note.id, e.target.value)}
                 placeholder={`Enter ${note.title.toLowerCase()}`}
                 rows={4}
-                className="w-full md:w-1/3"
+                className="w-1/3"
               />
             ) : (
               <Input
@@ -56,7 +56,7 @@ const TemplateNotesForm: FC<TemplateNotesFormProps> = ({
                 value={values[note.id] || ''}
                 onChange={(e) => onChange(note.id, e.target.value)}
                 placeholder={`Enter ${note.title.toLowerCase()}`}
-                className="w-full md:w-1/3"
+                className="w-1/3"
               />
             )}
           </div>
