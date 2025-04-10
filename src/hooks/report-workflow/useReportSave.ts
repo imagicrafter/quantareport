@@ -26,7 +26,7 @@ export const useReportSave = () => {
     selectedProjectId,
     templateNotes,
     templateNoteValues
-  }: SaveReportProps) => {
+  }: SaveReportProps): Promise<boolean> => {
     try {
       setIsSaving(true);
       
@@ -36,7 +36,7 @@ export const useReportSave = () => {
           title: 'Error',
           description: 'Please enter a report name.',
         });
-        return;
+        return false;
       }
       
       if (!templateId) {
@@ -45,7 +45,7 @@ export const useReportSave = () => {
           title: 'Error',
           description: 'No template available. Please contact your administrator.',
         });
-        return;
+        return false;
       }
       
       // Get the current user session
@@ -53,7 +53,7 @@ export const useReportSave = () => {
       
       if (!session) {
         navigate('/signin');
-        return;
+        return false;
       }
       
       if (reportMode === 'new') {
@@ -93,6 +93,11 @@ export const useReportSave = () => {
           title: 'Success',
           description: 'Project created successfully!',
         });
+        
+        // Store the project ID in localStorage for the wizard flow
+        localStorage.setItem('currentProjectId', projectData.id);
+        
+        return true;
       } else {
         // Update existing project
         if (!selectedProjectId) {
@@ -101,7 +106,7 @@ export const useReportSave = () => {
             title: 'Error',
             description: 'Please select a project to update.',
           });
-          return;
+          return false;
         }
         
         // Update project name if needed
@@ -162,12 +167,12 @@ export const useReportSave = () => {
           title: 'Success',
           description: 'Project updated successfully!',
         });
+        
+        // Store the project ID in localStorage for the wizard flow
+        localStorage.setItem('currentProjectId', selectedProjectId);
+        
+        return true;
       }
-      
-      // Navigate to the next step (this would be Step 2 in future implementation)
-      // For now, navigate to the projects dashboard
-      navigate('/dashboard/projects');
-      
     } catch (error) {
       console.error('Error saving project:', error);
       toast({
@@ -175,6 +180,7 @@ export const useReportSave = () => {
         title: 'Error',
         description: 'Failed to save project. Please try again.',
       });
+      return false;
     } finally {
       setIsSaving(false);
     }

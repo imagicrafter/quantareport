@@ -18,6 +18,15 @@ import './App.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
 
+// Import the report wizard components
+import ReportWizardContainer from './components/report-workflow/ReportWizardContainer';
+import Step1Start from './components/report-workflow/steps/Step1Start';
+import Step2Files from './components/report-workflow/steps/Step2Files';
+import Step3Process from './components/report-workflow/steps/Step3Process';
+import Step4Notes from './components/report-workflow/steps/Step4Notes';
+import Step5Generate from './components/report-workflow/steps/Step5Generate';
+import Step6Review from './components/report-workflow/steps/Step6Review';
+
 function App() {
   return (
     <Router>
@@ -39,6 +48,17 @@ function App() {
           <Route path="settings" element={<Settings />} />
           <Route path="admin" element={<Admin />} />
           <Route path="start-new-report" element={<StartNewReport />} />
+          
+          {/* Report Wizard Routes */}
+          <Route path="report-wizard" element={<ReportWizardContainer />}>
+            <Route index element={<Navigate to="/dashboard/report-wizard/start" replace />} />
+            <Route path="start" element={<Step1Start />} />
+            <Route path="files" element={<Step2Files />} />
+            <Route path="process" element={<Step3Process />} />
+            <Route path="notes" element={<Step4Notes />} />
+            <Route path="generate" element={<Step5Generate />} />
+            <Route path="review" element={<Step6Review />} />
+          </Route>
         </Route>
         
         {/* 404 route */}
