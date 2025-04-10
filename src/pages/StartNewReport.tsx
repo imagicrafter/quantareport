@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import TemplateNotesForm from '@/components/report-workflow/TemplateNotesForm';
+import { loadTemplateNotes } from '@/utils/templateNoteUtils';
 
 const StartNewReport = () => {
   const [reportName, setReportName] = useState('');
@@ -73,24 +74,25 @@ const StartNewReport = () => {
           const templateId = templateData?.id || defaultTemplate?.id;
           
           if (templateId) {
-            const { data: notesData, error: notesError } = await supabase
-              .from('template_notes')
-              .select('*')
-              .eq('template_id', templateId);
+            try {
+              const notes = await loadTemplateNotes(templateId);
+              console.log('Template notes loaded:', notes);
+              setTemplateNotes(notes || []);
               
-            if (notesError) {
-              throw notesError;
+              // Initialize template note values
+              const initialValues: Record<string, string> = {};
+              notes.forEach(note => {
+                initialValues[note.id] = '';
+              });
+              setTemplateNoteValues(initialValues);
+            } catch (notesError) {
+              console.error('Error fetching template notes:', notesError);
+              toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to load template notes. Please try again.',
+              });
             }
-            
-            console.log('Template notes loaded:', notesData);
-            setTemplateNotes(notesData || []);
-            
-            // Initialize template note values
-            const initialValues: Record<string, string> = {};
-            notesData?.forEach(note => {
-              initialValues[note.id] = '';
-            });
-            setTemplateNoteValues(initialValues);
           }
         }
       } catch (error) {
