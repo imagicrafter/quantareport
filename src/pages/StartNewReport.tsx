@@ -82,6 +82,7 @@ const StartNewReport = () => {
               throw notesError;
             }
             
+            console.log('Template notes loaded:', notesData);
             setTemplateNotes(notesData || []);
             
             // Initialize template note values
@@ -289,7 +290,6 @@ const StartNewReport = () => {
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className={isSaving ? "opacity-70 cursor-not-allowed" : ""}
             >
               {isSaving ? (
                 <>

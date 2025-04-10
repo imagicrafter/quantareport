@@ -13,10 +13,10 @@ const StepBanner: FC<StepBannerProps> = ({ step, isActive, onClick }) => {
   return (
     <div 
       className={cn(
-        "relative flex items-center justify-center px-4 py-2 min-w-[150px] cursor-pointer transition-colors border-t border-b",
+        "relative flex items-center justify-center px-4 py-2 min-w-[150px] cursor-pointer transition-colors",
         isActive 
-          ? "bg-quanta-blue text-white border-quanta-blue" 
-          : "bg-gray-200 hover:bg-gray-300 text-gray-700 border-gray-300"
+          ? "bg-quanta-blue text-white border border-quanta-blue" 
+          : "bg-gray-200 hover:bg-gray-300 text-gray-700 border border-gray-300"
       )}
       onClick={onClick}
     >
@@ -35,10 +35,10 @@ const StepBanner: FC<StepBannerProps> = ({ step, isActive, onClick }) => {
       {/* Connector */}
       <div 
         className={cn(
-          "absolute right-0 top-0 h-full w-3 border-t border-b",
+          "absolute right-0 top-0 h-full w-3",
           isActive 
-            ? "bg-quanta-blue border-quanta-blue" 
-            : "bg-gray-200 border-gray-300"
+            ? "bg-quanta-blue border border-quanta-blue" 
+            : "bg-gray-200 border border-gray-300"
         )}
       />
     </div>

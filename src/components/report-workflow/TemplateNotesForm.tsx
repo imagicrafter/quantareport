@@ -21,8 +21,8 @@ const TemplateNotesForm: FC<TemplateNotesFormProps> = ({
   values, 
   onChange 
 }) => {
-  // Filter notes that have custom_content
-  const notesWithCustomContent = templateNotes.filter(note => note.custom_content);
+  // Only show notes that have custom_content
+  const notesWithCustomContent = templateNotes.filter(note => Boolean(note.custom_content));
   
   if (notesWithCustomContent.length === 0) {
     return null;
@@ -39,7 +39,8 @@ const TemplateNotesForm: FC<TemplateNotesFormProps> = ({
               {note.title}
             </label>
             
-            {note.custom_content.length > 100 ? (
+            {/* Use Textarea for longer content, Input for shorter content */}
+            {(note.custom_content?.length > 100) ? (
               <Textarea
                 id={`note-${note.id}`}
                 value={values[note.id] || ''}
