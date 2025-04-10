@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
+import { useNavigate } from 'react-router-dom';
 
 interface ReportSaveProps {
   reportMode: 'new' | 'update';
@@ -16,6 +17,7 @@ interface ReportSaveProps {
 export const useReportSave = () => {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const saveReport = async ({
     reportMode,
@@ -98,6 +100,11 @@ export const useReportSave = () => {
       // Store current project ID in localStorage for access between steps
       if (projectId) {
         localStorage.setItem('currentProjectId', projectId);
+        
+        // Navigate to the next step with the project ID in state
+        navigate('/dashboard/report-wizard/files', { 
+          state: { projectId: projectId }
+        });
       }
       
       toast({

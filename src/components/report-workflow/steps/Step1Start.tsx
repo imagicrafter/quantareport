@@ -6,7 +6,6 @@ import ReportModeSelector from '../start-report/ReportModeSelector';
 import ReportNameInput from '../start-report/ReportNameInput';
 import TemplateDisplay from '../start-report/TemplateDisplay';
 import ProjectSelector from '../start-report/ProjectSelector';
-import ActionButtons from '../start-report/ActionButtons';
 import LoadingSpinner from '../start-report/LoadingSpinner';
 import TemplateNotesForm from '../TemplateNotesForm';
 import { useTemplateData } from '@/hooks/report-workflow/useTemplateData';
@@ -72,12 +71,8 @@ const Step1Start = () => {
       selectedProjectId,
       templateNotes,
       templateNoteValues
-    }).then(success => {
-      if (success) {
-        // Navigate to next step
-        navigate('/dashboard/report-wizard/files');
-      }
     });
+    // Navigation is now handled inside the saveReport function
   };
   
   const handleCancel = () => {

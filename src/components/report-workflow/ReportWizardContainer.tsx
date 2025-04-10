@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Outlet, useLocation } from 'react-router-dom';
 import StepIndicator from './StepIndicator';
@@ -28,7 +29,20 @@ const ReportWizardContainer = () => {
   const currentStepIndex = getCurrentStepIndex();
   
   const handleStepClick = (index: number) => {
-    // Check if we're trying to navigate forward
+    // Get the project ID from state or localStorage
+    const projectId = location.state?.projectId || localStorage.getItem('currentProjectId');
+    
+    // Check if we're trying to navigate forward but don't have a project ID
+    if (index > 0 && !projectId) {
+      toast({
+        description: "Please complete the first step before proceeding.",
+        variant: "destructive"
+      });
+      navigate(`/dashboard/report-wizard/${steps[0].path}`);
+      return;
+    }
+    
+    // Check if we're trying to navigate forward beyond the current step
     if (index > currentStepIndex) {
       toast({
         description: "Please complete the current step before proceeding.",
@@ -48,7 +62,19 @@ const ReportWizardContainer = () => {
     if (!step) {
       navigate(`/dashboard/report-wizard/${steps[0].path}`);
     }
-  }, [step, navigate]);
+    
+    // Check if we're beyond step 1 but don't have a project ID
+    if (currentStepIndex > 0) {
+      const projectId = location.state?.projectId || localStorage.getItem('currentProjectId');
+      if (!projectId) {
+        toast({
+          description: "Please start a new report first.",
+          variant: "destructive"
+        });
+        navigate(`/dashboard/report-wizard/${steps[0].path}`);
+      }
+    }
+  }, [step, navigate, currentStepIndex]);
   
   return (
     <div className="container mx-auto px-4 pt-16 pb-12">
