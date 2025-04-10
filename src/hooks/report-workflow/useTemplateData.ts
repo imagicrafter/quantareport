@@ -17,10 +17,14 @@ export const useTemplateData = (projectId?: string) => {
   const [isLoading, setIsLoading] = useState(true);
   const [templateNotes, setTemplateNotes] = useState<TemplateNote[]>([]);
   const [templateNoteValues, setTemplateNoteValues] = useState<Record<string, string>>({});
+  const [hasFetchedTemplate, setHasFetchedTemplate] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const fetchDefaultTemplate = async () => {
+    // Prevent duplicate fetches for the same template
+    if (hasFetchedTemplate) return;
+    
     try {
       setIsLoading(true);
       
@@ -96,6 +100,8 @@ export const useTemplateData = (projectId?: string) => {
           }
         }
       }
+      
+      setHasFetchedTemplate(true);
     } catch (error) {
       console.error('Error fetching default template:', error);
       toast({

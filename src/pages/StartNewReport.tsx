@@ -53,13 +53,15 @@ const StartNewReport = () => {
       // Reset form to initial state
       resetForm();
       resetTemplateNoteValues();
-      
-      // If we have a default template, reload its notes
-      if (defaultTemplate?.id) {
-        fetchDefaultTemplate();
-      }
     }
-  }, [reportMode, defaultTemplate]);
+  }, [reportMode]);
+
+  // Separate useEffect for fetching template
+  useEffect(() => {
+    if (reportMode === 'new' && defaultTemplate?.id) {
+      fetchDefaultTemplate();
+    }
+  }, [reportMode, defaultTemplate?.id]);
   
   const handleReportModeChange = (mode: 'new' | 'update') => {
     setReportMode(mode);
