@@ -289,9 +289,16 @@ const StartNewReport = () => {
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              isLoading={isSaving}
+              className={isSaving ? "opacity-70 cursor-not-allowed" : ""}
             >
-              Save
+              {isSaving ? (
+                <>
+                  <span className="mr-2">Saving</span>
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                </>
+              ) : (
+                'Save'
+              )}
             </Button>
           </div>
         </>
