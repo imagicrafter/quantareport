@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import StepBanner from '@/components/report-workflow/StepBanner';
+import StepIndicator from '@/components/report-workflow/StepIndicator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
@@ -212,30 +211,29 @@ const StartNewReport = () => {
     setTemplateNoteValues(resetValues);
   };
 
+  const handleStepClick = (step: number) => {
+    // In future implementations, this will navigate to the appropriate step
+    toast({
+      description: `Step ${step} will be implemented in a future update.`,
+    });
+  };
+
   return (
     <div className="container mx-auto px-4 pt-16 pb-12">
-      <h1 className="text-2xl font-semibold mb-6">Start New Report</h1>
+      <h1 className="text-2xl font-semibold mb-6 text-center">Start New Report</h1>
       
-      {/* Step Banners */}
-      <div className="flex justify-center mb-8 overflow-x-auto pb-2">
-        {[1, 2, 3, 4, 5, 6].map((step) => (
-          <StepBanner 
-            key={step}
-            step={step}
-            isActive={step === 1}
-            onClick={() => {
-              // In future implementations, this will navigate to the appropriate step
-              toast({
-                description: `Step ${step} will be implemented in a future update.`,
-              });
-            }}
-          />
-        ))}
+      {/* Step Indicator */}
+      <div className="mb-8">
+        <StepIndicator 
+          currentStep={1}
+          totalSteps={6}
+          onStepClick={handleStepClick}
+        />
       </div>
       
       {/* Instructions Placeholder */}
       <div className="bg-accent/30 p-4 rounded-md mb-6">
-        <p className="text-muted-foreground">[Instructions for Step 1 will be added here]</p>
+        <p className="text-muted-foreground text-center">[Instructions for Step 1 will be added here]</p>
       </div>
       
       {isLoading ? (
@@ -245,9 +243,9 @@ const StartNewReport = () => {
       ) : (
         <>
           {/* Report Name and Template Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-3xl mx-auto">
             <div>
-              <label htmlFor="reportName" className="block text-sm font-medium mb-1">
+              <label htmlFor="reportName" className="block text-sm font-medium mb-1 text-left">
                 Report Name
               </label>
               <Input
@@ -259,7 +257,7 @@ const StartNewReport = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 text-left">
                 Template
               </label>
               <div className="p-2 border rounded-md bg-gray-50">
@@ -276,13 +274,13 @@ const StartNewReport = () => {
               onChange={handleInputChange}
             />
           ) : (
-            <div className="text-center py-4 bg-accent/30 rounded-md">
+            <div className="text-center py-4 bg-accent/30 rounded-md max-w-3xl mx-auto">
               <p>No template notes available for this template.</p>
             </div>
           )}
           
           {/* Action Buttons */}
-          <div className="flex justify-end gap-4 mt-8">
+          <div className="flex justify-end gap-4 mt-8 max-w-3xl mx-auto">
             <Button
               variant="outline"
               onClick={handleCancel}

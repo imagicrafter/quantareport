@@ -2,6 +2,7 @@
 import { FC } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface TemplateNote {
   id: string;
@@ -30,14 +31,14 @@ const TemplateNotesForm: FC<TemplateNotesFormProps> = ({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-medium">Template Notes</h2>
+      <h2 className="text-lg font-medium text-center mb-4">Template Notes</h2>
       
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-6 max-w-3xl mx-auto">
         {notesToShow.map((note) => (
           <div key={note.id} className="space-y-2">
-            <label htmlFor={`note-${note.id}`} className="block text-sm font-medium">
+            <Label htmlFor={`note-${note.id}`} className="block text-sm font-medium text-left">
               {note.title}
-            </label>
+            </Label>
             
             {/* Use Textarea for longer content, Input for shorter content */}
             {(note.title?.length > 50) ? (
@@ -47,6 +48,7 @@ const TemplateNotesForm: FC<TemplateNotesFormProps> = ({
                 onChange={(e) => onChange(note.id, e.target.value)}
                 placeholder={`Enter ${note.title.toLowerCase()}`}
                 rows={4}
+                className="w-full md:w-1/3"
               />
             ) : (
               <Input
@@ -54,6 +56,7 @@ const TemplateNotesForm: FC<TemplateNotesFormProps> = ({
                 value={values[note.id] || ''}
                 onChange={(e) => onChange(note.id, e.target.value)}
                 placeholder={`Enter ${note.title.toLowerCase()}`}
+                className="w-full md:w-1/3"
               />
             )}
           </div>
