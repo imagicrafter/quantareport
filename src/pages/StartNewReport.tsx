@@ -79,10 +79,11 @@ const StartNewReport = () => {
               console.log('Template notes loaded:', notes);
               setTemplateNotes(notes || []);
               
-              // Initialize template note values
+              // Initialize template note values with the custom_content values if they exist
               const initialValues: Record<string, string> = {};
               notes.forEach(note => {
-                initialValues[note.id] = '';
+                // Pre-populate with custom_content value or empty string
+                initialValues[note.id] = note.custom_content || '';
               });
               setTemplateNoteValues(initialValues);
             } catch (notesError) {

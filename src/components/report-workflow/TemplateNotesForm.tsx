@@ -7,7 +7,7 @@ interface TemplateNote {
   id: string;
   title: string;
   name: string;
-  custom_content: string;
+  custom_content: string | null;
 }
 
 interface TemplateNotesFormProps {
@@ -21,10 +21,10 @@ const TemplateNotesForm: FC<TemplateNotesFormProps> = ({
   values, 
   onChange 
 }) => {
-  // Only show notes that have custom_content
-  const notesWithCustomContent = templateNotes.filter(note => Boolean(note.custom_content));
+  // Show notes that have a name (rather than filtering by custom_content)
+  const notesToShow = templateNotes.filter(note => Boolean(note.name));
   
-  if (notesWithCustomContent.length === 0) {
+  if (notesToShow.length === 0) {
     return null;
   }
 
@@ -33,14 +33,14 @@ const TemplateNotesForm: FC<TemplateNotesFormProps> = ({
       <h2 className="text-lg font-medium">Template Notes</h2>
       
       <div className="grid grid-cols-1 gap-6">
-        {notesWithCustomContent.map((note) => (
+        {notesToShow.map((note) => (
           <div key={note.id} className="space-y-2">
             <label htmlFor={`note-${note.id}`} className="block text-sm font-medium">
               {note.title}
             </label>
             
             {/* Use Textarea for longer content, Input for shorter content */}
-            {(note.custom_content?.length > 100) ? (
+            {(note.title?.length > 50) ? (
               <Textarea
                 id={`note-${note.id}`}
                 value={values[note.id] || ''}
