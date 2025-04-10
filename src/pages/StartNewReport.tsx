@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import StepIndicator from '@/components/report-workflow/StepIndicator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ const StartNewReport = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   
   useEffect(() => {
     const fetchDefaultTemplate = async () => {
@@ -44,6 +45,17 @@ const StartNewReport = () => {
           .eq('id', session.user.id)
           .single();
           
+        // Check if returning from Step 2 with project context
+        const returningFromStep2 = location.state?.returnToStep2;
+        const projectIdFromStep2 = location.state?.projectId;
+        
+        if (returningFromStep2 && projectIdFromStep2) {
+          // Set mode to update and select the project
+          setReportMode('update');
+          setSelectedProjectId(projectIdFromStep2);
+          await handleProjectSelect(projectIdFromStep2);
+        }
+        
         // Fetch the default template for the user's domain
         const { data: templateData, error: templateError } = await supabase
           .from('templates')
@@ -127,7 +139,7 @@ const StartNewReport = () => {
     };
     
     fetchDefaultTemplate();
-  }, [navigate, toast]);
+  }, [navigate, toast, location]);
   
   useEffect(() => {
     if (reportMode === 'new') {
@@ -243,7 +255,7 @@ const StartNewReport = () => {
     // The form reset is now handled in the useEffect
   };
   
-  const handleSave = async () => {
+  const handleSave = async (navigateToStep2: boolean = false) => {
     try {
       setIsSaving(true);
       
@@ -272,6 +284,8 @@ const StartNewReport = () => {
         navigate('/signin');
         return;
       }
+
+      let currentProjectId = "";
       
       if (reportMode === 'new') {
         // Create new project
@@ -288,6 +302,8 @@ const StartNewReport = () => {
         if (projectError) {
           throw projectError;
         }
+        
+        currentProjectId = projectData.id;
         
         // Create notes for each template note
         const notesPromises = templateNotes
@@ -320,6 +336,8 @@ const StartNewReport = () => {
           });
           return;
         }
+        
+        currentProjectId = selectedProjectId;
         
         // Update project name if needed
         const { error: projectError } = await supabase
@@ -381,9 +399,13 @@ const StartNewReport = () => {
         });
       }
       
-      // Navigate to the next step (this would be Step 2 in future implementation)
-      // For now, navigate to the projects dashboard
-      navigate('/dashboard/projects');
+      // Navigate to the next step if requested
+      if (navigateToStep2) {
+        navigate(`/dashboard/upload-and-prepare-files?projectId=${currentProjectId}`);
+      } else if (!navigateToStep2) {
+        // Navigate to the projects dashboard if not going to step 2
+        navigate('/dashboard/projects');
+      }
       
     } catch (error) {
       console.error('Error saving project:', error);
@@ -410,10 +432,36 @@ const StartNewReport = () => {
   };
 
   const handleStepClick = (step: number) => {
-    // In future implementations, this will navigate to the appropriate step
-    toast({
-      description: `Step ${step} will be implemented in a future update.`,
-    });
+    if (step === 1) {
+      // Already on step 1, do nothing
+    } else if (step === 2) {
+      // Navigate to step 2 if we have a project
+      if (reportMode === 'new' && !reportName.trim()) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Please enter a report name before proceeding to Step 2.',
+        });
+        return;
+      }
+      
+      if (reportMode === 'update' && !selectedProjectId) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Please select a project before proceeding to Step 2.',
+        });
+        return;
+      }
+      
+      // Save the project first, then navigate
+      handleSave(true);
+    } else {
+      // Future steps
+      toast({
+        description: `Step ${step} will be implemented in a future update.`,
+      });
+    }
   };
 
   return (
