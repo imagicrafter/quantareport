@@ -531,7 +531,7 @@ const StartNewReport = () => {
               Cancel
             </Button>
             <Button
-              onClick={handleSaveClick}
+              onClick={() => handleSaveClick()}
               disabled={isSaving || (reportMode === 'update' && !selectedProjectId)}
             >
               {isSaving ? (

@@ -16,8 +16,16 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import UploadAndPrepareFiles from './pages/UploadAndPrepareFiles';
 
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+interface PublicRouteProps {
+  children: React.ReactNode;
+}
+
 function App() {
-  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuth();
 
     if (isLoading) {
@@ -31,7 +39,7 @@ function App() {
     return <>{children}</>;
   };
 
-  const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuth();
 
     if (isLoading) {

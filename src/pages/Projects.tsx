@@ -6,7 +6,7 @@ import { useState } from 'react';
 import CreateProjectModal from '@/components/dashboard/CreateProjectModal';
 
 const Projects = () => {
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showCreateProject, setShowCreateProject] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const refreshProjects = () => {
@@ -15,19 +15,16 @@ const Projects = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <ProjectsHeader onCreateProject={() => setIsCreateModalOpen(true)} />
+      <ProjectsHeader setShowCreateProject={setShowCreateProject} />
       
       <div className="mt-8">
-        <ProjectsTable refreshTrigger={refreshTrigger} />
+        <ProjectsTable onRefresh={refreshProjects} />
       </div>
       
       <CreateProjectModal 
-        isOpen={isCreateModalOpen} 
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={() => {
-          setIsCreateModalOpen(false);
-          refreshProjects();
-        }}
+        showCreateProject={showCreateProject} 
+        setShowCreateProject={setShowCreateProject}
+        onProjectCreated={refreshProjects}
       />
     </div>
   );
