@@ -129,6 +129,39 @@ const StartNewReport = () => {
     fetchDefaultTemplate();
   }, [navigate, toast]);
   
+  useEffect(() => {
+    if (reportMode === 'new') {
+      // Reset form to initial state
+      setReportName('');
+      setSelectedProjectId('');
+      
+      // Reset template notes values
+      const resetValues: Record<string, string> = {};
+      templateNotes.forEach(note => {
+        resetValues[note.id] = note.custom_content || '';
+      });
+      setTemplateNoteValues(resetValues);
+      
+      // If we have a default template, reload its notes
+      if (defaultTemplate?.id) {
+        loadTemplateNotes(defaultTemplate.id)
+          .then(notes => {
+            setTemplateNotes(notes || []);
+            
+            // Initialize template note values with the custom_content values
+            const initialValues: Record<string, string> = {};
+            notes.forEach(note => {
+              initialValues[note.id] = note.custom_content || '';
+            });
+            setTemplateNoteValues(initialValues);
+          })
+          .catch(error => {
+            console.error('Error loading default template notes:', error);
+          });
+      }
+    }
+  }, [reportMode, defaultTemplate]);
+  
   const handleInputChange = (id: string, value: string) => {
     setTemplateNoteValues(prev => ({
       ...prev,
@@ -203,6 +236,11 @@ const StartNewReport = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const handleReportModeChange = (mode: 'new' | 'update') => {
+    setReportMode(mode);
+    // The form reset is now handled in the useEffect
   };
   
   const handleSave = async () => {
@@ -402,7 +440,7 @@ const StartNewReport = () => {
       <div className="w-full max-w-3xl mx-auto mb-6">
         <RadioGroup
           value={reportMode}
-          onValueChange={(value) => setReportMode(value as 'new' | 'update')}
+          onValueChange={(value) => handleReportModeChange(value as 'new' | 'update')}
           className="flex items-center space-x-6"
           defaultValue="new"
         >
