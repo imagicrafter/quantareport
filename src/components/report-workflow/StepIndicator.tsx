@@ -13,23 +13,20 @@ interface StepProps {
 const StepItem: FC<StepProps> = ({ number, title, isActive, onClick, isLast = false }) => {
   return (
     <div 
-      className={cn(
-        "relative h-12 flex items-center cursor-pointer",
-        isLast ? "" : ""
-      )}
+      className="relative flex items-center cursor-pointer"
       onClick={onClick}
     >
       {/* Main content */}
       <div 
         className={cn(
-          "flex items-center justify-center h-full px-4",
+          "flex items-center justify-center h-12 px-4",
           isActive ? "bg-quanta-blue text-white" : "bg-gray-200 hover:bg-gray-300 text-gray-700"
         )}
       >
         <span className="font-medium whitespace-nowrap">{title || `Step ${number}`}</span>
       </div>
       
-      {/* Right arrow/chevron */}
+      {/* Right arrow/chevron - directly attached to the main content */}
       {!isLast && (
         <div 
           className={cn(

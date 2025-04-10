@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -7,14 +8,20 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import TemplateNotesForm from '@/components/report-workflow/TemplateNotesForm';
 import { loadTemplateNotes } from '@/utils/templateNoteUtils';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const StartNewReport = () => {
+  const [reportMode, setReportMode] = useState<'new' | 'update'>('new');
   const [reportName, setReportName] = useState('');
   const [defaultTemplate, setDefaultTemplate] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [templateNotes, setTemplateNotes] = useState<any[]>([]);
   const [templateNoteValues, setTemplateNoteValues] = useState<Record<string, string>>({});
+  const [existingProjects, setExistingProjects] = useState<any[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -68,6 +75,19 @@ const StartNewReport = () => {
           setDefaultTemplate(templateData);
         }
         
+        // Load existing projects for the Update Report mode
+        const { data: projects, error: projectsError } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false });
+          
+        if (projectsError) {
+          throw projectsError;
+        }
+        
+        setExistingProjects(projects || []);
+        
         // Fetch template notes if we have a default template
         if (templateData || defaultTemplate) {
           const templateId = templateData?.id || defaultTemplate?.id;
@@ -117,6 +137,68 @@ const StartNewReport = () => {
     }));
   };
   
+  const handleProjectSelect = async (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setIsLoading(true);
+    
+    try {
+      // Fetch project details
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .select('*, templates(*)')
+        .eq('id', projectId)
+        .single();
+        
+      if (projectError) throw projectError;
+      
+      // Set report name from project
+      setReportName(project.name);
+      
+      // Set template from project
+      if (project.template_id) {
+        const { data: template, error: templateError } = await supabase
+          .from('templates')
+          .select('*')
+          .eq('id', project.template_id)
+          .single();
+          
+        if (templateError) throw templateError;
+        setDefaultTemplate(template);
+        
+        // Load notes for this project
+        const { data: notes, error: notesError } = await supabase
+          .from('notes')
+          .select('*')
+          .eq('project_id', projectId);
+          
+        if (notesError) throw notesError;
+        
+        // Create a map of note values by name
+        const noteValues: Record<string, string> = {};
+        notes.forEach(note => {
+          if (note.name && note.content) {
+            noteValues[note.id] = note.content;
+          }
+        });
+        
+        setTemplateNoteValues(noteValues);
+        
+        // Also load template notes for reference structure
+        const templateNotes = await loadTemplateNotes(template.id);
+        setTemplateNotes(templateNotes || []);
+      }
+    } catch (error) {
+      console.error('Error loading project:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to load project information. Please try again.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const handleSave = async () => {
     try {
       setIsSaving(true);
@@ -134,7 +216,7 @@ const StartNewReport = () => {
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'No default template available. Please contact your administrator.',
+          description: 'No template available. Please contact your administrator.',
         });
         return;
       }
@@ -147,42 +229,113 @@ const StartNewReport = () => {
         return;
       }
       
-      // Create new project
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .insert({
-          name: reportName,
-          template_id: defaultTemplate.id,
-          user_id: session.user.id
-        })
-        .select('id')
-        .single();
+      if (reportMode === 'new') {
+        // Create new project
+        const { data: projectData, error: projectError } = await supabase
+          .from('projects')
+          .insert({
+            name: reportName,
+            template_id: defaultTemplate.id,
+            user_id: session.user.id
+          })
+          .select('id')
+          .single();
+          
+        if (projectError) {
+          throw projectError;
+        }
         
-      if (projectError) {
-        throw projectError;
-      }
-      
-      // Create notes for each template note
-      const notesPromises = templateNotes
-        .filter(note => note.custom_content && templateNoteValues[note.id])
-        .map(note => {
-          return supabase
-            .from('notes')
-            .insert({
-              project_id: projectData.id,
-              user_id: session.user.id,
-              title: note.title,
-              name: note.name,
-              content: templateNoteValues[note.id]
-            });
+        // Create notes for each template note
+        const notesPromises = templateNotes
+          .filter(note => note.name && templateNoteValues[note.id])
+          .map(note => {
+            return supabase
+              .from('notes')
+              .insert({
+                project_id: projectData.id,
+                user_id: session.user.id,
+                title: note.title,
+                name: note.name,
+                content: templateNoteValues[note.id]
+              });
+          });
+          
+        await Promise.all(notesPromises);
+        
+        toast({
+          title: 'Success',
+          description: 'Project created successfully!',
+        });
+      } else {
+        // Update existing project
+        if (!selectedProjectId) {
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Please select a project to update.',
+          });
+          return;
+        }
+        
+        // Update project name if needed
+        const { error: projectError } = await supabase
+          .from('projects')
+          .update({ name: reportName })
+          .eq('id', selectedProjectId);
+          
+        if (projectError) {
+          throw projectError;
+        }
+        
+        // Update or insert notes
+        const { data: existingNotes, error: notesError } = await supabase
+          .from('notes')
+          .select('id, name')
+          .eq('project_id', selectedProjectId);
+          
+        if (notesError) throw notesError;
+        
+        // Create a map of existing notes by name
+        const existingNotesByName: Record<string, string> = {};
+        existingNotes?.forEach(note => {
+          if (note.name) {
+            existingNotesByName[note.name] = note.id;
+          }
         });
         
-      await Promise.all(notesPromises);
-      
-      toast({
-        title: 'Success',
-        description: 'Project created successfully!',
-      });
+        // Update or insert notes based on template notes
+        const notePromises = templateNotes
+          .filter(note => note.name && templateNoteValues[note.id])
+          .map(note => {
+            const existingNoteId = existingNotesByName[note.name];
+            
+            if (existingNoteId) {
+              // Update existing note
+              return supabase
+                .from('notes')
+                .update({ content: templateNoteValues[note.id] })
+                .eq('id', existingNoteId);
+            } else {
+              // Insert new note
+              return supabase
+                .from('notes')
+                .insert({
+                  project_id: selectedProjectId,
+                  user_id: session.user.id,
+                  title: note.title,
+                  name: note.name,
+                  content: templateNoteValues[note.id]
+                });
+            }
+          });
+          
+        await Promise.all(notePromises);
+        
+        toast({
+          title: 'Success',
+          description: 'Project updated successfully!',
+        });
+      }
       
       // Navigate to the next step (this would be Step 2 in future implementation)
       // For now, navigate to the projects dashboard
@@ -193,7 +346,7 @@ const StartNewReport = () => {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to create project. Please try again.',
+        description: 'Failed to save project. Please try again.',
       });
     } finally {
       setIsSaving(false);
@@ -202,6 +355,7 @@ const StartNewReport = () => {
   
   const handleCancel = () => {
     setReportName('');
+    setSelectedProjectId('');
     
     // Reset template note values
     const resetValues: Record<string, string> = {};
@@ -220,7 +374,9 @@ const StartNewReport = () => {
 
   return (
     <div className="container mx-auto px-4 pt-16 pb-12">
-      <h1 className="text-2xl font-semibold mb-6 text-center">Start New Report</h1>
+      <h1 className="text-2xl font-semibold mb-6 text-center">
+        {reportMode === 'new' ? 'Start New Report' : 'Update Report'}
+      </h1>
       
       {/* Step Indicator */}
       <div className="mb-8">
@@ -236,47 +392,125 @@ const StartNewReport = () => {
         <p className="text-muted-foreground text-center">[Instructions for Step 1 will be added here]</p>
       </div>
       
+      {/* Report Mode Selection */}
+      <div className="w-full max-w-3xl mx-auto mb-6">
+        <RadioGroup
+          value={reportMode}
+          onValueChange={(value) => setReportMode(value as 'new' | 'update')}
+          className="flex items-center space-x-6"
+          defaultValue="new"
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="new" id="option-new" />
+            <Label htmlFor="option-new">New Report</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="update" id="option-update" />
+            <Label htmlFor="option-update">Existing Report</Label>
+          </div>
+        </RadioGroup>
+      </div>
+      
       {isLoading ? (
         <div className="flex justify-center py-8">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-quanta-blue"></div>
         </div>
       ) : (
         <>
-          {/* Report Name and Template Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-3xl mx-auto">
-            <div>
-              <label htmlFor="reportName" className="block text-sm font-medium mb-1 text-left">
-                Report Name
-              </label>
-              <Input
-                id="reportName"
-                value={reportName}
-                onChange={(e) => setReportName(e.target.value)}
-                placeholder="Enter report name"
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-left">
-                Template
-              </label>
-              <div className="p-2 border rounded-md bg-gray-50">
-                {defaultTemplate ? defaultTemplate.name : 'No default template available'}
+          {reportMode === 'new' ? (
+            // NEW REPORT MODE
+            <>
+              {/* Report Name and Template Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-3xl mx-auto">
+                <div>
+                  <label htmlFor="reportName" className="block text-sm font-medium mb-1 text-left">
+                    Report Name
+                  </label>
+                  <Input
+                    id="reportName"
+                    value={reportName}
+                    onChange={(e) => setReportName(e.target.value)}
+                    placeholder="Enter report name"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-left">
+                    Template
+                  </label>
+                  <div className="p-2 border rounded-md bg-gray-50">
+                    {defaultTemplate ? defaultTemplate.name : 'No default template available'}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          
-          {/* Template Notes Form */}
-          {templateNotes.length > 0 ? (
-            <TemplateNotesForm
-              templateNotes={templateNotes}
-              values={templateNoteValues}
-              onChange={handleInputChange}
-            />
+              
+              {/* Template Notes Form */}
+              {templateNotes.length > 0 ? (
+                <TemplateNotesForm
+                  templateNotes={templateNotes}
+                  values={templateNoteValues}
+                  onChange={handleInputChange}
+                />
+              ) : (
+                <div className="text-center py-4 bg-accent/30 rounded-md max-w-3xl mx-auto">
+                  <p>No template notes available for this template.</p>
+                </div>
+              )}
+            </>
           ) : (
-            <div className="text-center py-4 bg-accent/30 rounded-md max-w-3xl mx-auto">
-              <p>No template notes available for this template.</p>
-            </div>
+            // UPDATE REPORT MODE
+            <>
+              {/* Project Selection */}
+              <div className="grid grid-cols-1 gap-6 mb-8 max-w-3xl mx-auto">
+                <div>
+                  <label htmlFor="projectSelect" className="block text-sm font-medium mb-1 text-left">
+                    Report Name
+                  </label>
+                  <Select onValueChange={handleProjectSelect} value={selectedProjectId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select an existing project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {existingProjects.map(project => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {/* Only show template and notes if a project is selected */}
+              {selectedProjectId && (
+                <>
+                  {/* Template Display */}
+                  <div className="grid grid-cols-1 gap-6 mb-8 max-w-3xl mx-auto">
+                    <div>
+                      <label className="block text-sm font-medium mb-1 text-left">
+                        Template
+                      </label>
+                      <div className="p-2 border rounded-md bg-gray-50">
+                        {defaultTemplate ? defaultTemplate.name : 'No template available'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Template Notes Form */}
+                  {templateNotes.length > 0 ? (
+                    <TemplateNotesForm
+                      templateNotes={templateNotes}
+                      values={templateNoteValues}
+                      onChange={handleInputChange}
+                    />
+                  ) : (
+                    <div className="text-center py-4 bg-accent/30 rounded-md max-w-3xl mx-auto">
+                      <p>No template notes available for this project.</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
           )}
           
           {/* Action Buttons */}
@@ -290,7 +524,7 @@ const StartNewReport = () => {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || (reportMode === 'update' && !selectedProjectId)}
             >
               {isSaving ? (
                 <>
