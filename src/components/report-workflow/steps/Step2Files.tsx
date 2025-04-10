@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Upload, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, Check, AlertCircle, Loader2, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import InstructionsPanel from '../start-report/InstructionsPanel';
@@ -300,7 +300,9 @@ const Step2Files = () => {
     }
     
     // Refresh the files list
-    await fetchUploadedFiles();
+    if (projectId) {
+      await fetchUploadedFiles(projectId);
+    }
     
     // Reset the selected files after upload is complete
     setSelectedFiles([]);
@@ -348,6 +350,11 @@ const Step2Files = () => {
     });
   };
   
+  // Add the missing handleClearSelected function
+  const handleClearSelected = () => {
+    setSelectedFiles([]);
+  };
+  
   // If we don't have a project ID, return null or redirect
   if (!hasProjectId) {
     console.log('Step2Files - No project ID, not rendering content');
@@ -371,6 +378,7 @@ const Step2Files = () => {
             {selectedFiles.length > 0 && !isUploading && (
               <div className="mt-4 flex justify-end space-x-2">
                 <Button variant="outline" onClick={handleClearSelected}>
+                  <X className="mr-2 h-4 w-4" />
                   Clear Selection
                 </Button>
                 <Button onClick={handleUpload}>

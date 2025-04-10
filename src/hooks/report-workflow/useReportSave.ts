@@ -128,22 +128,23 @@ export const useReportSave = () => {
       const storedId = localStorage.getItem('currentProjectId');
       console.log('Verified project ID in localStorage:', storedId);
       
-      // Ensure we navigate with the project ID in state
-      console.log('Navigating to files step with projectId:', projectId);
-      
-      // Use a small timeout to ensure localStorage is updated before navigation
-      // but remove the setTimeout which can cause race conditions
-      navigate('/dashboard/report-wizard/files', { 
-        state: { projectId },
-        replace: true
-      });
+      // Add a small delay before navigation to ensure localStorage is set
+      setTimeout(() => {
+        // Ensure we navigate with the project ID in state
+        console.log('Navigating to files step with projectId:', projectId);
+        
+        navigate('/dashboard/report-wizard/files', { 
+          state: { projectId },
+          replace: true
+        });
 
-      toast({
-        title: 'Success',
-        description: reportMode === 'new' 
-          ? 'New report created successfully' 
-          : 'Report updated successfully',
-      });
+        toast({
+          title: 'Success',
+          description: reportMode === 'new' 
+            ? 'New report created successfully' 
+            : 'Report updated successfully',
+        });
+      }, 100);
       
       return true;
     } catch (error) {
