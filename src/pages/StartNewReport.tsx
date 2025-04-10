@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -165,7 +164,11 @@ const StartNewReport = () => {
         if (templateError) throw templateError;
         setDefaultTemplate(template);
         
-        // Load notes for this project
+        // Load template notes structure first
+        const templateNotes = await loadTemplateNotes(template.id);
+        setTemplateNotes(templateNotes || []);
+        
+        // Load existing notes content for this project
         const { data: notes, error: notesError } = await supabase
           .from('notes')
           .select('*')
@@ -173,19 +176,22 @@ const StartNewReport = () => {
           
         if (notesError) throw notesError;
         
-        // Create a map of note values by name
-        const noteValues: Record<string, string> = {};
-        notes.forEach(note => {
-          if (note.name && note.content) {
-            noteValues[note.id] = note.content;
-          }
-        });
-        
-        setTemplateNoteValues(noteValues);
-        
-        // Also load template notes for reference structure
-        const templateNotes = await loadTemplateNotes(template.id);
-        setTemplateNotes(templateNotes || []);
+        // Map notes to template notes based on name match
+        if (notes && templateNotes) {
+          const noteValues: Record<string, string> = {};
+          
+          templateNotes.forEach(templateNote => {
+            // Find the corresponding project note
+            const matchingNote = notes.find(note => note.name === templateNote.name);
+            if (matchingNote) {
+              noteValues[templateNote.id] = matchingNote.content || '';
+            } else {
+              noteValues[templateNote.id] = '';
+            }
+          });
+          
+          setTemplateNoteValues(noteValues);
+        }
       }
     } catch (error) {
       console.error('Error loading project:', error);
@@ -417,34 +423,48 @@ const StartNewReport = () => {
         </div>
       ) : (
         <>
-          {reportMode === 'new' ? (
-            // NEW REPORT MODE
-            <>
-              {/* Report Name and Template Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-3xl mx-auto">
-                <div>
-                  <label htmlFor="reportName" className="block text-sm font-medium mb-1 text-left">
-                    Report Name
-                  </label>
-                  <Input
-                    id="reportName"
-                    value={reportName}
-                    onChange={(e) => setReportName(e.target.value)}
-                    placeholder="Enter report name"
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-left">
-                    Template
-                  </label>
-                  <div className="p-2 border rounded-md bg-gray-50">
-                    {defaultTemplate ? defaultTemplate.name : 'No default template available'}
-                  </div>
-                </div>
+          {/* Report Name and Template Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-3xl mx-auto">
+            <div>
+              <label htmlFor="reportName" className="block text-sm font-medium mb-1 text-left">
+                Report Name
+              </label>
+              {reportMode === 'new' ? (
+                <Input
+                  id="reportName"
+                  value={reportName}
+                  onChange={(e) => setReportName(e.target.value)}
+                  placeholder="Enter report name"
+                  className="w-full"
+                />
+              ) : (
+                <Select onValueChange={handleProjectSelect} value={selectedProjectId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an existing project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {existingProjects.map(project => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-left">
+                Template
+              </label>
+              <div className="p-2 border rounded-md bg-gray-50">
+                {defaultTemplate ? defaultTemplate.name : 'No default template available'}
               </div>
-              
-              {/* Template Notes Form */}
+            </div>
+          </div>
+          
+          {/* Template Notes Form - shown for both modes when data is available */}
+          {(reportMode === 'new' || (reportMode === 'update' && selectedProjectId)) && (
+            <>
               {templateNotes.length > 0 ? (
                 <TemplateNotesForm
                   templateNotes={templateNotes}
@@ -453,62 +473,8 @@ const StartNewReport = () => {
                 />
               ) : (
                 <div className="text-center py-4 bg-accent/30 rounded-md max-w-3xl mx-auto">
-                  <p>No template notes available for this template.</p>
+                  <p>No template notes available.</p>
                 </div>
-              )}
-            </>
-          ) : (
-            // UPDATE REPORT MODE
-            <>
-              {/* Project Selection */}
-              <div className="grid grid-cols-1 gap-6 mb-8 max-w-3xl mx-auto">
-                <div>
-                  <label htmlFor="projectSelect" className="block text-sm font-medium mb-1 text-left">
-                    Report Name
-                  </label>
-                  <Select onValueChange={handleProjectSelect} value={selectedProjectId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select an existing project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {existingProjects.map(project => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              {/* Only show template and notes if a project is selected */}
-              {selectedProjectId && (
-                <>
-                  {/* Template Display */}
-                  <div className="grid grid-cols-1 gap-6 mb-8 max-w-3xl mx-auto">
-                    <div>
-                      <label className="block text-sm font-medium mb-1 text-left">
-                        Template
-                      </label>
-                      <div className="p-2 border rounded-md bg-gray-50">
-                        {defaultTemplate ? defaultTemplate.name : 'No template available'}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Template Notes Form */}
-                  {templateNotes.length > 0 ? (
-                    <TemplateNotesForm
-                      templateNotes={templateNotes}
-                      values={templateNoteValues}
-                      onChange={handleInputChange}
-                    />
-                  ) : (
-                    <div className="text-center py-4 bg-accent/30 rounded-md max-w-3xl mx-auto">
-                      <p>No template notes available for this project.</p>
-                    </div>
-                  )}
-                </>
               )}
             </>
           )}
