@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import InstructionsPanel from '../start-report/InstructionsPanel';
 import FileUploadArea from '../file-upload/FileUploadArea';
 import UploadedFilesTable from '../file-upload/UploadedFilesTable';
-import { ProjectFile } from '@/components/dashboard/files/FileItem';
+import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
 
 interface FileUploadProgress {
   file: File;
@@ -62,7 +62,13 @@ const Step2Files = () => {
       
       if (error) throw error;
       
-      setUploadedFiles(data || []);
+      // Convert the string type to FileType
+      const typedFiles = data?.map(file => ({
+        ...file,
+        type: file.type as FileType // Cast the string type to FileType
+      })) || [];
+      
+      setUploadedFiles(typedFiles);
     } catch (error) {
       console.error('Error fetching files:', error);
       toast({
@@ -136,23 +142,43 @@ const Step2Files = () => {
         const fileName = `${uuidv4()}.${fileExt}`;
         const filePath = `${projectId}/${fileName}`;
         
+        // Create a progress handler
+        let uploadProgress = 0;
+        const progressHandler = (progress: number) => {
+          uploadProgress = progress;
+          setUploadProgress(prev => 
+            prev.map((item, idx) => 
+              idx === i ? { ...item, progress } : item
+            )
+          );
+        };
+        
         // Upload to Supabase Storage
         const { data, error } = await supabase.storage
           .from(bucketName)
           .upload(filePath, file, {
             cacheControl: '3600',
-            upsert: false,
-            onUploadProgress: (progress) => {
-              const percent = Math.round((progress.loaded / progress.total) * 100);
-              setUploadProgress(prev => 
-                prev.map((item, idx) => 
-                  idx === i ? { ...item, progress: percent } : item
-                )
-              );
-            }
+            upsert: false
           });
+        
+        // Regularly update progress since onUploadProgress is not supported
+        // This is a workaround to simulate progress
+        const progressInterval = setInterval(() => {
+          if (uploadProgress < 90) {
+            progressHandler(uploadProgress + 10);
+          } else {
+            clearInterval(progressInterval);
+          }
+        }, 300);
           
-        if (error) throw error;
+        if (error) {
+          clearInterval(progressInterval);
+          throw error;
+        }
+        
+        // Clear the interval and set progress to 100%
+        clearInterval(progressInterval);
+        progressHandler(100);
         
         // Get public URL
         const { data: urlData } = await supabase.storage
@@ -219,7 +245,7 @@ const Step2Files = () => {
     }
   };
   
-  const getFileType = (extension: string): 'image' | 'text' | 'other' => {
+  const getFileType = (extension: string): FileType => {
     const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
     const textExtensions = ['txt', 'doc', 'docx', 'pdf', 'md'];
     
