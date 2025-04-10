@@ -295,6 +295,8 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          business_logo_link: string | null
+          business_name: string | null
           domain_id: string | null
           email: string
           full_name: string | null
@@ -308,6 +310,8 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          business_logo_link?: string | null
+          business_name?: string | null
           domain_id?: string | null
           email: string
           full_name?: string | null
@@ -321,6 +325,8 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          business_logo_link?: string | null
+          business_name?: string | null
           domain_id?: string | null
           email?: string
           full_name?: string | null
@@ -613,6 +619,7 @@ export type Database = {
           html_module: string | null
           id: string
           image_module: Json | null
+          is_default: boolean | null
           is_public: boolean | null
           last_edited_at: string | null
           layout_module: Json | null
@@ -628,6 +635,7 @@ export type Database = {
           html_module?: string | null
           id?: string
           image_module?: Json | null
+          is_default?: boolean | null
           is_public?: boolean | null
           last_edited_at?: string | null
           layout_module?: Json | null
@@ -643,6 +651,7 @@ export type Database = {
           html_module?: string | null
           id?: string
           image_module?: Json | null
+          is_default?: boolean | null
           is_public?: boolean | null
           last_edited_at?: string | null
           layout_module?: Json | null

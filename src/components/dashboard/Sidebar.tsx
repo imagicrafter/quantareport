@@ -1,6 +1,6 @@
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { X, FolderPlus, Image, FileText, FileCheck, FileArchive, Settings, LogOut, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, FolderPlus, Image, FileText, FileCheck, FileArchive, Settings, LogOut, Shield, ChevronLeft, ChevronRight, FilePlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Logo from '../ui-elements/Logo';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,6 +55,7 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
 
   // Updated menu items with Reports moved between Projects and Notes
   const menuItems = [
+    { name: 'Start New Report', icon: <FilePlus size={20} />, path: '/dashboard/start-new-report' },
     { name: 'Templates', icon: <FileCheck size={20} />, path: '/dashboard/templates' },
     { name: 'Projects', icon: <FolderPlus size={20} />, path: '/dashboard/projects' },
     { name: 'Reports', icon: <FileArchive size={20} />, path: '/dashboard/reports' },
