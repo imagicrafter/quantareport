@@ -1,11 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../dashboard/Sidebar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const DashboardLayout: React.FC = () => {
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+}
+
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,7 +86,7 @@ const DashboardLayout: React.FC = () => {
         setShowCreateProject={setShowCreateProject} 
       />
       <main className="flex-1 overflow-auto">
-        <Outlet context={[showCreateProject, setShowCreateProject]} />
+        {children}
       </main>
     </div>
   );
