@@ -18,8 +18,16 @@ const Step1Start = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
+  // Function to get project ID with consistent logic
+  const getProjectIdFromState = (): string | null => {
+    if (location.state?.projectId) {
+      return location.state.projectId;
+    }
+    return null;
+  };
+  
   // Capture any project ID from location state (for when we return from other steps)
-  const projectIdFromState = location.state?.projectId;
+  const projectIdFromState = getProjectIdFromState();
   
   console.log('Step1Start - Location state:', location.state);
   console.log('Step1Start - Project ID from state:', projectIdFromState);
@@ -105,9 +113,10 @@ const Step1Start = () => {
     // The form reset is handled in the useEffect
   };
   
-  const handleSave = () => {
+  const handleSave = async () => {
     console.log('Step1Start - Save button clicked');
-    saveReport({
+    
+    const success = await saveReport({
       reportMode,
       reportName,
       templateId: defaultTemplate?.id,
@@ -115,6 +124,8 @@ const Step1Start = () => {
       templateNotes,
       templateNoteValues
     });
+    
+    console.log('Step1Start - saveReport result:', success);
     // Navigation is now handled inside the saveReport function
   };
   

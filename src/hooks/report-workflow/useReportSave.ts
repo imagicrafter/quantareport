@@ -108,33 +108,44 @@ export const useReportSave = () => {
         console.log('Using existing project with ID:', projectId);
       }
       
-      // Store current project ID in localStorage for access between steps
-      if (projectId) {
-        localStorage.setItem('currentProjectId', projectId);
-        console.log('Saved project ID to localStorage:', projectId);
-        
-        // CRITICAL FIX: Need to delay navigation and ensure we get to the right route
-        setTimeout(() => {
-          console.log('Navigating to files step with projectId:', projectId);
-          // Use replace instead of push to avoid having Step1 in history
-          navigate('/dashboard/report-wizard/files', { 
-            state: { projectId },
-            replace: true
-          });
-        }, 100);
-
-        toast({
-          title: 'Success',
-          description: reportMode === 'new' 
-            ? 'New report created successfully' 
-            : 'Report updated successfully',
-        });
-        
-        return true;
-      } else {
+      // Ensure we have a valid project ID before proceeding
+      if (!projectId) {
         console.error('No project ID available after save operation');
+        toast({
+          title: 'Error',
+          description: 'Failed to get project ID. Please try again.',
+          variant: 'destructive',
+        });
+        setIsSaving(false);
         return false;
       }
+      
+      // Store current project ID in localStorage for access between steps
+      console.log('Saving project ID to localStorage:', projectId);
+      localStorage.setItem('currentProjectId', projectId);
+      
+      // DEBUG: Verify we can read it back correctly
+      const storedId = localStorage.getItem('currentProjectId');
+      console.log('Verified project ID in localStorage:', storedId);
+      
+      // Ensure we navigate with the project ID in state
+      console.log('Navigating to files step with projectId:', projectId);
+      
+      // Use a small timeout to ensure localStorage is updated before navigation
+      // but remove the setTimeout which can cause race conditions
+      navigate('/dashboard/report-wizard/files', { 
+        state: { projectId },
+        replace: true
+      });
+
+      toast({
+        title: 'Success',
+        description: reportMode === 'new' 
+          ? 'New report created successfully' 
+          : 'Report updated successfully',
+      });
+      
+      return true;
     } catch (error) {
       console.error('Error saving report:', error);
       toast({
@@ -142,9 +153,8 @@ export const useReportSave = () => {
         description: 'Failed to save report. Please try again.',
         variant: 'destructive',
       });
-      return false;
-    } finally {
       setIsSaving(false);
+      return false;
     }
   };
 

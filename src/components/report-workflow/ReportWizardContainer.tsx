@@ -28,6 +28,20 @@ const ReportWizardContainer = () => {
   
   const currentStepIndex = getCurrentStepIndex();
   
+  // Get the project ID from state or localStorage
+  const getProjectId = () => {
+    // First try to get from location state
+    const projectIdFromState = location.state?.projectId;
+    if (projectIdFromState) {
+      return projectIdFromState;
+    }
+    
+    // If not found in state, try localStorage
+    return localStorage.getItem('currentProjectId');
+  };
+  
+  const projectId = getProjectId();
+  
   // ENHANCED LOGGING: Log more details including full location object
   console.log('ReportWizardContainer render:', {
     currentStep: step,
@@ -35,12 +49,13 @@ const ReportWizardContainer = () => {
     locationState: location.state,
     locationPathname: location.pathname,
     locationKey: location.key,
-    storedProjectId: localStorage.getItem('currentProjectId')
+    storedProjectId: localStorage.getItem('currentProjectId'),
+    projectIdFromFunction: projectId
   });
   
   const handleStepClick = (index: number) => {
     // Get the project ID from state or localStorage
-    const projectId = location.state?.projectId || localStorage.getItem('currentProjectId');
+    const projectId = getProjectId();
     
     console.log('handleStepClick - Project ID:', projectId);
     console.log('handleStepClick - Trying to navigate to index:', index);
@@ -69,7 +84,8 @@ const ReportWizardContainer = () => {
     // Preserve any state when navigating between steps
     console.log('Navigation approved to step:', steps[index].path);
     navigate(`/dashboard/report-wizard/${steps[index].path}`, { 
-      state: { projectId } 
+      state: { projectId },
+      replace: true
     });
   };
   
@@ -81,16 +97,16 @@ const ReportWizardContainer = () => {
     
     if (!step) {
       console.log('No step specified, navigating to first step');
-      navigate(`/dashboard/report-wizard/${steps[0].path}`);
+      navigate(`/dashboard/report-wizard/${steps[0].path}`, { replace: true });
       return;
     }
     
     // Check if we're beyond step 1 but don't have a project ID
     if (currentStepIndex > 0) {
-      const projectId = location.state?.projectId || localStorage.getItem('currentProjectId');
+      const projectId = getProjectId();
       
       console.log('Current step index:', currentStepIndex);
-      console.log('Project ID from state or localStorage:', projectId);
+      console.log('Project ID from getProjectId():', projectId);
       
       if (!projectId) {
         console.log('No project ID found, redirecting to step 1');
@@ -113,7 +129,7 @@ const ReportWizardContainer = () => {
         }
       }
     }
-  }, [step, navigate, currentStepIndex, location]);
+  }, [step, navigate, currentStepIndex, location.pathname]);
   
   return (
     <div className="container mx-auto px-4 pt-16 pb-12">
