@@ -7,11 +7,12 @@ import UploadedFilesTable from '../file-upload/UploadedFilesTable';
 import StepBanner from '../StepBanner';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { ProjectFile } from '@/components/dashboard/files/FileItem';
 
 const Step2Files = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<ProjectFile[]>([]);
   const location = useLocation();
   const { toast } = useToast();
 
@@ -130,8 +131,9 @@ const Step2Files = () => {
       if (!projectId) return;
       
       try {
+        // The table name should be 'files' not 'project_files'
         const { data, error } = await supabase
-          .from('project_files')
+          .from('files')
           .select('*')
           .eq('project_id', projectId)
           .order('created_at', { ascending: false });
@@ -151,7 +153,7 @@ const Step2Files = () => {
     fetchFiles();
   }, [projectId]);
 
-  const handleFilesUploaded = (newFiles: any[]) => {
+  const handleFilesUploaded = (newFiles: ProjectFile[]) => {
     setUploadedFiles((prev) => [...newFiles, ...prev]);
   };
 
@@ -211,14 +213,26 @@ const Step2Files = () => {
   return (
     <div className="space-y-6">
       <StepBanner 
-        title="Upload Files" 
-        description="Add photos, documents, or audio files to your report."
-        stepNumber={2}
+        step={2}
+        isActive={true}
+        onClick={() => {}}
       />
       
-      <FileUploadArea projectId={projectId} onFilesUploaded={handleFilesUploaded} />
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold mb-2">Upload Files</h2>
+        <p className="text-muted-foreground">Add photos, documents, or audio files to your report.</p>
+      </div>
       
-      <UploadedFilesTable files={uploadedFiles} projectId={projectId} />
+      <FileUploadArea 
+        onFilesSelected={handleFilesUploaded} 
+        acceptedFileTypes=".jpg,.jpeg,.png,.pdf,.doc,.docx,.txt"
+        files={[]}
+      />
+      
+      <UploadedFilesTable 
+        files={uploadedFiles} 
+        loading={false}
+      />
       
       <div className="flex justify-end max-w-4xl mx-auto mt-8">
         <Button

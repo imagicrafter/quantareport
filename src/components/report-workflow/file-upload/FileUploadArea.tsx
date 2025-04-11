@@ -2,9 +2,10 @@
 import { useState, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FileUploadAreaProps {
-  onFilesSelected: (files: File[]) => void;
+  onFilesSelected: (files: any[]) => void;
   acceptedFileTypes?: string;
   maxFileSizeMB?: number;
   className?: string;
@@ -19,6 +20,7 @@ const FileUploadArea = ({
   files = []
 }: FileUploadAreaProps) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const maxFileSize = maxFileSizeMB * 1024 * 1024; // Convert MB to bytes
@@ -55,7 +57,7 @@ const FileUploadArea = ({
     }
   };
   
-  const handleFiles = (fileList: File[]) => {
+  const handleFiles = async (fileList: File[]) => {
     const validFiles = fileList.filter(file => {
       // Check file size
       if (file.size > maxFileSize) {
@@ -80,7 +82,75 @@ const FileUploadArea = ({
     });
     
     if (validFiles.length > 0) {
-      onFilesSelected(validFiles);
+      setUploading(true);
+      
+      try {
+        // Get current user
+        const { data: userData } = await supabase.auth.getUser();
+        
+        if (!userData.user) {
+          console.error('User not authenticated');
+          return;
+        }
+        
+        // Upload each file to storage and record in database
+        const uploadedFiles = [];
+        
+        for (const file of validFiles) {
+          // Determine file type category
+          let fileType = 'document';
+          if (file.type.startsWith('image/')) {
+            fileType = 'image';
+          } else if (file.type.startsWith('audio/')) {
+            fileType = 'audio';
+          }
+          
+          // Upload file to Supabase Storage
+          const fileName = `${Date.now()}-${file.name}`;
+          const filePath = `${userData.user.id}/${fileName}`;
+          const bucketName = fileType === 'image' ? 'pub_images' : 
+                            fileType === 'audio' ? 'pub_audio' : 'pub_documents';
+          
+          const { data, error } = await supabase.storage
+            .from(bucketName)
+            .upload(filePath, file);
+            
+          if (error) {
+            console.error('Error uploading file:', error);
+            continue;
+          }
+          
+          // Record file in database
+          const { data: fileData, error: fileError } = await supabase
+            .from('files')
+            .insert({
+              name: file.name,
+              type: fileType,
+              size: file.size,
+              file_path: filePath,
+              user_id: userData.user.id,
+              project_id: '', // This will be set by the parent component
+            })
+            .select()
+            .single();
+            
+          if (fileError) {
+            console.error('Error recording file in database:', fileError);
+            continue;
+          }
+          
+          uploadedFiles.push(fileData);
+        }
+        
+        // Notify parent component of uploaded files
+        if (uploadedFiles.length > 0) {
+          onFilesSelected(uploadedFiles);
+        }
+      } catch (error) {
+        console.error('Error in file upload process:', error);
+      } finally {
+        setUploading(false);
+      }
     }
   };
   
@@ -139,6 +209,15 @@ const FileUploadArea = ({
               </div>
             ))}
           </div>
+        </div>
+      )}
+      
+      {uploading && (
+        <div className="mt-4">
+          <div className="flex justify-center">
+            <div className="animate-spin h-8 w-8 border-4 border-primary rounded-full border-t-transparent"></div>
+          </div>
+          <p className="text-center mt-2 text-sm text-muted-foreground">Uploading files...</p>
         </div>
       )}
     </div>
