@@ -1,9 +1,10 @@
 
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Outlet } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useParams, Outlet, useLocation } from 'react-router-dom';
 import StepIndicator from './StepIndicator';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import ExitWorkflowDialog from './ExitWorkflowDialog';
 
 const steps = [
   { title: 'Start Report', path: 'start' },
@@ -17,10 +18,14 @@ const steps = [
 const ReportWizardContainer = () => {
   const { step } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState<string>('Untitled Report');
   const [isLoading, setIsLoading] = useState(true);
   const [currentWorkflowState, setCurrentWorkflowState] = useState<number | null>(null);
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [exitTarget, setExitTarget] = useState('');
   
   // Function to fetch the most recent workflow for a specific workflow state
   const fetchActiveWorkflowForState = async (workflowState: number) => {
@@ -75,6 +80,20 @@ const ReportWizardContainer = () => {
       if (data) {
         console.log('Current workflow state from DB:', data.workflow_state);
         console.log('Current project ID from DB:', data.project_id);
+        
+        // Fetch project name if we have a project ID
+        if (data.project_id) {
+          const { data: projectData } = await supabase
+            .from('projects')
+            .select('name')
+            .eq('id', data.project_id)
+            .maybeSingle();
+            
+          if (projectData && projectData.name) {
+            setProjectName(projectData.name);
+          }
+        }
+        
         return { 
           workflowState: data.workflow_state, 
           projectId: data.project_id 
@@ -103,6 +122,7 @@ const ReportWizardContainer = () => {
     return index >= 0 ? index : 0;
   };
   
+  // Modified handleStepClick to use the confirmation dialog for the Wizard menu click
   const handleStepClick = async (index: number) => {
     console.log('handleStepClick - Trying to navigate to index:', index);
     
@@ -148,6 +168,25 @@ const ReportWizardContainer = () => {
     // Allow navigation to previous steps or the first step
     navigate(`/dashboard/report-wizard/${steps[index].path}`);
   };
+  
+  // Custom navigation hook to intercept navigation events
+  const handleNavigation = useCallback((to: string) => {
+    // Don't show exit dialog for navigation within the wizard
+    if (to.includes('/dashboard/report-wizard/')) {
+      navigate(to);
+      return;
+    }
+    
+    // If clicking on wizard menu item link, navigate directly without confirmation
+    if (to === '/dashboard/report-wizard' || to === '/dashboard/report-wizard/') {
+      navigate('/dashboard/report-wizard/start');
+      return;
+    }
+    
+    // For other links, show the exit confirmation dialog
+    setExitTarget(to);
+    setShowExitDialog(true);
+  }, [navigate, projectId, projectName]);
   
   // Handle navigation and determine the correct step based on workflow state
   useEffect(() => {
@@ -217,6 +256,70 @@ const ReportWizardContainer = () => {
     initializeWorkflow();
   }, [step, navigate]);
   
+  // Add event listeners to intercept link clicks
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      // Check if the click is on an anchor element or its child
+      let target = e.target as HTMLElement;
+      
+      // Find the closest anchor element
+      const anchor = target.closest('a');
+      
+      if (anchor) {
+        const href = anchor.getAttribute('href');
+        
+        // Skip if it's an external link or doesn't have href
+        if (!href || href.startsWith('http') || href.startsWith('mailto:') || href === '#') {
+          return;
+        }
+        
+        // Skip for next step buttons within the workflow
+        if (anchor.classList.contains('next-step-button')) {
+          return;
+        }
+        
+        // Skip for links within the workflow
+        if (href.startsWith('/dashboard/report-wizard/')) {
+          return;
+        }
+        
+        // Skip specifically for the Wizard menu item
+        if (href === '/dashboard/report-wizard' || href === '/dashboard/report-wizard/') {
+          navigate('/dashboard/report-wizard/start');
+          e.preventDefault();
+          return;
+        }
+        
+        // For any other internal link, show confirmation if we have a project
+        if (projectId && currentWorkflowState && currentWorkflowState > 0) {
+          e.preventDefault();
+          setExitTarget(href);
+          setShowExitDialog(true);
+        }
+      }
+    };
+    
+    document.addEventListener('click', handleClick);
+    return () => {
+      document.removeEventListener('click', handleClick);
+    };
+  }, [navigate, projectId, currentWorkflowState, handleNavigation]);
+  
+  // Determine page title based on report mode and project
+  const getPageTitle = () => {
+    if (!projectId || !projectName) {
+      return "Create New Report";
+    }
+    
+    // For step 2 onwards, show the project name
+    const currentStepIndex = getStepIndexFromPath();
+    if (currentStepIndex >= 1) {
+      return `Create New Report: ${projectName}`;
+    }
+    
+    return "Create New Report";
+  };
+  
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 pt-16 pb-12">
@@ -230,7 +333,7 @@ const ReportWizardContainer = () => {
   return (
     <div className="container mx-auto px-4 pt-16 pb-12">
       <h1 className="text-2xl font-semibold mb-6 text-center">
-        Create New Report
+        {getPageTitle()}
       </h1>
       
       {/* Step Indicator */}
@@ -245,6 +348,15 @@ const ReportWizardContainer = () => {
       
       {/* Step Content - rendered via Outlet */}
       <Outlet />
+      
+      {/* Exit Workflow Confirmation Dialog */}
+      <ExitWorkflowDialog
+        isOpen={showExitDialog}
+        setIsOpen={setShowExitDialog}
+        projectId={projectId}
+        projectName={projectName}
+        targetPath={exitTarget}
+      />
     </div>
   );
 };

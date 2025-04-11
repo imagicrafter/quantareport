@@ -281,6 +281,7 @@ const Step2Files = () => {
         <Button
           onClick={handleNextStep}
           disabled={uploadedFiles.length === 0}
+          className="next-step-button" // Add this class to skip exit confirmation
         >
           Next: Process Files
         </Button>
