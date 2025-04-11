@@ -387,6 +387,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          last_edited_at: string | null
           project_id: string
           user_id: string | null
           workflow_state: number
@@ -394,6 +395,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          last_edited_at?: string | null
           project_id: string
           user_id?: string | null
           workflow_state: number
@@ -401,6 +403,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          last_edited_at?: string | null
           project_id?: string
           user_id?: string | null
           workflow_state?: number

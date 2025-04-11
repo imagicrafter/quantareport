@@ -1,275 +1,225 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import InstructionsPanel from '../start-report/InstructionsPanel';
-import ReportModeSelector from '../start-report/ReportModeSelector';
-import ReportNameInput from '../start-report/ReportNameInput';
-import TemplateDisplay from '../start-report/TemplateDisplay';
-import ProjectSelector from '../start-report/ProjectSelector';
-import LoadingSpinner from '../start-report/LoadingSpinner';
-import TemplateNotesForm from '../TemplateNotesForm';
-import { useTemplateData } from '@/hooks/report-workflow/useTemplateData';
-import { useProjectData } from '@/hooks/report-workflow/useProjectData';
-import { useReportSave } from '@/hooks/report-workflow/useReportSave';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
+import InstructionsPanel from '../start-report/InstructionsPanel';
+import { setWorkflowState } from '@/services/workflowService';
+import { WorkflowState } from '@/types/workflow.types';
+
+interface Template {
+  id: string;
+  name: string;
+  description: string;
+}
 
 const Step1Start = () => {
-  const [reportMode, setReportMode] = useState<'new' | 'update'>('new');
+  const [reportName, setReportName] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string | undefined>(undefined);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templateNotes, setTemplateNotes] = useState<any[]>([]);
+  const [templateNoteValues, setTemplateNoteValues] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
+  const { projectId: paramProjectId } = useParams();
+  const [projectId, setProjectId] = useState<string | null>(paramProjectId || location.state?.projectId || null);
   
-  // Function to get project ID with consistent logic
-  const getProjectIdFromState = (): string | null => {
-    if (location.state?.projectId) {
-      return location.state.projectId;
-    }
-    return null;
-  };
-  
-  // Capture any project ID from location state (for when we return from other steps)
-  const projectIdFromState = getProjectIdFromState();
-  
-  console.log('Step1Start - Location state:', location.state);
-  console.log('Step1Start - Project ID from state:', projectIdFromState);
-  console.log('Step1Start - Location pathname:', location.pathname);
-  console.log('Step1Start - Location key:', location.key);
-  
-  // Custom hooks for data and operations
-  const {
-    defaultTemplate,
-    isLoading,
-    templateNotes,
-    templateNoteValues,
-    setTemplateNotes,
-    setTemplateNoteValues,
-    handleInputChange,
-    resetTemplateNoteValues,
-    fetchDefaultTemplate
-  } = useTemplateData();
-  
-  const {
-    existingProjects,
-    selectedProjectId,
-    reportName,
-    setSelectedProjectId,
-    setReportName,
-    handleProjectSelect,
-    resetForm
-  } = useProjectData();
-  
-  const { isSaving, saveReport } = useReportSave();
-  
-  // Effect to update workflow state when component mounts
   useEffect(() => {
-    const updateWorkflowState = async () => {
+    const fetchTemplates = async () => {
+      setLoading(true);
       try {
-        // If we have a project ID from state, update its workflow state to 1
-        if (projectIdFromState) {
-          console.log('Step1Start - Updating workflow state for project:', projectIdFromState);
-          const user = await supabase.auth.getUser();
-          
-          if (user.data.user) {
-            // Update workflow state using edge function
-            const response = await fetch(`${window.location.origin}/api/workflow-management`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabase.auth.getSession()}`
-              },
-              body: JSON.stringify({
-                operation: 'update',
-                projectId: projectIdFromState,
-                userId: user.data.user.id,
-                workflowState: 1
-              })
-            });
-            
-            const result = await response.json();
-            if (result.error) {
-              console.error('Error updating workflow state via edge function:', result.error);
-              
-              // Fallback method if edge function fails
-              console.log('Attempting direct SQL via RPC for workflow state update');
-              
-              // Since we can't directly access project_workflow table due to type issues,
-              // we'll use a SQL function to handle the update
-              const { error } = await supabase.rpc('set_workflow_state', {
-                p_project_id: projectIdFromState, 
-                p_workflow_state: 1
-              });
-              
-              if (error) {
-                console.error('Error updating workflow state via RPC:', error);
-              } else {
-                console.log('Successfully updated workflow state to 1 using RPC');
-              }
-            } else {
-              console.log('Successfully updated workflow state to 1 using edge function');
-            }
-          }
+        const { data, error } = await supabase
+          .from('templates')
+          .select('*');
+        
+        if (error) {
+          console.error('Error fetching templates:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load templates. Please try again.',
+            variant: 'destructive',
+          });
+        } else {
+          setTemplates(data || []);
         }
       } catch (error) {
-        console.error('Error updating workflow state:', error);
+        console.error('Error fetching templates:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load templates. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
       }
     };
     
-    updateWorkflowState();
-  }, [projectIdFromState]);
+    fetchTemplates();
+  }, [toast]);
   
-  // Reset form when report mode changes
   useEffect(() => {
-    console.log('Step1Start - Report mode changed to:', reportMode);
-    if (reportMode === 'new') {
-      // Reset form to initial state
-      resetForm();
-      resetTemplateNoteValues();
-    } else if (reportMode === 'update') {
-      // If we're in update mode and have a project ID from state, select it
-      if (projectIdFromState) {
-        console.log('Step1Start - Setting selected project ID from state:', projectIdFromState);
-        setSelectedProjectId(projectIdFromState);
+    const fetchTemplateNotes = async () => {
+      if (selectedTemplate) {
+        setLoading(true);
+        try {
+          const { data, error } = await supabase
+            .from('template_notes')
+            .select('*')
+            .eq('template_id', selectedTemplate);
+          
+          if (error) {
+            console.error('Error fetching template notes:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to load template notes. Please try again.',
+              variant: 'destructive',
+            });
+          } else {
+            setTemplateNotes(data || []);
+            // Initialize templateNoteValues with empty strings
+            const initialValues: Record<string, string> = {};
+            data?.forEach((note: any) => {
+              initialValues[note.id] = '';
+            });
+            setTemplateNoteValues(initialValues);
+          }
+        } catch (error) {
+          console.error('Error fetching template notes:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load template notes. Please try again.',
+            variant: 'destructive',
+          });
+        } finally {
+          setLoading(false);
+        }
       }
-    }
-  }, [reportMode]);
-
-  // Handle project ID from step return (coming back from Step 2, etc.)
-  useEffect(() => {
-    if (projectIdFromState) {
-      console.log('Step1Start - Detected project ID in location state:', projectIdFromState);
-      
-      // If user is coming back to Step 1 with a project ID, switch to update mode
-      // and pre-select the project
-      if (reportMode === 'new') {
-        console.log('Step1Start - Switching to update mode due to project ID in state');
-        setReportMode('update');
-      }
-      
-      // Pre-select the project
-      setSelectedProjectId(projectIdFromState);
-    }
-  }, [projectIdFromState]);
-
-  // Separate useEffect for fetching template
-  useEffect(() => {
-    if (reportMode === 'new' && defaultTemplate?.id) {
-      fetchDefaultTemplate();
-    }
-  }, [reportMode, defaultTemplate?.id]);
+    };
+    
+    fetchTemplateNotes();
+  }, [selectedTemplate, toast]);
   
-  const handleReportModeChange = (mode: 'new' | 'update') => {
-    setReportMode(mode);
-    // The form reset is handled in the useEffect
+  useEffect(() => {
+    // If we have a projectId from the URL params or location state, we need to update the workflow state
+    if (projectId) {
+      const updateWorkflowState = async () => {
+        try {
+          console.log('Step1Start - Updating workflow state for project:', projectId);
+          const user = await supabase.auth.getUser();
+          if (user.data.user) {
+            await setWorkflowState(
+              projectId,
+              user.data.user.id,
+              1 as WorkflowState
+            );
+            console.log('Step1Start - Successfully updated workflow state to 1');
+          }
+        } catch (error) {
+          console.error('Step1Start - Error updating workflow state:', error);
+        }
+      };
+      
+      updateWorkflowState();
+    }
+  }, [projectId]);
+  
+  const handleTemplateNoteChange = (noteId: string, value: string) => {
+    setTemplateNoteValues(prevValues => ({
+      ...prevValues,
+      [noteId]: value,
+    }));
   };
   
   const handleSave = async () => {
-    console.log('Step1Start - Save button clicked');
+    if (!reportName || !selectedTemplate) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a report name and select a template.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
-    const success = await saveReport({
-      reportMode,
-      reportName,
-      templateId: defaultTemplate?.id,
-      selectedProjectId,
-      templateNotes,
-      templateNoteValues
+    // Determine if we are creating a new report or updating an existing one
+    const reportMode = projectId ? 'update' : 'new';
+    
+    // Pass all necessary data to the saveReport function
+    navigate('/dashboard/report-wizard/files', {
+      state: {
+        reportMode,
+        reportName,
+        templateId: selectedTemplate,
+        selectedProjectId: projectId,
+        templateNotes,
+        templateNoteValues
+      },
+      replace: true
     });
-    
-    console.log('Step1Start - saveReport result:', success);
-    // Navigation is now handled inside the saveReport function
   };
   
-  const handleCancel = () => {
-    resetForm();
-    resetTemplateNoteValues();
-  };
-
-  const handleProjectSelection = (projectId: string) => {
-    console.log('Step1Start - Project selected:', projectId);
-    
-    handleProjectSelect(
-      projectId, 
-      (loading: boolean) => isLoading, 
-      (template: any) => defaultTemplate, 
-      setTemplateNotes, 
-      setTemplateNoteValues
-    );
-  };
-
   return (
     <div>
       <InstructionsPanel stepNumber={1} />
       
-      {/* Report Mode Selection */}
-      <ReportModeSelector 
-        value={reportMode}
-        onChange={handleReportModeChange}
-      />
-      
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : (
-        <>
-          {/* Report Name and Template Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
+        <Card>
+          <CardContent className="space-y-4">
             <div>
-              {reportMode === 'new' ? (
-                <ReportNameInput 
-                  value={reportName}
-                  onChange={setReportName}
-                />
-              ) : (
-                <ProjectSelector
-                  projects={existingProjects}
-                  selectedId={selectedProjectId}
-                  onSelect={handleProjectSelection}
-                />
-              )}
+              <Label htmlFor="reportName">Report Name</Label>
+              <Input
+                id="reportName"
+                placeholder="Enter report name"
+                value={reportName}
+                onChange={(e) => setReportName(e.target.value)}
+              />
             </div>
-            <TemplateDisplay templateName={defaultTemplate?.name} />
-          </div>
-          
-          {/* Template Notes Form - shown for both modes when data is available */}
-          {(reportMode === 'new' || (reportMode === 'update' && selectedProjectId)) && (
-            <>
-              {templateNotes.length > 0 ? (
-                <TemplateNotesForm
-                  templateNotes={templateNotes}
-                  values={templateNoteValues}
-                  onChange={handleInputChange}
-                />
-              ) : (
-                <div className="text-center py-4 bg-accent/30 rounded-md max-w-3xl mx-auto">
-                  <p>No template notes available.</p>
-                </div>
-              )}
-            </>
-          )}
-          
-          {/* Action Buttons */}
-          <div className="flex justify-between max-w-3xl mx-auto mt-8">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
             
-            <Button
-              onClick={handleSave}
-              disabled={(reportMode === 'update' && !selectedProjectId) || isSaving}
-            >
-              {isSaving ? (
-                <>
-                  <span className="mr-2">Saving</span>
-                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                </>
-              ) : (
-                'Next: Upload Files'
-              )}
+            <div>
+              <Label htmlFor="template">Template</Label>
+              <Select onValueChange={setSelectedTemplate}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {templateNotes.length > 0 && (
+              <div>
+                <h3 className="text-xl font-medium mb-2">Template Notes</h3>
+                {templateNotes.map((note) => (
+                  <div key={note.id} className="mb-4">
+                    <Label htmlFor={`note-${note.id}`}>{note.title}</Label>
+                    <Textarea
+                      id={`note-${note.id}`}
+                      placeholder={note.name}
+                      value={templateNoteValues[note.id] || ''}
+                      onChange={(e) => handleTemplateNoteChange(note.id, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <Button onClick={handleSave} disabled={loading}>
+              Next: Upload Files
             </Button>
-          </div>
-        </>
-      )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
