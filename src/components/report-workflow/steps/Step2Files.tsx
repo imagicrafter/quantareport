@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import FileUploadArea from '../file-upload/FileUploadArea';
@@ -16,7 +15,6 @@ const Step2Files = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Function to get the most recent active workflow for state 2
   const fetchActiveWorkflow = async () => {
     try {
       console.log('Step2Files - Fetching current user and active workflow');
@@ -30,7 +28,6 @@ const Step2Files = () => {
       
       const userId = userData.user.id;
       
-      // Enhanced query to fetch the most recent workflow state for step 2
       const { data: workflowData, error: workflowError } = await supabase
         .from('project_workflow')
         .select('project_id')
@@ -53,24 +50,20 @@ const Step2Files = () => {
     }
   };
 
-  // Get project ID from database
   useEffect(() => {
     const setupStep = async () => {
       setIsLoading(true);
       
       try {
-        // Fetch active project ID from the workflow table
         const activeProjectId = await fetchActiveWorkflow();
         
         if (activeProjectId) {
           console.log('Step2Files - Using project ID from database:', activeProjectId);
           setProjectId(activeProjectId);
           
-          // Ensure workflow state is at Step 2
           const { data: userData } = await supabase.auth.getUser();
           
           if (userData.user) {
-            // Update or create workflow state
             const { data: existingWorkflow } = await supabase
               .from('project_workflow')
               .select('id')
@@ -79,7 +72,6 @@ const Step2Files = () => {
               .maybeSingle();
               
             if (existingWorkflow) {
-              // Update existing workflow
               await supabase
                 .from('project_workflow')
                 .update({ 
@@ -91,7 +83,6 @@ const Step2Files = () => {
               
               console.log('Step2Files - Updated workflow state to 2');
             } else {
-              // Create new workflow
               await supabase
                 .from('project_workflow')
                 .insert({
@@ -111,7 +102,6 @@ const Step2Files = () => {
             description: "Could not find an active project. Please start a new report.",
             variant: "destructive"
           });
-          // Do NOT navigate back to step 1, just show error message
         }
       } catch (error) {
         console.error('Step2Files - Error setting up step:', error);
@@ -123,12 +113,12 @@ const Step2Files = () => {
     setupStep();
   }, [toast]);
 
-  // Fetch uploaded files when projectId changes
   useEffect(() => {
     const fetchFiles = async () => {
       if (!projectId) return;
       
       try {
+        console.log(`Fetching files for project: ${projectId}`);
         const { data, error } = await supabase
           .from('files')
           .select('*')
@@ -142,8 +132,6 @@ const Step2Files = () => {
         
         console.log('Step2Files - Fetched files:', data);
         
-        // Map the database results to match the ProjectFile interface
-        // This ensures that 'type' is correctly cast to the FileType type
         if (data) {
           const mappedFiles: ProjectFile[] = data.map(file => ({
             id: file.id,
@@ -151,7 +139,7 @@ const Step2Files = () => {
             title: file.title || '',
             description: file.description || '',
             file_path: file.file_path,
-            type: file.type as FileType, // Cast the string to FileType
+            type: file.type as FileType,
             size: file.size,
             created_at: file.created_at,
             project_id: file.project_id,
@@ -171,7 +159,44 @@ const Step2Files = () => {
   }, [projectId]);
 
   const handleFilesUploaded = (newFiles: ProjectFile[]) => {
-    setUploadedFiles((prev) => [...newFiles, ...prev]);
+    console.log("Files uploaded:", newFiles);
+    if (projectId) {
+      const fetchFiles = async () => {
+        const { data, error } = await supabase
+          .from('files')
+          .select('*')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          console.error('Error fetching files after upload:', error);
+          return;
+        }
+        
+        if (data) {
+          const mappedFiles: ProjectFile[] = data.map(file => ({
+            id: file.id,
+            name: file.name,
+            title: file.title || '',
+            description: file.description || '',
+            file_path: file.file_path,
+            type: file.type as FileType,
+            size: file.size,
+            created_at: file.created_at,
+            project_id: file.project_id,
+            user_id: file.user_id,
+            position: file.position || 0,
+            metadata: file.metadata || {}
+          }));
+          
+          setUploadedFiles(mappedFiles);
+        }
+      };
+      
+      fetchFiles();
+    } else {
+      setUploadedFiles((prev) => [...newFiles, ...prev]);
+    }
   };
 
   const handleNextStep = async () => {
@@ -185,7 +210,6 @@ const Step2Files = () => {
     }
     
     try {
-      // Update workflow state to 3 (process files step)
       const { data: userData } = await supabase.auth.getUser();
       
       if (!userData.user) {
@@ -218,7 +242,6 @@ const Step2Files = () => {
       
       console.log('Step2Files - Successfully updated workflow state to 3');
       
-      // Navigate to next step
       navigate('/dashboard/report-wizard/process');
     } catch (error) {
       console.error('Step2Files - Error in handleNextStep:', error);
@@ -270,6 +293,7 @@ const Step2Files = () => {
         onFilesSelected={handleFilesUploaded} 
         acceptedFileTypes=".jpg,.jpeg,.png,.pdf,.doc,.docx,.txt"
         files={[]}
+        projectId={projectId}
       />
       
       <UploadedFilesTable 
@@ -281,7 +305,7 @@ const Step2Files = () => {
         <Button
           onClick={handleNextStep}
           disabled={uploadedFiles.length === 0}
-          className="next-step-button" // Add this class to skip exit confirmation
+          className="next-step-button"
         >
           Next: Process Files
         </Button>

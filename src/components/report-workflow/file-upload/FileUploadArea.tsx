@@ -1,8 +1,10 @@
+
 import { useState, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
+import { useToast } from '@/components/ui/use-toast';
 
 interface FileUploadAreaProps {
   onFilesSelected: (files: ProjectFile[]) => void;
@@ -10,6 +12,7 @@ interface FileUploadAreaProps {
   maxFileSizeMB?: number;
   className?: string;
   files?: File[];
+  projectId: string; // Make sure projectId is passed as a required prop
 }
 
 const FileUploadArea = ({
@@ -17,11 +20,13 @@ const FileUploadArea = ({
   acceptedFileTypes = '.jpg,.jpeg,.png,.pdf,.doc,.docx,.txt',
   maxFileSizeMB = 10,
   className,
-  files = []
+  files = [],
+  projectId // Required project ID
 }: FileUploadAreaProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
   const maxFileSize = maxFileSizeMB * 1024 * 1024; // Convert MB to bytes
   
@@ -58,10 +63,23 @@ const FileUploadArea = ({
   };
   
   const handleFiles = async (fileList: File[]) => {
+    if (!projectId) {
+      toast({
+        title: "Error",
+        description: "No project ID provided. Cannot upload files.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const validFiles = fileList.filter(file => {
       // Check file size
       if (file.size > maxFileSize) {
-        console.warn(`File ${file.name} exceeds the maximum size limit of ${maxFileSizeMB}MB.`);
+        toast({
+          title: "File too large",
+          description: `File ${file.name} exceeds the maximum size limit of ${maxFileSizeMB}MB.`,
+          variant: "destructive"
+        });
         return false;
       }
       
@@ -73,7 +91,11 @@ const FileUploadArea = ({
         });
         
         if (!accepted) {
-          console.warn(`File ${file.name} type is not accepted.`);
+          toast({
+            title: "Invalid file type",
+            description: `File ${file.name} type is not accepted.`,
+            variant: "destructive"
+          });
           return false;
         }
       }
@@ -89,7 +111,11 @@ const FileUploadArea = ({
         const { data: userData } = await supabase.auth.getUser();
         
         if (!userData.user) {
-          console.error('User not authenticated');
+          toast({
+            title: "Authentication Error",
+            description: "User not authenticated. Please sign in.",
+            variant: "destructive"
+          });
           return;
         }
         
@@ -107,19 +133,56 @@ const FileUploadArea = ({
             fileType = 'text';
           }
           
-          // Upload file to Supabase Storage
+          // Upload file to Supabase Storage - use projectId in the path
           const fileName = `${Date.now()}-${file.name}`;
-          const filePath = `${userData.user.id}/${fileName}`;
+          const filePath = `${projectId}/${fileName}`; // Store in a folder named with projectId
+          
           const bucketName = fileType === 'image' ? 'pub_images' : 
                             fileType === 'audio' ? 'pub_audio' : 'pub_documents';
           
-          const { data, error } = await supabase.storage
+          console.log(`Uploading file to ${bucketName}/${filePath}`);
+          
+          // Try to create the bucket first if it doesn't exist
+          try {
+            const { data: bucketData, error: bucketError } = await supabase.storage
+              .createBucket(bucketName, {
+                public: true
+              });
+            
+            if (bucketError && !bucketError.message.includes('already exists')) {
+              console.error(`Error creating bucket ${bucketName}:`, bucketError);
+            }
+          } catch (err) {
+            console.log(`Bucket ${bucketName} might already exist:`, err);
+          }
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
             .from(bucketName)
             .upload(filePath, file);
             
-          if (error) {
-            console.error('Error uploading file:', error);
+          if (uploadError) {
+            console.error('Error uploading file:', uploadError);
+            toast({
+              title: "Upload Error",
+              description: `Failed to upload ${file.name}: ${uploadError.message}`,
+              variant: "destructive"
+            });
             continue;
+          }
+          
+          // Get public URL
+          const { data: urlData } = await supabase.storage
+            .from(bucketName)
+            .getPublicUrl(filePath);
+            
+          // Read text content for text files
+          let fileContent = null;
+          if (fileType === 'text') {
+            try {
+              fileContent = await file.text();
+            } catch (error) {
+              console.error('Error reading text file:', error);
+            }
           }
           
           // Record file in database
@@ -129,31 +192,39 @@ const FileUploadArea = ({
               name: file.name,
               type: fileType,
               size: file.size,
-              file_path: filePath,
+              file_path: urlData.publicUrl, // Store the full public URL
               user_id: userData.user.id,
-              project_id: '', // This will be set by the parent component
+              project_id: projectId, // Set the project ID here
+              metadata: fileContent ? { content: fileContent } : null
             })
             .select()
             .single();
             
           if (fileError) {
             console.error('Error recording file in database:', fileError);
+            toast({
+              title: "Database Error",
+              description: `Failed to record ${file.name} in database: ${fileError.message}`,
+              variant: "destructive"
+            });
             continue;
           }
+          
+          console.log("File saved to database:", fileData);
           
           // Make sure the fileData is properly typed as a ProjectFile
           const typedFileData: ProjectFile = {
             id: fileData.id,
             name: fileData.name,
-            title: fileData.title,
-            description: fileData.description,
+            title: fileData.title || '',
+            description: fileData.description || '',
             file_path: fileData.file_path,
             type: fileData.type as FileType,
             size: fileData.size,
             created_at: fileData.created_at,
             project_id: fileData.project_id,
             user_id: fileData.user_id,
-            position: fileData.position,
+            position: fileData.position || 0,
             metadata: fileData.metadata
           };
           
@@ -162,10 +233,20 @@ const FileUploadArea = ({
         
         // Notify parent component of uploaded files
         if (uploadedFiles.length > 0) {
+          toast({
+            title: "Upload Successful",
+            description: `${uploadedFiles.length} file${uploadedFiles.length === 1 ? '' : 's'} uploaded successfully.`,
+            variant: "default"
+          });
           onFilesSelected(uploadedFiles);
         }
       } catch (error) {
         console.error('Error in file upload process:', error);
+        toast({
+          title: "Upload Failed",
+          description: "An unexpected error occurred during upload.",
+          variant: "destructive"
+        });
       } finally {
         setUploading(false);
       }
