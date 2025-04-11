@@ -57,40 +57,87 @@ const Step2Files = () => {
           return;
         }
         
-        const { data, error } = await supabase
-          .from('project_workflow')
-          .select(`
-            project_id,
-            v_projects_last_update!inner (
-              last_update,
-              project_id
-            )
-          `)
-          .eq('workflow_state', 2)
-          .eq('user_id', user.data.user.id)
-          .order('v_projects_last_update.last_update', { ascending: false })
-          .limit(1);
+        console.log('Step2Files - Attempting to fetch active workflow via edge function');
+        const response = await fetch(`${window.location.origin}/api/workflow-management`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.auth.getSession()}`
+          },
+          body: JSON.stringify({
+            operation: 'get_latest_workflow',
+            userId: user.data.user.id,
+            workflowState: 2
+          })
+        });
         
-        if (error) {
-          console.error('Step2Files - Error fetching workflow state:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load project workflow state",
-            variant: "destructive"
+        const result = await response.json();
+        
+        if (result.error) {
+          console.error('Edge function error:', result.error);
+          
+          console.log('Step2Files - Falling back to RPC for active workflow');
+          const { data, error } = await supabase.rpc('get_active_workflow', {
+            p_user_id: user.data.user.id,
+            p_workflow_state: 2
           });
-          return;
-        }
-        
-        if (data && data.length > 0) {
-          const workflowProjectId = data[0].project_id;
-          console.log('Step2Files - Found project ID from workflow state:', workflowProjectId);
-          setProjectId(workflowProjectId);
+          
+          if (error) {
+            console.error('RPC error:', error);
+            
+            console.log('Step2Files - Using final fallback method for active workflow');
+            
+            const { data: rawData, error: rawError } = await supabase
+              .from('v_projects_last_update')
+              .select(`
+                project_id,
+                last_update
+              `)
+              .eq('project_id', supabase.rpc('get_projects_in_state', { state_param: 2 }))
+              .order('last_update', { ascending: false })
+              .limit(1);
+            
+            if (rawError) {
+              console.error('Final fallback error:', rawError);
+              throw new Error('Could not retrieve active workflow');
+            }
+            
+            if (rawData && rawData.length > 0) {
+              const workflowProjectId = rawData[0].project_id;
+              console.log('Step2Files - Found project ID using fallback:', workflowProjectId);
+              setProjectId(workflowProjectId);
+            } else {
+              console.log('No active project found in workflow state 2');
+              navigate('/dashboard/report-wizard/start', { replace: true });
+              toast({
+                title: "No Active Project",
+                description: "Please start a new report.",
+                variant: "destructive"
+              });
+              return;
+            }
+          } else if (data) {
+            console.log('Step2Files - RPC found active workflow:', data);
+            setProjectId(data.project_id);
+          } else {
+            console.log('Step2Files - No active workflow found');
+            navigate('/dashboard/report-wizard/start', { replace: true });
+            toast({
+              title: "No Active Project",
+              description: "Please start a new report first.",
+              variant: "destructive"
+            });
+            return;
+          }
+        } else if (result.data) {
+          console.log('Step2Files - Edge function found active workflow:', result.data);
+          setProjectId(result.data.project_id);
         } else {
-          console.log('Step2Files - No active workflow found for step 2');
+          console.log('Step2Files - No active workflow found via edge function');
           navigate('/dashboard/report-wizard/start', { replace: true });
           toast({
-            title: "Error",
-            description: "No active project found. Please start a new report.",
+            title: "No Active Project",
+            description: "Please start a new report first.",
             variant: "destructive"
           });
           return;
@@ -324,13 +371,39 @@ const Step2Files = () => {
   
   const handleBack = async () => {
     if (projectId) {
+      console.log('Step2Files - Updating workflow state to 1 (back to start)');
+      
       try {
-        await supabase
-          .from('project_workflow')
-          .update({ workflow_state: 1 })
-          .eq('project_id', projectId);
+        const response = await fetch(`${window.location.origin}/api/workflow-management`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.auth.getSession()}`
+          },
+          body: JSON.stringify({
+            operation: 'update',
+            projectId,
+            workflowState: 1
+          })
+        });
         
-        console.log('Step2Files - Updated workflow state to 1 (back to start)');
+        const result = await response.json();
+        if (result.error) {
+          console.error('Error updating workflow state via edge function:', result.error);
+          
+          const { error } = await supabase.rpc('update_workflow_state', {
+            p_project_id: projectId,
+            p_workflow_state: 1
+          });
+          
+          if (error) {
+            console.error('Error updating workflow state via RPC:', error);
+          } else {
+            console.log('Successfully updated workflow state to 1 (start step) using RPC');
+          }
+        } else {
+          console.log('Successfully updated workflow state to 1 (start step) using edge function');
+        }
       } catch (error) {
         console.error('Error updating workflow state:', error);
       }
@@ -344,13 +417,39 @@ const Step2Files = () => {
   
   const handleNext = async () => {
     if (projectId) {
+      console.log('Step2Files - Updating workflow state to 3 (process step)');
+      
       try {
-        await supabase
-          .from('project_workflow')
-          .update({ workflow_state: 3 })
-          .eq('project_id', projectId);
+        const response = await fetch(`${window.location.origin}/api/workflow-management`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.auth.getSession()}`
+          },
+          body: JSON.stringify({
+            operation: 'update',
+            projectId,
+            workflowState: 3
+          })
+        });
         
-        console.log('Step2Files - Updated workflow state to 3 (process step)');
+        const result = await response.json();
+        if (result.error) {
+          console.error('Error updating workflow state via edge function:', result.error);
+          
+          const { error } = await supabase.rpc('update_workflow_state', {
+            p_project_id: projectId,
+            p_workflow_state: 3
+          });
+          
+          if (error) {
+            console.error('Error updating workflow state via RPC:', error);
+          } else {
+            console.log('Successfully updated workflow state to 3 (process step) using RPC');
+          }
+        } else {
+          console.log('Successfully updated workflow state to 3 (process step) using edge function');
+        }
       } catch (error) {
         console.error('Error updating workflow state:', error);
       }
