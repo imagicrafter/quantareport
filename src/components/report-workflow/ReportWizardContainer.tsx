@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Outlet, useLocation } from 'react-router-dom';
 import StepIndicator from './StepIndicator';
 import { workflowSteps } from './constants/workflowSteps';
@@ -14,6 +14,7 @@ const ReportWizardContainer = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentWorkflowState, setCurrentWorkflowState] = useState<number | null>(null);
+  const initializationComplete = useRef(false);
   
   const {
     fetchCurrentWorkflow,
@@ -30,6 +31,9 @@ const ReportWizardContainer = () => {
   
   // Handle navigation and determine the correct step based on workflow state
   useEffect(() => {
+    // Prevent multiple initializations
+    if (initializationComplete.current) return;
+    
     const initializeWorkflow = async () => {
       setIsLoading(true);
       
@@ -48,6 +52,7 @@ const ReportWizardContainer = () => {
           handleNavigation(`/dashboard/report-wizard/${workflowSteps[0].path}`, activeProjectId, projectName);
         }
         setIsLoading(false);
+        initializationComplete.current = true;
         return;
       }
       
@@ -59,6 +64,7 @@ const ReportWizardContainer = () => {
       if (pathStepIndex === 0) {
         console.log('User accessing Step 1, allowing access to restart workflow');
         setIsLoading(false);
+        initializationComplete.current = true;
         return;
       }
       
@@ -68,6 +74,7 @@ const ReportWizardContainer = () => {
           console.log('Trying to access a step beyond start but no active workflow found');
           handleNavigation(`/dashboard/report-wizard/${workflowSteps[0].path}`, activeProjectId, projectName);
           setIsLoading(false);
+          initializationComplete.current = true;
           return;
         }
         
@@ -76,15 +83,27 @@ const ReportWizardContainer = () => {
           console.log(`Trying to access step ${pathStepIndex + 1} but workflow state is ${workflowState}`);
           handleNavigation(`/dashboard/report-wizard/${workflowSteps[workflowState - 1].path}`, activeProjectId, projectName);
           setIsLoading(false);
+          initializationComplete.current = true;
           return;
         }
       }
       
       setIsLoading(false);
+      initializationComplete.current = true;
     };
     
     initializeWorkflow();
   }, [step, handleNavigation, fetchCurrentWorkflow, getStepIndexFromWorkflowState, getStepIndexFromPath, projectName]);
+  
+  // Reset the initialization flag when the step changes
+  useEffect(() => {
+    return () => {
+      // Only reset when navigating to a new step
+      if (step) {
+        initializationComplete.current = false;
+      }
+    };
+  }, [step]);
   
   // Add event listeners to intercept link clicks
   useEffect(() => {
