@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -24,91 +23,99 @@ const Step2Files = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const initialRenderRef = useRef(true);
-  const projectIdRef = useRef<string | null>(null);
   
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<FileUploadProgress[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<ProjectFile[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [hasProjectId, setHasProjectId] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   
-  // Function to get project ID with consistent logic
-  const getProjectId = (): string | null => {
-    // First try to get from location state
-    if (location.state?.projectId) {
-      console.log('Step2Files - Found project ID in location state:', location.state.projectId);
-      return location.state.projectId;
-    }
-    
-    // If not found in state, try localStorage
-    const localStorageProjectId = localStorage.getItem('currentProjectId');
-    console.log('Step2Files - Found project ID in localStorage:', localStorageProjectId);
-    return localStorageProjectId;
-  };
-  
-  // Get project ID using the consistent function
-  const projectId = getProjectId();
-  
-  console.log('Step2Files - Render cycle');
-  console.log('Step2Files - Project ID from getProjectId():', projectId);
-  console.log('Step2Files - Location state:', location.state);
-  console.log('Step2Files - Location pathname:', location.pathname);
-  console.log('Step2Files - Location key:', location.key);
-  console.log('Step2Files - Initial render:', initialRenderRef.current);
-  console.log('Step2Files - localStorage projectId:', localStorage.getItem('currentProjectId'));
-  
-  // Store the project ID in a ref to track changes
   useEffect(() => {
-    if (projectId !== projectIdRef.current) {
-      console.log('Step2Files - Project ID changed from', projectIdRef.current, 'to', projectId);
-      projectIdRef.current = projectId;
-    }
-  }, [projectId]);
-  
-  // Special effect that only runs once on mount to ensure projectId exists
-  useEffect(() => {
-    if (initialRenderRef.current) {
-      initialRenderRef.current = false;
-      console.log('Step2Files - Initial render effect running');
-      
-      const currentProjectId = getProjectId();
-      
-      if (!currentProjectId) {
-        console.log('Step2Files - No project ID found on initial render, navigating back to step 1');
+    const fetchProjectFromWorkflow = async () => {
+      try {
+        console.log('Step2Files - Fetching current user and workflow state');
+        
+        if (location.state?.projectId) {
+          console.log('Step2Files - Using project ID from location state:', location.state.projectId);
+          setProjectId(location.state.projectId);
+          setInitialLoadComplete(true);
+          return;
+        }
+        
+        const user = await supabase.auth.getUser();
+        
+        if (!user.data.user) {
+          console.error('Step2Files - No authenticated user found');
+          toast({
+            title: "Authentication Error",
+            description: "You must be signed in to access this page.",
+            variant: "destructive"
+          });
+          navigate('/signin');
+          return;
+        }
+        
+        const { data, error } = await supabase
+          .from('project_workflow')
+          .select(`
+            project_id,
+            v_projects_last_update!inner (
+              last_update,
+              project_id
+            )
+          `)
+          .eq('workflow_state', 2)
+          .eq('user_id', user.data.user.id)
+          .order('v_projects_last_update.last_update', { ascending: false })
+          .limit(1);
+        
+        if (error) {
+          console.error('Step2Files - Error fetching workflow state:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load project workflow state",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          const workflowProjectId = data[0].project_id;
+          console.log('Step2Files - Found project ID from workflow state:', workflowProjectId);
+          setProjectId(workflowProjectId);
+        } else {
+          console.log('Step2Files - No active workflow found for step 2');
+          navigate('/dashboard/report-wizard/start', { replace: true });
+          toast({
+            title: "Error",
+            description: "No active project found. Please start a new report.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        setInitialLoadComplete(true);
+      } catch (error) {
+        console.error('Step2Files - Error in fetchProjectFromWorkflow:', error);
         toast({
           title: "Error",
-          description: "No project found. Please start a new report.",
+          description: "An error occurred while loading the project.",
           variant: "destructive"
         });
-        navigate('/dashboard/report-wizard/start', { replace: true });
-        return;
-      } 
-      
-      console.log('Step2Files - Project ID found on initial render:', currentProjectId);
-      setHasProjectId(true);
-      
-      // CRITICAL FIX: When we have a project ID but it's not in location state,
-      // add it to location state to maintain context throughout the wizard
-      if (!location.state?.projectId) {
-        console.log('Step2Files - Project ID not in location state, updating location state');
-        navigate(location.pathname, { 
-          state: { projectId: currentProjectId },
-          replace: true 
-        });
       }
-    }
+    };
+    
+    fetchProjectFromWorkflow();
   }, []);
   
-  // Effect to fetch files when projectId changes or on first render with a projectId
   useEffect(() => {
-    if (projectId) {
+    if (projectId && initialLoadComplete) {
       console.log('Step2Files - Fetching files for project:', projectId);
-      setHasProjectId(true);
       fetchUploadedFiles(projectId);
     }
-  }, [projectId]);
+  }, [projectId, initialLoadComplete]);
   
   const fetchUploadedFiles = async (id: string) => {
     if (!id) {
@@ -133,10 +140,9 @@ const Step2Files = () => {
       
       console.log('Step2Files - Fetched files for project:', id, data);
       
-      // Convert the string type to FileType
       const typedFiles = data?.map(file => ({
         ...file,
-        type: file.type as FileType // Cast the string type to FileType
+        type: file.type as FileType
       })) || [];
       
       setUploadedFiles(typedFiles);
@@ -154,7 +160,6 @@ const Step2Files = () => {
   
   const handleFilesSelected = (files: File[]) => {
     setSelectedFiles(prevFiles => {
-      // Filter out any duplicate files by name
       const existingFileNames = prevFiles.map(f => f.name);
       const newFiles = files.filter(file => !existingFileNames.includes(file.name));
       
@@ -183,7 +188,6 @@ const Step2Files = () => {
     
     setIsUploading(true);
     
-    // Initialize progress tracking for each file
     const initialProgress: FileUploadProgress[] = selectedFiles.map(file => ({
       file,
       progress: 0,
@@ -192,28 +196,23 @@ const Step2Files = () => {
     
     setUploadProgress(initialProgress);
     
-    // Upload each file
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
       
       try {
-        // Update status to uploading
         setUploadProgress(prev => 
           prev.map((item, idx) => 
             idx === i ? { ...item, status: 'uploading' } : item
           )
         );
         
-        // Determine file type and bucket
         const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
         const fileType = getFileType(fileExt);
         const bucketName = fileType === 'image' ? 'pub_images' : 'pub_documents';
         
-        // Generate a unique filename
         const fileName = `${uuidv4()}.${fileExt}`;
         const filePath = `${projectId}/${fileName}`;
         
-        // Create a progress handler
         let uploadProgress = 0;
         const progressHandler = (progress: number) => {
           uploadProgress = progress;
@@ -224,7 +223,6 @@ const Step2Files = () => {
           );
         };
         
-        // Upload to Supabase Storage
         const { data, error } = await supabase.storage
           .from(bucketName)
           .upload(filePath, file, {
@@ -232,8 +230,6 @@ const Step2Files = () => {
             upsert: false
           });
         
-        // Regularly update progress since onUploadProgress is not supported
-        // This is a workaround to simulate progress
         const progressInterval = setInterval(() => {
           if (uploadProgress < 90) {
             progressHandler(uploadProgress + 10);
@@ -241,22 +237,19 @@ const Step2Files = () => {
             clearInterval(progressInterval);
           }
         }, 300);
-          
+        
         if (error) {
           clearInterval(progressInterval);
           throw error;
         }
         
-        // Clear the interval and set progress to 100%
         clearInterval(progressInterval);
         progressHandler(100);
         
-        // Get public URL
         const { data: urlData } = await supabase.storage
           .from(bucketName)
           .getPublicUrl(filePath);
-          
-        // Save file record to database
+        
         const { error: dbError } = await supabase
           .from('files')
           .insert({
@@ -271,7 +264,6 @@ const Step2Files = () => {
           
         if (dbError) throw dbError;
         
-        // Update progress status
         setUploadProgress(prev => 
           prev.map((item, idx) => 
             idx === i ? { ...item, status: 'success', progress: 100 } : item
@@ -280,7 +272,6 @@ const Step2Files = () => {
       } catch (error) {
         console.error(`Error uploading file ${file.name}:`, error);
         
-        // Update progress with error
         setUploadProgress(prev => 
           prev.map((item, idx) => 
             idx === i ? { 
@@ -299,16 +290,13 @@ const Step2Files = () => {
       }
     }
     
-    // Refresh the files list
     if (projectId) {
       await fetchUploadedFiles(projectId);
     }
     
-    // Reset the selected files after upload is complete
     setSelectedFiles([]);
     setIsUploading(false);
     
-    // Show success message if at least one file was uploaded successfully
     const successCount = uploadProgress.filter(item => item.status === 'success').length;
     if (successCount > 0) {
       toast({
@@ -334,34 +322,73 @@ const Step2Files = () => {
     return Math.round(totalProgress / uploadProgress.length);
   };
   
-  const handleBack = () => {
-    console.log('Step2Files - Navigating back to start with projectId:', projectId);
+  const handleBack = async () => {
+    if (projectId) {
+      try {
+        await supabase
+          .from('project_workflow')
+          .update({ workflow_state: 1 })
+          .eq('project_id', projectId);
+        
+        console.log('Step2Files - Updated workflow state to 1 (back to start)');
+      } catch (error) {
+        console.error('Error updating workflow state:', error);
+      }
+    }
+    
     navigate('/dashboard/report-wizard/start', {
       state: { projectId },
       replace: true
     });
   };
   
-  const handleNext = () => {
-    console.log('Step2Files - Navigating to process step with projectId:', projectId);
+  const handleNext = async () => {
+    if (projectId) {
+      try {
+        await supabase
+          .from('project_workflow')
+          .update({ workflow_state: 3 })
+          .eq('project_id', projectId);
+        
+        console.log('Step2Files - Updated workflow state to 3 (process step)');
+      } catch (error) {
+        console.error('Error updating workflow state:', error);
+      }
+    }
+    
     navigate('/dashboard/report-wizard/process', {
       state: { projectId },
       replace: true
     });
   };
   
-  // Add the missing handleClearSelected function
   const handleClearSelected = () => {
     setSelectedFiles([]);
   };
   
-  // If we don't have a project ID, return null or redirect
-  if (!hasProjectId) {
-    console.log('Step2Files - No project ID, not rendering content');
-    return null;
+  if (loading && !initialLoadComplete) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+        <p className="text-muted-foreground">Loading project data...</p>
+      </div>
+    );
   }
   
-  console.log('Step2Files - Rendering content with projectId:', projectId);
+  if (!projectId && initialLoadComplete) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="text-destructive mb-4">
+          <AlertCircle size={48} />
+        </div>
+        <h3 className="text-xl font-medium mb-2">No Active Project Found</h3>
+        <p className="text-muted-foreground mb-4">Please start a new report or select an existing one.</p>
+        <Button onClick={() => navigate('/dashboard/report-wizard/start', { replace: true })}>
+          Go to Start
+        </Button>
+      </div>
+    );
+  }
   
   return (
     <div>
@@ -388,7 +415,6 @@ const Step2Files = () => {
               </div>
             )}
             
-            {/* Upload Progress */}
             {isUploading && (
               <div className="mt-6 space-y-4">
                 <div className="flex justify-between items-center mb-2">
@@ -425,13 +451,11 @@ const Step2Files = () => {
         </Card>
       </div>
       
-      {/* Uploaded Files Table */}
       <div className="max-w-4xl mx-auto mb-8">
         <h3 className="text-xl font-medium mb-4">Uploaded Files</h3>
         <UploadedFilesTable files={uploadedFiles} loading={loading} />
       </div>
       
-      {/* Navigation Buttons */}
       <div className="flex justify-between max-w-4xl mx-auto">
         <Button variant="outline" onClick={handleBack}>
           Back

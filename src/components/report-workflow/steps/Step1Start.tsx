@@ -12,6 +12,7 @@ import { useTemplateData } from '@/hooks/report-workflow/useTemplateData';
 import { useProjectData } from '@/hooks/report-workflow/useProjectData';
 import { useReportSave } from '@/hooks/report-workflow/useReportSave';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 const Step1Start = () => {
   const [reportMode, setReportMode] = useState<'new' | 'update'>('new');
@@ -33,7 +34,6 @@ const Step1Start = () => {
   console.log('Step1Start - Project ID from state:', projectIdFromState);
   console.log('Step1Start - Location pathname:', location.pathname);
   console.log('Step1Start - Location key:', location.key);
-  console.log('Step1Start - localStorage projectId:', localStorage.getItem('currentProjectId'));
   
   // Custom hooks for data and operations
   const {
@@ -60,6 +60,64 @@ const Step1Start = () => {
   
   const { isSaving, saveReport } = useReportSave();
   
+  // Effect to update workflow state when component mounts
+  useEffect(() => {
+    const updateWorkflowState = async () => {
+      try {
+        // If we have a project ID from state, update its workflow state to 1
+        if (projectIdFromState) {
+          const user = await supabase.auth.getUser();
+          
+          if (user.data.user) {
+            // Check if workflow entry exists
+            const { data: existingWorkflow, error: checkError } = await supabase
+              .from('project_workflow')
+              .select('id')
+              .eq('project_id', projectIdFromState)
+              .maybeSingle();
+              
+            if (checkError) {
+              console.error('Error checking workflow existence:', checkError);
+            }
+              
+            if (existingWorkflow) {
+              // Update existing workflow state
+              const { error: updateError } = await supabase
+                .from('project_workflow')
+                .update({ workflow_state: 1 })
+                .eq('project_id', projectIdFromState);
+                
+              if (updateError) {
+                console.error('Error updating workflow state:', updateError);
+              } else {
+                console.log('Updated workflow state to 1 for project:', projectIdFromState);
+              }
+            } else {
+              // Create new workflow entry
+              const { error: insertError } = await supabase
+                .from('project_workflow')
+                .insert({
+                  project_id: projectIdFromState,
+                  user_id: user.data.user.id,
+                  workflow_state: 1
+                });
+                
+              if (insertError) {
+                console.error('Error creating workflow state:', insertError);
+              } else {
+                console.log('Created workflow state 1 for project:', projectIdFromState);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error updating workflow state:', error);
+      }
+    };
+    
+    updateWorkflowState();
+  }, [projectIdFromState]);
+  
   // Reset form when report mode changes
   useEffect(() => {
     console.log('Step1Start - Report mode changed to:', reportMode);
@@ -67,15 +125,11 @@ const Step1Start = () => {
       // Reset form to initial state
       resetForm();
       resetTemplateNoteValues();
-      // Only clear localStorage when explicitly starting a new report
-      localStorage.removeItem('currentProjectId');
-      console.log('Step1Start - Cleared project ID from localStorage (new report mode)');
     } else if (reportMode === 'update') {
-      // If we're in update mode and have a project ID from state or localStorage, select it
-      const existingProjectId = projectIdFromState || localStorage.getItem('currentProjectId');
-      if (existingProjectId) {
-        console.log('Step1Start - Setting selected project ID from state/localStorage:', existingProjectId);
-        setSelectedProjectId(existingProjectId);
+      // If we're in update mode and have a project ID from state, select it
+      if (projectIdFromState) {
+        console.log('Step1Start - Setting selected project ID from state:', projectIdFromState);
+        setSelectedProjectId(projectIdFromState);
       }
     }
   }, [reportMode]);
@@ -94,10 +148,6 @@ const Step1Start = () => {
       
       // Pre-select the project
       setSelectedProjectId(projectIdFromState);
-      
-      // Also store in localStorage for persistence
-      localStorage.setItem('currentProjectId', projectIdFromState);
-      console.log('Step1Start - Saved project ID to localStorage from state:', projectIdFromState);
     }
   }, [projectIdFromState]);
 
@@ -136,9 +186,6 @@ const Step1Start = () => {
 
   const handleProjectSelection = (projectId: string) => {
     console.log('Step1Start - Project selected:', projectId);
-    // Update localStorage immediately when project is selected
-    localStorage.setItem('currentProjectId', projectId);
-    console.log('Step1Start - Saved selected project ID to localStorage:', projectId);
     
     handleProjectSelect(
       projectId, 

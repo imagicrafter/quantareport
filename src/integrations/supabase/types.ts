@@ -383,6 +383,30 @@ export type Database = {
           },
         ]
       }
+      project_workflow: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          user_id: string | null
+          workflow_state: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          user_id?: string | null
+          workflow_state: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          user_id?: string | null
+          workflow_state?: number
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           created_at: string | null

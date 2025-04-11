@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from 'react-router-dom';
 
 interface ReportSaveProps {
@@ -50,15 +49,14 @@ export const useReportSave = () => {
 
     try {
       let projectId = selectedProjectId;
+      const user = await supabase.auth.getUser();
+      
+      if (!user.data.user) {
+        throw new Error('You must be signed in to create a report');
+      }
       
       // For new reports, create a new project
       if (reportMode === 'new') {
-        const user = await supabase.auth.getUser();
-        
-        if (!user.data.user) {
-          throw new Error('You must be signed in to create a report');
-        }
-        
         console.log('Creating new project in the database');
         const { data: projectData, error: projectError } = await supabase
           .from('projects')
@@ -78,6 +76,22 @@ export const useReportSave = () => {
         
         projectId = projectData.id;
         console.log('New project created with ID:', projectId);
+        
+        // Insert workflow state for the new project
+        const { error: workflowError } = await supabase
+          .from('project_workflow')
+          .insert({
+            project_id: projectId,
+            user_id: user.data.user.id,
+            workflow_state: 2 // Step 2 in the workflow
+          });
+          
+        if (workflowError) {
+          console.error('Error creating workflow state:', workflowError);
+          throw workflowError;
+        }
+        
+        console.log('Project workflow state set to 2 (Files step)');
         
         // Store the templateNotes to database if they exist
         if (templateNotes && templateNotes.length > 0 && templateNoteValues) {
@@ -104,8 +118,48 @@ export const useReportSave = () => {
             console.log('Template notes saved successfully');
           }
         }
-      } else if (reportMode === 'update') {
-        console.log('Using existing project with ID:', projectId);
+      } else if (reportMode === 'update' && selectedProjectId) {
+        console.log('Using existing project with ID:', selectedProjectId);
+        
+        // Check if workflow entry exists
+        const { data: existingWorkflow, error: checkError } = await supabase
+          .from('project_workflow')
+          .select('id')
+          .eq('project_id', selectedProjectId)
+          .maybeSingle();
+          
+        if (checkError) {
+          console.error('Error checking workflow existence:', checkError);
+        }
+          
+        if (existingWorkflow) {
+          // Update existing workflow state
+          const { error: updateError } = await supabase
+            .from('project_workflow')
+            .update({ workflow_state: 2 })
+            .eq('project_id', selectedProjectId);
+            
+          if (updateError) {
+            console.error('Error updating workflow state:', updateError);
+            throw updateError;
+          }
+        } else {
+          // Create new workflow entry
+          const { error: insertError } = await supabase
+            .from('project_workflow')
+            .insert({
+              project_id: selectedProjectId,
+              user_id: user.data.user.id,
+              workflow_state: 2
+            });
+            
+          if (insertError) {
+            console.error('Error creating workflow state:', insertError);
+            throw insertError;
+          }
+        }
+        
+        console.log('Project workflow state updated to 2 (Files step)');
       }
       
       // Ensure we have a valid project ID before proceeding
@@ -120,31 +174,19 @@ export const useReportSave = () => {
         return false;
       }
       
-      // Store current project ID in localStorage for access between steps
-      console.log('Saving project ID to localStorage:', projectId);
-      localStorage.setItem('currentProjectId', projectId);
-      
-      // DEBUG: Verify we can read it back correctly
-      const storedId = localStorage.getItem('currentProjectId');
-      console.log('Verified project ID in localStorage:', storedId);
-      
-      // Add a small delay before navigation to ensure localStorage is set
-      setTimeout(() => {
-        // Ensure we navigate with the project ID in state
-        console.log('Navigating to files step with projectId:', projectId);
-        
-        navigate('/dashboard/report-wizard/files', { 
-          state: { projectId },
-          replace: true
-        });
+      // Navigate to next step with the project ID
+      console.log('Navigating to files step with projectId:', projectId);
+      navigate('/dashboard/report-wizard/files', { 
+        state: { projectId },
+        replace: true
+      });
 
-        toast({
-          title: 'Success',
-          description: reportMode === 'new' 
-            ? 'New report created successfully' 
-            : 'Report updated successfully',
-        });
-      }, 100);
+      toast({
+        title: 'Success',
+        description: reportMode === 'new' 
+          ? 'New report created successfully' 
+          : 'Report updated successfully',
+      });
       
       return true;
     } catch (error) {
