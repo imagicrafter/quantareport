@@ -142,7 +142,8 @@ const ReportWizardContainer = () => {
         // For any other internal link, show confirmation if we have a project
         if (projectId && currentWorkflowState && currentWorkflowState > 0) {
           e.preventDefault();
-          handleNavigation(href, projectId, projectName);
+          setShowExitDialog(true);
+          setExitTarget(href);
         }
       }
     };
@@ -151,7 +152,7 @@ const ReportWizardContainer = () => {
     return () => {
       document.removeEventListener('click', handleClick);
     };
-  }, [handleNavigation, projectId, currentWorkflowState, projectName]);
+  }, [handleNavigation, projectId, currentWorkflowState, projectName, setShowExitDialog, setExitTarget]);
   
   if (isLoading) {
     return <WorkflowLoading />;
