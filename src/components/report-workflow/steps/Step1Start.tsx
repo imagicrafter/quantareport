@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import InstructionsPanel from '../start-report/InstructionsPanel';
@@ -89,19 +90,46 @@ const Step1Start = () => {
               console.error('Error updating workflow state via edge function:', result.error);
               
               // Fallback method if edge function fails
-              console.log('Attempting direct SQL via RPC for workflow state update');
+              console.log('Attempting direct SQL update for workflow state');
               
-              // Since we can't directly access project_workflow table due to type issues,
-              // we'll use a SQL function to handle the update
-              const { error } = await supabase.rpc('set_workflow_state', {
-                p_project_id: projectIdFromState, 
-                p_workflow_state: 1
-              });
-              
-              if (error) {
-                console.error('Error updating workflow state via RPC:', error);
+              // First check if workflow record exists
+              const { data: existingWorkflow } = await supabase
+                .from('project_workflow')
+                .select('id')
+                .eq('project_id', projectIdFromState)
+                .maybeSingle();
+                
+              if (existingWorkflow) {
+                // Update existing workflow record
+                const { error: updateError } = await supabase
+                  .from('project_workflow')
+                  .update({ 
+                    workflow_state: 1,
+                    last_edited_at: new Date().toISOString()
+                  })
+                  .eq('project_id', projectIdFromState);
+                  
+                if (updateError) {
+                  console.error('Error updating workflow state:', updateError);
+                } else {
+                  console.log('Successfully updated workflow state to 1');
+                }
               } else {
-                console.log('Successfully updated workflow state to 1 using RPC');
+                // Create new workflow record
+                const { error: insertError } = await supabase
+                  .from('project_workflow')
+                  .insert({
+                    project_id: projectIdFromState,
+                    user_id: user.data.user.id,
+                    workflow_state: 1,
+                    last_edited_at: new Date().toISOString()
+                  });
+                  
+                if (insertError) {
+                  console.error('Error creating workflow state:', insertError);
+                } else {
+                  console.log('Successfully created workflow state with state 1');
+                }
               }
             } else {
               console.log('Successfully updated workflow state to 1 using edge function');

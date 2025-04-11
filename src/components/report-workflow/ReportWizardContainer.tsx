@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Outlet, useLocation } from 'react-router-dom';
 import StepIndicator from './StepIndicator';
@@ -61,6 +60,7 @@ const ReportWizardContainer = () => {
       try {
         const user = await supabase.auth.getUser();
         if (user.data.user) {
+          // Get the most recent workflow for the current step
           const { data, error } = await supabase
             .from('project_workflow')
             .select('project_id')
@@ -131,6 +131,7 @@ const ReportWizardContainer = () => {
           try {
             const user = await supabase.auth.getUser();
             if (user.data.user) {
+              // Find the most recent workflow state for this step
               const { data, error } = await supabase
                 .from('project_workflow')
                 .select('project_id')

@@ -77,7 +77,7 @@ export const useReportSave = () => {
         projectId = projectData.id;
         console.log('New project created with ID:', projectId);
         
-        // Insert workflow state directly into project_workflow table
+        // Insert workflow state for the new project with state 2 (Files step)
         console.log('Creating workflow state for new project with state 2 (Files step)');
         const { error: workflowError } = await supabase
           .from('project_workflow')
@@ -123,7 +123,7 @@ export const useReportSave = () => {
       } else if (reportMode === 'update' && selectedProjectId) {
         console.log('Using existing project with ID:', selectedProjectId);
         
-        // For updating existing projects, update workflow state directly
+        // Update workflow state for existing project to state 2 (Files step)
         console.log('Updating workflow state for existing project to state 2 (Files step)');
         
         // Check if a workflow entry exists for this project and user
