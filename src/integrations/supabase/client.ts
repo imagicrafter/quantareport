@@ -35,10 +35,9 @@ const initializeBuckets = async () => {
               console.log(`Created ${bucketName} bucket successfully`);
               
               // Add a public policy to the bucket
-              const { data: policyData, error: policyError } = await supabase.storage.from(bucketName).getPublicUrl('test');
-              if (!policyError) {
-                console.log(`Public policy for ${bucketName} is set up`);
-              }
+              // Note: getPublicUrl doesn't return an error property, only data
+              const { data: publicUrlData } = await supabase.storage.from(bucketName).getPublicUrl('test');
+              console.log(`Public policy for ${bucketName} is set up`);
             }
           } else {
             console.error(`Error checking ${bucketName} bucket:`, error);
