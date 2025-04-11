@@ -24,7 +24,8 @@ const ReportWizardContainer = () => {
     handleNavigation,
     showExitDialog,
     setShowExitDialog,
-    exitTarget
+    exitTarget,
+    setExitTarget
   } = useWorkflowNavigation();
   
   const { projectName, getPageTitle } = useProjectDetails(projectId);
