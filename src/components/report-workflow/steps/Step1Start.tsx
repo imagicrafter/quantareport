@@ -17,11 +17,14 @@ import {
 } from '@/components/report-workflow/start-report';
 import TemplateNotesForm from '../TemplateNotesForm';
 import { supabase } from '@/integrations/supabase/client';
+import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 
 const Step1Start = () => {
   const [reportMode, setReportMode] = useState<'new' | 'update'>('new');
+  const [workflowState, setWorkflowState] = useState<number | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { fetchCurrentWorkflow } = useWorkflowNavigation();
   
   // Custom hooks for data and operations
   const {
@@ -48,14 +51,44 @@ const Step1Start = () => {
   
   const { isSaving, saveReport } = useReportSave();
   
-  // Reset form when report mode changes
+  // Check if we're coming back from step 2 with workflow state = 1
   useEffect(() => {
-    if (reportMode === 'new') {
+    const checkWorkflowState = async () => {
+      try {
+        const { workflowState, projectId } = await fetchCurrentWorkflow();
+        setWorkflowState(workflowState);
+        
+        // If we're in workflow state 1 and have a projectId, preselect the existing project
+        if (workflowState === 1 && projectId) {
+          console.log('Coming back to Step 1 with workflow state 1, preselecting project:', projectId);
+          setReportMode('update');
+          setSelectedProjectId(projectId);
+          
+          // Fetch project details for the selected project
+          handleProjectSelect(
+            projectId, 
+            (loading: boolean) => isLoading, 
+            (template: any) => defaultTemplate, 
+            setTemplateNotes, 
+            setTemplateNoteValues
+          );
+        }
+      } catch (error) {
+        console.error('Error checking workflow state:', error);
+      }
+    };
+    
+    checkWorkflowState();
+  }, [fetchCurrentWorkflow, setSelectedProjectId]);
+  
+  // Reset form when report mode changes - but only if not preselected from workflow
+  useEffect(() => {
+    if (reportMode === 'new' && !workflowState) {
       // Reset form to initial state
       resetForm();
       resetTemplateNoteValues();
     }
-  }, [reportMode]);
+  }, [reportMode, workflowState]);
 
   // Separate useEffect for fetching template
   useEffect(() => {

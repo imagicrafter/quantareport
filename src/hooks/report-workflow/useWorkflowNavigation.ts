@@ -11,6 +11,37 @@ export const useWorkflowNavigation = () => {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [exitTarget, setExitTarget] = useState('');
   
+  // Function to update workflow state
+  const updateWorkflowState = async (projectId: string | null, newState: number) => {
+    if (!projectId) return false;
+    
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return false;
+      
+      console.log(`Updating workflow state to ${newState} for project ${projectId}`);
+      
+      const { error } = await supabase
+        .from('project_workflow')
+        .update({ 
+          workflow_state: newState,
+          last_edited_at: new Date().toISOString()
+        })
+        .eq('project_id', projectId)
+        .eq('user_id', userData.user.id);
+        
+      if (error) {
+        console.error('Error updating workflow state:', error);
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      console.error('Error in updateWorkflowState:', e);
+      return false;
+    }
+  };
+  
   // Function to fetch the most recent workflow for a specific workflow state
   const fetchActiveWorkflowForState = async (workflowState: number) => {
     try {
@@ -93,9 +124,16 @@ export const useWorkflowNavigation = () => {
     return index >= 0 ? index : 0;
   };
   
-  // Modified handleStepClick to use the confirmation dialog for the Wizard menu click
+  // Modified handleStepClick to update workflow state when navigating to step 1
   const handleStepClick = async (index: number, currentWorkflowState: number | null, projectId: string | null) => {
     console.log('handleStepClick - Trying to navigate to index:', index);
+    
+    // If navigating to step 1 (index 0) and we have a project in workflow state 2+,
+    // update the workflow state to 1 first
+    if (index === 0 && currentWorkflowState && currentWorkflowState > 1 && projectId) {
+      console.log('Navigating back to step 1, updating workflow state to 1');
+      await updateWorkflowState(projectId, 1);
+    }
     
     // If navigating to step 1 (index 0), we'll allow it without any checks
     // This enables users to restart the workflow
@@ -170,6 +208,7 @@ export const useWorkflowNavigation = () => {
     showExitDialog,
     setShowExitDialog,
     exitTarget,
-    setExitTarget
+    setExitTarget,
+    updateWorkflowState
   };
 };
