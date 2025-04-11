@@ -18,13 +18,20 @@ import {
 import TemplateNotesForm from '../TemplateNotesForm';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const Step1Start = () => {
   const [reportMode, setReportMode] = useState<'new' | 'update'>('new');
   const [workflowState, setWorkflowState] = useState<number | null>(null);
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [exitAction, setExitAction] = useState<{
+    type: 'mode-change' | 'project-change';
+    value: string | 'new';
+  } | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { fetchCurrentWorkflow } = useWorkflowNavigation();
+  const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   
   // Custom hooks for data and operations
   const {
@@ -98,8 +105,37 @@ const Step1Start = () => {
   }, [reportMode, defaultTemplate?.id]);
   
   const handleReportModeChange = (mode: 'new' | 'update') => {
+    // If we're in workflow state 1 and changing mode, show the exit dialog
+    if (workflowState === 1 && selectedProjectId && mode !== reportMode) {
+      setExitAction({
+        type: 'mode-change',
+        value: mode
+      });
+      setShowExitDialog(true);
+      return;
+    }
+    
     setReportMode(mode);
-    // The form reset is handled in the useEffect
+  };
+
+  const handleProjectChange = (projectId: string) => {
+    // If we're in workflow state 1 and changing projects, show the exit dialog
+    if (workflowState === 1 && selectedProjectId && projectId !== selectedProjectId) {
+      setExitAction({
+        type: 'project-change',
+        value: projectId
+      });
+      setShowExitDialog(true);
+      return;
+    }
+    
+    handleProjectSelect(
+      projectId, 
+      (loading: boolean) => isLoading, 
+      (template: any) => defaultTemplate, 
+      setTemplateNotes, 
+      setTemplateNoteValues
+    );
   };
 
   // Function to reset workflow state to step 1
@@ -122,6 +158,51 @@ const Step1Start = () => {
     } catch (error) {
       console.error('Error resetting workflow state:', error);
     }
+  };
+
+  // Handle exit dialog confirmation
+  const handleExitConfirm = async () => {
+    try {
+      if (selectedProjectId) {
+        // Reset workflow state to 0
+        await updateWorkflowState(selectedProjectId, 0);
+        console.log(`Workflow state reset to 0 for project ${selectedProjectId}`);
+      }
+      
+      setShowExitDialog(false);
+      
+      // Apply the change that was requested
+      if (exitAction) {
+        if (exitAction.type === 'mode-change') {
+          setReportMode(exitAction.value as 'new' | 'update');
+          if (exitAction.value === 'new') {
+            resetForm();
+            resetTemplateNoteValues();
+            
+            // If defaultTemplate exists and template has id, fetch template notes
+            if (defaultTemplate?.id) {
+              fetchDefaultTemplate();
+            }
+          }
+        } else if (exitAction.type === 'project-change') {
+          handleProjectSelect(
+            exitAction.value, 
+            (loading: boolean) => isLoading, 
+            (template: any) => defaultTemplate, 
+            setTemplateNotes, 
+            setTemplateNoteValues
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error handling exit confirmation:', error);
+    }
+  };
+
+  // Handle exit dialog cancellation
+  const handleExitCancel = () => {
+    setShowExitDialog(false);
+    setExitAction(null);
   };
   
   const handleSave = () => {
@@ -157,16 +238,6 @@ const Step1Start = () => {
     toast({
       description: `Step ${step} will be implemented in a future update.`,
     });
-  };
-
-  const handleProjectSelection = (projectId: string) => {
-    handleProjectSelect(
-      projectId, 
-      (loading: boolean) => isLoading, 
-      (template: any) => defaultTemplate, 
-      setTemplateNotes, 
-      setTemplateNoteValues
-    );
   };
 
   return (
@@ -207,7 +278,7 @@ const Step1Start = () => {
                 <ProjectSelector
                   projects={existingProjects}
                   selectedId={selectedProjectId}
-                  onSelect={handleProjectSelection}
+                  onSelect={handleProjectChange}
                 />
               )}
             </div>
@@ -240,6 +311,24 @@ const Step1Start = () => {
           />
         </>
       )}
+
+      {/* Exit Confirmation Dialog */}
+      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Exit Report Creation?</DialogTitle>
+            <DialogDescription>
+              You are about to {exitAction?.type === 'mode-change' ? 'change report mode' : 'select a different project'} 
+              while in an active workflow. Your progress will be saved, but you'll need to start from the beginning if you 
+              want to continue with this project in the future.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleExitCancel}>Cancel</Button>
+            <Button onClick={handleExitConfirm}>Yes, Exit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -408,7 +408,22 @@ export type Database = {
           user_id?: string | null
           workflow_state?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "project_workflow_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_workflow_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
+        ]
       }
       projects: {
         Row: {
