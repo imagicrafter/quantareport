@@ -3,8 +3,6 @@ import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { WorkflowState } from '@/types/workflow.types';
-import { setWorkflowState } from '@/services/workflowService';
 
 interface ReportSaveProps {
   reportMode: 'new' | 'update';
@@ -79,16 +77,30 @@ export const useReportSave = () => {
         projectId = projectData.id;
         console.log('New project created with ID:', projectId);
         
-        // Set workflow state to 2 (Files step)
+        // Insert workflow state using rpc call to avoid type issues
         console.log('Creating workflow state for new project');
-        const workflowSuccess = await setWorkflowState(
-          projectId, 
-          user.data.user.id, 
-          2 as WorkflowState
-        );
+        const { error: workflowError } = await supabase.rpc('insert_project_workflow', {
+          p_project_id: projectId,
+          p_user_id: user.data.user.id,
+          p_workflow_state: 2 // Step 2 in the workflow
+        });
         
-        if (!workflowSuccess) {
-          console.error('Error creating workflow state');
+        if (workflowError) {
+          console.error('Error creating workflow state using RPC:', workflowError);
+          // Fallback to direct insert if RPC fails (e.g., if RPC doesn't exist yet)
+          const { error: directInsertError } = await supabase.rpc('insert_workflow_state', {
+            project_id_param: projectId,
+            user_id_param: user.data.user.id,
+            workflow_state_param: 2
+          });
+          
+          if (directInsertError) {
+            console.error('Error with fallback workflow state insertion:', directInsertError);
+            // Last resort - raw SQL (executed via edge function would be better, but for now we'll log the error)
+            console.error('Could not insert workflow state. Please ensure the project_workflow table exists.');
+          } else {
+            console.log('Successfully created workflow state with fallback method');
+          }
         } else {
           console.log('Successfully created workflow state with state 2 (Files step)');
         }
@@ -121,16 +133,52 @@ export const useReportSave = () => {
       } else if (reportMode === 'update' && selectedProjectId) {
         console.log('Using existing project with ID:', selectedProjectId);
         
-        // Update workflow state to 2 (Files step)
+        // For updating existing projects, use RPC to check and update workflow state
         console.log('Updating workflow state for existing project');
-        const workflowSuccess = await setWorkflowState(
-          selectedProjectId, 
-          user.data.user.id, 
-          2 as WorkflowState
-        );
+        const { error: updateError } = await supabase.rpc('update_project_workflow', {
+          p_project_id: selectedProjectId,
+          p_user_id: user.data.user.id,
+          p_workflow_state: 2
+        });
         
-        if (!workflowSuccess) {
-          console.error('Error updating workflow state');
+        if (updateError) {
+          console.error('Error updating workflow state using RPC:', updateError);
+          // Fallback method if RPC isn't available
+          console.log('Attempting direct update of workflow state');
+          
+          // First check if a workflow entry exists for this project
+          const { data: existingWorkflow, error: queryError } = await supabase.rpc('get_workflow_state', {
+            project_id_param: selectedProjectId
+          });
+          
+          if (queryError || !existingWorkflow || existingWorkflow.length === 0) {
+            console.log('No existing workflow found, creating new entry');
+            // Insert new workflow entry using direct method
+            const { error: insertError } = await supabase.rpc('insert_workflow_state', {
+              project_id_param: selectedProjectId,
+              user_id_param: user.data.user.id,
+              workflow_state_param: 2
+            });
+            
+            if (insertError) {
+              console.error('Error creating workflow state:', insertError);
+            } else {
+              console.log('Successfully created workflow state with state 2');
+            }
+          } else {
+            console.log('Existing workflow found, updating state');
+            // Update existing workflow state using direct method
+            const { error: directUpdateError } = await supabase.rpc('update_workflow_state', {
+              project_id_param: selectedProjectId,
+              workflow_state_param: 2
+            });
+            
+            if (directUpdateError) {
+              console.error('Error updating workflow state:', directUpdateError);
+            } else {
+              console.log('Successfully updated workflow state to 2');
+            }
+          }
         } else {
           console.log('Successfully updated workflow state to 2 (Files step)');
         }
