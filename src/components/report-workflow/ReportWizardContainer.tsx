@@ -16,6 +16,12 @@ const ReportWizardContainer = () => {
   const [currentWorkflowState, setCurrentWorkflowState] = useState<number | null>(null);
   const initializationComplete = useRef(false);
   
+  // Get the current step index based on the URL path
+  const getCurrentStepIndex = () => {
+    if (!step) return 0;
+    return workflowSteps.findIndex(s => s.path === step);
+  };
+  
   const {
     fetchCurrentWorkflow,
     getStepIndexFromWorkflowState,
@@ -96,6 +102,22 @@ const ReportWizardContainer = () => {
     
     initializeWorkflow();
   }, [step, handleNavigation, fetchCurrentWorkflow, getStepIndexFromWorkflowState, getStepIndexFromPath, projectName]);
+  
+  // Update currentWorkflowState based on the current URL path
+  useEffect(() => {
+    const updateCurrentWorkflowState = async () => {
+      if (step) {
+        const pathStepIndex = getStepIndexFromPath(step);
+        // Set the current workflow state based on the path
+        // +1 because workflow state is 1-indexed
+        setCurrentWorkflowState(pathStepIndex + 1);
+      }
+    };
+    
+    if (initializationComplete.current) {
+      updateCurrentWorkflowState();
+    }
+  }, [location.pathname, step, getStepIndexFromPath]);
   
   // Reset the initialization flag when the step changes
   useEffect(() => {
