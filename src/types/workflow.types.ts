@@ -5,4 +5,5 @@ export interface ProjectWorkflow {
   user_id: string;
   workflow_state: number;
   created_at: string;
+  last_edited_at: string;
 }
