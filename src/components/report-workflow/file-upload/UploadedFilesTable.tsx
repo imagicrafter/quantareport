@@ -1,5 +1,5 @@
 
-import { ProjectFile } from '@/components/dashboard/files/FileItem';
+import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
 import { 
   Table, 
   TableBody, 
@@ -8,7 +8,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { FileImage, FileText, File as FileIcon } from 'lucide-react';
+import { FileImage, FileText, File as FileIcon, Music } from 'lucide-react';
 import { formatDistance } from 'date-fns';
 
 interface UploadedFilesTableProps {
@@ -33,12 +33,14 @@ const UploadedFilesTable = ({ files, loading = false }: UploadedFilesTableProps)
     );
   }
 
-  const getFileIcon = (type: string) => {
+  const getFileIcon = (type: FileType) => {
     switch (type) {
       case 'image':
         return <FileImage className="h-4 w-4 text-blue-500" />;
       case 'text':
         return <FileText className="h-4 w-4 text-green-500" />;
+      case 'audio':
+        return <Music className="h-4 w-4 text-purple-500" />;
       default:
         return <FileIcon className="h-4 w-4 text-gray-500" />;
     }

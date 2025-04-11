@@ -7,7 +7,7 @@ import UploadedFilesTable from '../file-upload/UploadedFilesTable';
 import StepBanner from '../StepBanner';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { ProjectFile } from '@/components/dashboard/files/FileItem';
+import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
 
 const Step2Files = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -131,7 +131,6 @@ const Step2Files = () => {
       if (!projectId) return;
       
       try {
-        // The table name should be 'files' not 'project_files'
         const { data, error } = await supabase
           .from('files')
           .select('*')
@@ -143,8 +142,28 @@ const Step2Files = () => {
           return;
         }
         
-        setUploadedFiles(data || []);
         console.log('Step2Files - Fetched files:', data);
+        
+        // Map the database results to match the ProjectFile interface
+        // This ensures that 'type' is correctly cast to the FileType type
+        if (data) {
+          const mappedFiles: ProjectFile[] = data.map(file => ({
+            id: file.id,
+            name: file.name,
+            title: file.title,
+            description: file.description,
+            file_path: file.file_path,
+            type: file.type as FileType, // Cast the string to FileType
+            size: file.size,
+            created_at: file.created_at,
+            project_id: file.project_id,
+            user_id: file.user_id,
+            position: file.position,
+            metadata: file.metadata
+          }));
+          
+          setUploadedFiles(mappedFiles);
+        }
       } catch (error) {
         console.error('Step2Files - Error in fetchFiles:', error);
       }

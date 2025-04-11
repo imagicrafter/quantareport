@@ -1,11 +1,11 @@
-
 import { useState, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
 
 interface FileUploadAreaProps {
-  onFilesSelected: (files: any[]) => void;
+  onFilesSelected: (files: ProjectFile[]) => void;
   acceptedFileTypes?: string;
   maxFileSizeMB?: number;
   className?: string;
@@ -94,15 +94,17 @@ const FileUploadArea = ({
         }
         
         // Upload each file to storage and record in database
-        const uploadedFiles = [];
+        const uploadedFiles: ProjectFile[] = [];
         
         for (const file of validFiles) {
           // Determine file type category
-          let fileType = 'document';
+          let fileType: FileType = 'other';
           if (file.type.startsWith('image/')) {
             fileType = 'image';
           } else if (file.type.startsWith('audio/')) {
             fileType = 'audio';
+          } else if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
+            fileType = 'text';
           }
           
           // Upload file to Supabase Storage
@@ -139,7 +141,23 @@ const FileUploadArea = ({
             continue;
           }
           
-          uploadedFiles.push(fileData);
+          // Make sure the fileData is properly typed as a ProjectFile
+          const typedFileData: ProjectFile = {
+            id: fileData.id,
+            name: fileData.name,
+            title: fileData.title,
+            description: fileData.description,
+            file_path: fileData.file_path,
+            type: fileData.type as FileType,
+            size: fileData.size,
+            created_at: fileData.created_at,
+            project_id: fileData.project_id,
+            user_id: fileData.user_id,
+            position: fileData.position,
+            metadata: fileData.metadata
+          };
+          
+          uploadedFiles.push(typedFileData);
         }
         
         // Notify parent component of uploaded files
