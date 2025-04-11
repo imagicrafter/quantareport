@@ -129,7 +129,7 @@ const ReportWizardContainer = () => {
         }
         
         // Skip for links within the workflow
-        if (href.startsWith('/dashboard/report-wizard/')) {
+        if (href.includes('/dashboard/report-wizard/')) {
           return;
         }
         
@@ -145,13 +145,17 @@ const ReportWizardContainer = () => {
           e.preventDefault();
           setShowExitDialog(true);
           setExitTarget(href);
+          console.log(`Exit dialog triggered for: ${href}`);
         }
       }
     };
     
-    document.addEventListener('click', handleClick);
+    // Add the event listener to the document
+    document.addEventListener('click', handleClick, true); // Use capturing phase
+    
+    // Clean up the event listener when component unmounts
     return () => {
-      document.removeEventListener('click', handleClick);
+      document.removeEventListener('click', handleClick, true);
     };
   }, [handleNavigation, projectId, currentWorkflowState, projectName, setShowExitDialog, setExitTarget]);
   
