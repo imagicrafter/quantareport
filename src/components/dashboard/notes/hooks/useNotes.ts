@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Note } from '@/utils/noteUtils';
+import { Note, parseNoteMetadata } from '@/utils/noteUtils';
 
 export const useNotes = (projectId: string) => {
   const { toast } = useToast();
@@ -20,7 +20,10 @@ export const useNotes = (projectId: string) => {
         .order('position', { ascending: true });
 
       if (error) throw error;
-      setNotes(data);
+      
+      // Process notes data - parse metadata if needed
+      const processedNotes = data.map(note => parseNoteMetadata(note));
+      setNotes(processedNotes);
     } catch (error) {
       console.error('Error fetching notes:', error);
       toast({

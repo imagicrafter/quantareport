@@ -8,20 +8,14 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import NotesList from '@/components/dashboard/notes/NotesList';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
-import { Note } from '@/utils/noteUtils';
+import { Note, parseNoteMetadata } from '@/utils/noteUtils';
 import { DragDropContext } from 'react-beautiful-dnd';
 
-interface NoteWithMetadata extends Note {
-  metadata?: {
-    category?: string;
-    [key: string]: any;
-  } | null;
-}
-
+// We can now use the Note interface directly since we've updated it to handle metadata properly
 const Step4Notes = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [notes, setNotes] = useState<NoteWithMetadata[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [projectId, setProjectId] = useState<string | null>(null);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
@@ -67,7 +61,9 @@ const Step4Notes = () => {
           variant: "destructive"
         });
       } else {
-        setNotes(data || []);
+        // Process notes data - parse metadata if needed
+        const processedNotes = data.map(note => parseNoteMetadata(note));
+        setNotes(processedNotes);
       }
     } catch (error) {
       console.error('Error in fetchNotes:', error);
@@ -130,13 +126,13 @@ const Step4Notes = () => {
   };
   
   // Edit note handler (redirects to notes page in a new tab)
-  const handleEditNote = (note: NoteWithMetadata) => {
+  const handleEditNote = (note: Note) => {
     // Open the notes page in a new tab, focused on this project
     window.open(`/dashboard/notes/${projectId}`, '_blank');
   };
   
   // Delete note handler (disabled in this view)
-  const handleDeleteNote = (note: NoteWithMetadata) => {
+  const handleDeleteNote = (note: Note) => {
     toast({
       title: "Note Deletion Disabled",
       description: "Please use the Notes section to manage notes",
@@ -167,9 +163,7 @@ const Step4Notes = () => {
     return notes.filter(note => {
       if (!note.metadata) return false;
       try {
-        const metadata = typeof note.metadata === 'string' 
-          ? JSON.parse(note.metadata) 
-          : note.metadata;
+        const metadata = note.metadata;
         return metadata.category === activeTab;
       } catch (e) {
         return false;

@@ -1,3 +1,4 @@
+
 import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { getWebhookUrl, isDevelopmentEnvironment } from './webhookConfig';
@@ -19,10 +20,7 @@ export interface Note {
   project_id: string;
   position: number | null;
   files_relationships_is_locked?: boolean;
-  metadata?: {
-    category?: string;
-    [key: string]: any;
-  } | null;
+  metadata?: any | null; // Using 'any' to accommodate both string and object formats
 }
 
 // Title to camelCase conversion utility function
@@ -118,4 +116,24 @@ export const submitImageAnalysis = async (
     console.error('Error submitting image analysis:', error);
     return false;
   }
+};
+
+// Helper to parse metadata safely
+export const parseNoteMetadata = (note: any): Note => {
+  let parsedMetadata = note.metadata;
+  
+  // If metadata is a string, try to parse it as JSON
+  if (typeof note.metadata === 'string') {
+    try {
+      parsedMetadata = JSON.parse(note.metadata);
+    } catch (e) {
+      console.log('Error parsing metadata string', e);
+      parsedMetadata = null;
+    }
+  }
+  
+  return {
+    ...note,
+    metadata: parsedMetadata
+  };
 };
