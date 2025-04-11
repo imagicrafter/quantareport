@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
@@ -9,8 +10,7 @@ import ProjectsTable from '../components/dashboard/ProjectsTable';
 import CreateProjectModal from '../components/dashboard/CreateProjectModal';
 
 const Dashboard = () => {
-  // Replace useOutletContext with a local state
-  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showCreateProject, setShowCreateProject] = useOutletContext<[boolean, React.Dispatch<React.SetStateAction<boolean>>]>();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);

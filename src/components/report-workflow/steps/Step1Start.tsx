@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import InstructionsPanel from '../start-report/InstructionsPanel';
@@ -18,6 +19,7 @@ const Step1Start = () => {
   const [projectIdFromWorkflow, setProjectIdFromWorkflow] = useState<string | null>(null);
   const navigate = useNavigate();
   
+  // Function to get active workflow project ID
   const fetchActiveWorkflow = async () => {
     try {
       console.log('Step1Start - Fetching active workflow');
@@ -28,6 +30,7 @@ const Step1Start = () => {
         return null;
       }
       
+      // Get the most recent workflow for step 1
       const { data, error } = await supabase
         .from('project_workflow')
         .select('project_id')
@@ -50,6 +53,7 @@ const Step1Start = () => {
     }
   };
   
+  // Custom hooks for data and operations
   const {
     defaultTemplate,
     isLoading,
@@ -74,6 +78,73 @@ const Step1Start = () => {
   
   const { isSaving, saveReport } = useReportSave();
   
+  // Reset workflow state to 1 when user navigates to this page
+  const resetWorkflowToStartStep = async () => {
+    try {
+      console.log('Step1Start - Resetting workflow to step 1');
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData.user) {
+        console.error('Step1Start - No authenticated user found');
+        return;
+      }
+      
+      // Update the workflow state for all user projects to 1 (start step)
+      // This allows for starting over from step 1
+      if (reportMode === 'new') {
+        console.log('Step1Start - Creating fresh workflow state for new report');
+        // Don't do anything for new reports - let the save button create a new workflow
+      } else if (selectedProjectId) {
+        console.log('Step1Start - Updating existing workflow state for project:', selectedProjectId);
+        
+        // Check if workflow record exists
+        const { data: existingWorkflow } = await supabase
+          .from('project_workflow')
+          .select('id')
+          .eq('project_id', selectedProjectId)
+          .eq('user_id', userData.user.id)
+          .maybeSingle();
+          
+        if (existingWorkflow) {
+          // Update existing workflow record
+          const { error: updateError } = await supabase
+            .from('project_workflow')
+            .update({ 
+              workflow_state: 1,
+              last_edited_at: new Date().toISOString()
+            })
+            .eq('project_id', selectedProjectId)
+            .eq('user_id', userData.user.id);
+            
+          if (updateError) {
+            console.error('Error updating workflow state:', updateError);
+          } else {
+            console.log('Successfully updated workflow state to 1');
+          }
+        } else {
+          // Create new workflow record
+          const { error: insertError } = await supabase
+            .from('project_workflow')
+            .insert({
+              project_id: selectedProjectId,
+              user_id: userData.user.id,
+              workflow_state: 1,
+              last_edited_at: new Date().toISOString()
+            });
+            
+          if (insertError) {
+            console.error('Error creating workflow state:', insertError);
+          } else {
+            console.log('Successfully created workflow state with state 1');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Step1Start - Error in resetWorkflowToStartStep:', error);
+    }
+  };
+  
+  // Effect to fetch project ID from workflow when component mounts
   useEffect(() => {
     const getActiveWorkflow = async () => {
       const projectId = await fetchActiveWorkflow();
@@ -81,67 +152,43 @@ const Step1Start = () => {
         console.log('Step1Start - Found active workflow project ID:', projectId);
         setProjectIdFromWorkflow(projectId);
         
+        // If we have an active workflow, switch to update mode and select the project
         if (reportMode === 'new') {
           console.log('Step1Start - Switching to update mode due to active workflow');
           setReportMode('update');
         }
         
+        // Pre-select the project
         setSelectedProjectId(projectId);
         
+        // Update workflow state to 1 (start step)
         resetWorkflowToStartStep();
       }
     };
     
     getActiveWorkflow();
     
+    // Reset workflow to step 1 whenever we land on this page
     resetWorkflowToStartStep();
   }, []);
   
-  useEffect(() => {
-    const resetWorkflowStateToOne = async () => {
-      try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData.user) return;
-        
-        const { data: currentWorkflow } = await supabase
-          .from('project_workflow')
-          .select('id, project_id, workflow_state')
-          .eq('user_id', userData.user.id)
-          .order('last_edited_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-          
-        if (currentWorkflow && currentWorkflow.workflow_state > 1) {
-          console.log('Resetting workflow state to 1 for restart');
-          
-          await supabase
-            .from('project_workflow')
-            .update({ 
-              workflow_state: 1,
-              last_edited_at: new Date().toISOString()
-            })
-            .eq('id', currentWorkflow.id);
-        }
-      } catch (error) {
-        console.error('Error resetting workflow state:', error);
-      }
-    };
-    
-    resetWorkflowStateToOne();
-  }, []);
-  
+  // Reset form when report mode changes
   useEffect(() => {
     console.log('Step1Start - Report mode changed to:', reportMode);
     if (reportMode === 'new') {
+      // Reset form to initial state
       resetForm();
       resetTemplateNoteValues();
     } else if (reportMode === 'update') {
+      // If we're in update mode and have a project ID from workflow, select it
       if (projectIdFromWorkflow) {
+        console.log('Step1Start - Setting selected project ID from workflow:', projectIdFromWorkflow);
         setSelectedProjectId(projectIdFromWorkflow);
       }
     }
   }, [reportMode]);
 
+  // Separate useEffect for fetching template
   useEffect(() => {
     if (reportMode === 'new' && defaultTemplate?.id) {
       fetchDefaultTemplate();
@@ -150,6 +197,7 @@ const Step1Start = () => {
   
   const handleReportModeChange = (mode: 'new' | 'update') => {
     setReportMode(mode);
+    // The form reset is handled in the useEffect
   };
   
   const handleSave = async () => {
@@ -165,6 +213,7 @@ const Step1Start = () => {
     });
     
     console.log('Step1Start - saveReport result:', success);
+    // Navigation is handled inside the saveReport function
   };
   
   const handleCancel = () => {
@@ -188,6 +237,7 @@ const Step1Start = () => {
     <div>
       <InstructionsPanel stepNumber={1} />
       
+      {/* Report Mode Selection */}
       <ReportModeSelector 
         value={reportMode}
         onChange={handleReportModeChange}
@@ -197,6 +247,7 @@ const Step1Start = () => {
         <LoadingSpinner />
       ) : (
         <>
+          {/* Report Name and Template Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-3xl mx-auto">
             <div>
               {reportMode === 'new' ? (
@@ -215,6 +266,7 @@ const Step1Start = () => {
             <TemplateDisplay templateName={defaultTemplate?.name} />
           </div>
           
+          {/* Template Notes Form - shown for both modes when data is available */}
           {(reportMode === 'new' || (reportMode === 'update' && selectedProjectId)) && (
             <>
               {templateNotes.length > 0 ? (
@@ -231,6 +283,7 @@ const Step1Start = () => {
             </>
           )}
           
+          {/* Action Buttons */}
           <div className="flex justify-between max-w-3xl mx-auto mt-8">
             <Button
               variant="outline"

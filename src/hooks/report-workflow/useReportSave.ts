@@ -116,21 +116,22 @@ export const useReportSave = () => {
         return false;
       }
       
-      // First, check if there's an existing workflow entry to see if we're restarting
+      // Insert or update workflow state to 2 (Files step)
+      console.log('Updating workflow state for project with ID:', projectId);
+      
+      // Check if a workflow entry exists for this project and user
       const { data: existingWorkflow, error: queryError } = await supabase
         .from('project_workflow')
-        .select('id, workflow_state')
+        .select('id')
         .eq('project_id', projectId)
         .eq('user_id', user.data.user.id)
-        .order('last_edited_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
+        .limit(1);
+        
       if (queryError) {
         console.error('Error checking for existing workflow:', queryError);
       }
       
-      if (!existingWorkflow) {
+      if (!existingWorkflow || existingWorkflow.length === 0) {
         // No existing workflow found, insert new one
         console.log('No existing workflow found, creating new entry with workflow_state = 2');
         const { error: insertError } = await supabase
@@ -138,7 +139,7 @@ export const useReportSave = () => {
           .insert({
             project_id: projectId,
             user_id: user.data.user.id,
-            workflow_state: 2, // Set to Step 2 (Files step)
+            workflow_state: 2,
             last_edited_at: new Date().toISOString()
           });
         
@@ -150,14 +151,15 @@ export const useReportSave = () => {
         }
       } else {
         // Update existing workflow
-        console.log(`Existing workflow found with state ${existingWorkflow.workflow_state}, updating to state 2 (Files step)`);
+        console.log('Existing workflow found, updating state to 2 (Files step)');
         const { error: updateError } = await supabase
           .from('project_workflow')
           .update({ 
-            workflow_state: 2, // Always set to Step 2 when moving from Step 1
+            workflow_state: 2,
             last_edited_at: new Date().toISOString()
           })
-          .eq('id', existingWorkflow.id);
+          .eq('project_id', projectId)
+          .eq('user_id', user.data.user.id);
         
         if (updateError) {
           console.error('Error updating workflow state:', updateError);
