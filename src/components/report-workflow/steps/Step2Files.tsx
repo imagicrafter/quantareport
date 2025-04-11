@@ -30,10 +30,10 @@ const Step2Files = () => {
       
       const userId = userData.user.id;
       
-      // Query the most recent workflow state for step 2
+      // Enhanced query to fetch the most recent workflow state for step 2
       const { data: workflowData, error: workflowError } = await supabase
         .from('project_workflow')
-        .select('project_id, last_edited_at')
+        .select('project_id')
         .eq('user_id', userId)
         .eq('workflow_state', 2)
         .order('last_edited_at', { ascending: false })
@@ -99,7 +99,7 @@ const Step2Files = () => {
             }
           }
         } else {
-          // If no project ID in state, try to fetch from database
+          // If no project ID in state, try to fetch from database using the enhanced query
           console.log('Step2Files - No project ID in state, fetching from database');
           const activeProjectId = await fetchActiveWorkflow();
           

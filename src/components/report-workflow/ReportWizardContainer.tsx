@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Outlet, useLocation } from 'react-router-dom';
 import StepIndicator from './StepIndicator';
@@ -28,10 +29,21 @@ const ReportWizardContainer = () => {
   
   const currentStepIndex = getCurrentStepIndex();
   
-  // Get the project ID from state
+  // Get the project ID from state or query params
   const getProjectId = () => {
-    // Try to get from location state
-    return location.state?.projectId || null;
+    // First try to get from location state
+    if (location.state?.projectId) {
+      return location.state.projectId;
+    }
+    
+    // Then try to get from URL query parameters
+    const searchParams = new URLSearchParams(window.location.search);
+    const projectIdFromQuery = searchParams.get('projectId');
+    if (projectIdFromQuery) {
+      return projectIdFromQuery;
+    }
+    
+    return null;
   };
   
   const projectId = getProjectId();
@@ -43,11 +55,39 @@ const ReportWizardContainer = () => {
     locationState: location.state,
     locationPathname: location.pathname,
     locationKey: location.key,
-    projectIdFromFunction: projectId
+    projectIdFromFunction: projectId,
+    queryParams: window.location.search
   });
   
+  // Function to fetch the most recent workflow for a specific step
+  const fetchActiveWorkflowForStep = async (stepIndex) => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return null;
+      
+      const { data, error } = await supabase
+        .from('project_workflow')
+        .select('project_id')
+        .eq('user_id', userData.user.id)
+        .eq('workflow_state', stepIndex + 1)
+        .order('last_edited_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (error) {
+        console.error(`Error fetching workflow for step ${stepIndex + 1}:`, error);
+        return null;
+      }
+      
+      return data?.project_id || null;
+    } catch (e) {
+      console.error('Error in fetchActiveWorkflowForStep:', e);
+      return null;
+    }
+  };
+  
   const handleStepClick = async (index: number) => {
-    // Get the project ID from state
+    // Get the project ID from multiple sources
     const projectId = getProjectId();
     
     console.log('handleStepClick - Project ID:', projectId);
@@ -56,29 +96,16 @@ const ReportWizardContainer = () => {
     // Check if we're trying to navigate forward but don't have a project ID
     // Only block navigation to steps after "start" if we don't have a project ID
     if (index > 0 && !projectId) {
-      // Check if user has an active workflow
-      try {
-        const user = await supabase.auth.getUser();
-        if (user.data.user) {
-          // Get the most recent workflow for the current step
-          const { data, error } = await supabase
-            .from('project_workflow')
-            .select('project_id')
-            .eq('user_id', user.data.user.id)
-            .order('last_edited_at', { ascending: false })
-            .limit(1)
-            .single();
-            
-          if (!error && data) {
-            navigate(`/dashboard/report-wizard/${steps[index].path}`, { 
-              state: { projectId: data.project_id },
-              replace: true
-            });
-            return;
-          }
-        }
-      } catch (e) {
-        console.error('Error checking for active workflow:', e);
+      // Check if user has an active workflow for the requested step
+      const activeProjectId = await fetchActiveWorkflowForStep(index);
+      
+      if (activeProjectId) {
+        console.log(`Found active workflow for step ${index + 1} with project ID:`, activeProjectId);
+        navigate(`/dashboard/report-wizard/${steps[index].path}`, { 
+          state: { projectId: activeProjectId },
+          replace: true
+        });
+        return;
       }
       
       toast({
@@ -111,6 +138,7 @@ const ReportWizardContainer = () => {
   useEffect(() => {
     console.log('Step effect triggered. Current step:', step);
     console.log('Current location state:', location.state);
+    console.log('Query parameters:', window.location.search);
     
     if (!step) {
       console.log('No step specified, navigating to first step');
@@ -126,41 +154,26 @@ const ReportWizardContainer = () => {
       console.log('Project ID from getProjectId():', projectId);
       
       if (!projectId) {
-        // Try to get the active workflow from the database
+        // Try to get the active workflow from the database for the current step
         const checkForActiveWorkflow = async () => {
-          try {
-            const user = await supabase.auth.getUser();
-            if (user.data.user) {
-              // Find the most recent workflow state for this step
-              const { data, error } = await supabase
-                .from('project_workflow')
-                .select('project_id')
-                .eq('user_id', user.data.user.id)
-                .eq('workflow_state', currentStepIndex + 1)
-                .order('last_edited_at', { ascending: false })
-                .limit(1)
-                .single();
-                
-              if (!error && data) {
-                console.log('Found active workflow for current step:', data.project_id);
-                navigate(`/dashboard/report-wizard/${step}`, {
-                  state: { projectId: data.project_id },
-                  replace: true
-                });
-                return;
-              }
-            }
-            
-            console.log('No project ID or active workflow found, redirecting to step 1');
-            toast({
-              description: "Please start a new report first.",
-              variant: "destructive"
+          const activeProjectId = await fetchActiveWorkflowForStep(currentStepIndex);
+          
+          if (activeProjectId) {
+            console.log(`Found active workflow for step ${currentStepIndex + 1}:`, activeProjectId);
+            // Re-navigate to the same step but with the project ID in state
+            navigate(`/dashboard/report-wizard/${step}`, {
+              state: { projectId: activeProjectId },
+              replace: true
             });
-            navigate(`/dashboard/report-wizard/${steps[0].path}`, { replace: true });
-          } catch (e) {
-            console.error('Error checking for active workflow:', e);
-            navigate(`/dashboard/report-wizard/${steps[0].path}`, { replace: true });
+            return;
           }
+          
+          console.log('No project ID or active workflow found, redirecting to step 1');
+          toast({
+            description: "Please start a new report first.",
+            variant: "destructive"
+          });
+          navigate(`/dashboard/report-wizard/${steps[0].path}`, { replace: true });
         };
         
         checkForActiveWorkflow();
