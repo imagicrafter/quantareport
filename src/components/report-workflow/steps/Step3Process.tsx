@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,6 @@ const Step3Process = () => {
   const [notesCount, setNotesCount] = useState(0);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   
-  // Use the image analysis hooks
   const {
     isAnalyzing,
     analysisJobId,
@@ -38,7 +36,6 @@ const Step3Process = () => {
     handleAnalysisComplete
   } = useImageAnalysis(projectId, projectName);
 
-  // Get the project ID from the workflow state
   useEffect(() => {
     const getWorkflowData = async () => {
       try {
@@ -52,7 +49,6 @@ const Step3Process = () => {
         
         setProjectId(currentProjectId);
         
-        // Fetch project name
         const { data: projectData, error: projectError } = await supabase
           .from('projects')
           .select('name')
@@ -63,12 +59,10 @@ const Step3Process = () => {
           setProjectName(projectData.name);
         }
         
-        // Update workflow state to 3 if coming from step 2
         if (workflowState === 2) {
           await updateWorkflowState(currentProjectId, 3);
           console.log('Updated workflow state to 3');
         } else if (workflowState !== 3) {
-          // If not at step 3, redirect back to appropriate step
           const steps = ['start', 'files', 'process', 'notes', 'generate', 'review'];
           navigate(`/dashboard/report-wizard/${steps[workflowState - 1] || 'start'}`);
         }
@@ -80,7 +74,6 @@ const Step3Process = () => {
     getWorkflowData();
   }, [fetchCurrentWorkflow, navigate, updateWorkflowState]);
 
-  // Check for unprocessed files
   useEffect(() => {
     if (projectId) {
       checkUnprocessedFiles();
@@ -88,7 +81,6 @@ const Step3Process = () => {
     }
   }, [projectId, checkUnprocessedFiles]);
 
-  // Start analysis or simulate progress if no unprocessed files
   useEffect(() => {
     if (!projectId) return;
     
@@ -100,7 +92,6 @@ const Step3Process = () => {
         await analyzeFiles();
       } else {
         console.log('No unprocessed files found, skipping analysis');
-        // Simulate progress for already processed files
         const interval = setInterval(() => {
           setProgress(prev => {
             if (prev >= 100) {
@@ -118,12 +109,10 @@ const Step3Process = () => {
     startProcessing();
   }, [projectId, hasUnprocessedFiles, analyzeFiles]);
 
-  // Fetch file counts and notes count for the results summary
   const fetchFileCounts = async () => {
     if (!projectId) return;
     
     try {
-      // Count text documents (files that are not images)
       const { data: textDocs, error: textError } = await supabase
         .from('files')
         .select('id')
@@ -134,7 +123,6 @@ const Step3Process = () => {
         setTextDocumentCount(textDocs?.length || 0);
       }
       
-      // Count images
       const { data: images, error: imageError } = await supabase
         .from('files')
         .select('id')
@@ -145,7 +133,6 @@ const Step3Process = () => {
         setImageCount(images?.length || 0);
       }
       
-      // Count notes with metadata for this project - fixed query
       const { data, error: notesError } = await supabase
         .from('notes')
         .select('id')
@@ -160,12 +147,10 @@ const Step3Process = () => {
     }
   };
 
-  // Fetch analyzed files to determine what's been processed
   const fetchAnalyzedFiles = async () => {
     if (!projectId) return;
     
     try {
-      // Get all files for this project that are NOT in the unprocessed table
       const { data: unprocessedFiles, error: unprocessedError } = await supabase
         .from('files_not_processed')
         .select('id')
@@ -176,7 +161,6 @@ const Step3Process = () => {
         return;
       }
       
-      // If no unprocessed files or all files processed
       if (!unprocessedFiles || unprocessedFiles.length === 0) {
         await fetchFileCounts();
         setProcessingComplete(true);
@@ -189,7 +173,6 @@ const Step3Process = () => {
     }
   };
 
-  // Handle analysis completion
   const onAnalysisComplete = () => {
     setProcessingComplete(true);
     setProcessingStatus('complete');
@@ -226,8 +209,8 @@ const Step3Process = () => {
     }
   };
   
-  const handleBannerClick = (step: number) => {
-    if (step === 2 && projectId) {
+  const handleBannerClick = () => {
+    if (projectId) {
       updateWorkflowState(projectId, 2)
         .then(() => {
           navigate('/dashboard/report-wizard/files');
@@ -312,7 +295,6 @@ const Step3Process = () => {
         </Button>
       </div>
 
-      {/* Analysis Progress Modal */}
       <FileAnalysisProgressModal
         isOpen={isProgressModalOpen}
         onClose={closeProgressModal}
