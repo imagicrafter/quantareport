@@ -50,35 +50,6 @@ const Step1Start = () => {
     }
   };
   
-  const resetWorkflowToStartStep = async () => {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
-      
-      const { data: currentWorkflow } = await supabase
-        .from('project_workflow')
-        .select('id, project_id, workflow_state')
-        .eq('user_id', userData.user.id)
-        .order('last_edited_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-        
-      if (currentWorkflow && currentWorkflow.workflow_state > 1) {
-        console.log('Resetting workflow state to 1 for restart');
-        
-        await supabase
-          .from('project_workflow')
-          .update({ 
-            workflow_state: 1,
-            last_edited_at: new Date().toISOString()
-          })
-          .eq('id', currentWorkflow.id);
-      }
-    } catch (error) {
-      console.error('Error resetting workflow state:', error);
-    }
-  };
-  
   const {
     defaultTemplate,
     isLoading,
