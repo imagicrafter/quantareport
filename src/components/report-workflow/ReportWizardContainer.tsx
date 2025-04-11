@@ -129,7 +129,13 @@ const ReportWizardContainer = () => {
           return;
         }
         
-        // Skip for links within the workflow
+        // Handle step banner clicks for step 2 in step 3
+        if (currentWorkflowState === 3 && href.includes('/dashboard/report-wizard/files')) {
+          console.log('Clicking on step 2 banner from step 3, allowing navigation');
+          return;
+        }
+        
+        // Skip for other links within the workflow
         if (href.includes('/dashboard/report-wizard/')) {
           return;
         }

@@ -22,6 +22,7 @@ const Step3Process = () => {
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'complete' | 'error'>('idle');
   const [textDocumentCount, setTextDocumentCount] = useState(0);
   const [imageCount, setImageCount] = useState(0);
+  const [notesCount, setNotesCount] = useState(0);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   
   // Use the image analysis hooks
@@ -117,7 +118,7 @@ const Step3Process = () => {
     startProcessing();
   }, [projectId, hasUnprocessedFiles, analyzeFiles]);
 
-  // Fetch file counts for the results summary
+  // Fetch file counts and notes count for the results summary
   const fetchFileCounts = async () => {
     if (!projectId) return;
     
@@ -142,6 +143,18 @@ const Step3Process = () => {
         
       if (!imageError) {
         setImageCount(images?.length || 0);
+      }
+      
+      // Count notes with metadata for this project
+      const { data: notes, error: notesError } = await supabase
+        .from('notes')
+        .select('count')
+        .eq('project_id', projectId)
+        .not('metadata', 'is', null)
+        .count();
+        
+      if (!notesError && notes) {
+        setNotesCount(notes);
       }
     } catch (error) {
       console.error('Error fetching file counts:', error);
@@ -214,6 +227,18 @@ const Step3Process = () => {
     }
   };
   
+  const handleBannerClick = (step: number) => {
+    if (step === 2 && projectId) {
+      updateWorkflowState(projectId, 2)
+        .then(() => {
+          navigate('/dashboard/report-wizard/files');
+        })
+        .catch(error => {
+          console.error('Error updating workflow state:', error);
+        });
+    }
+  };
+  
   return (
     <div className="container mx-auto px-4 pt-8 pb-12">
       <StepBanner 
@@ -264,7 +289,7 @@ const Step3Process = () => {
                 <div className="bg-muted p-4 rounded-md w-full mt-4">
                   <h4 className="font-medium mb-2">Processing Results:</h4>
                   <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Extracted text from {textDocumentCount} documents</li>
+                    <li>Identified {notesCount} notes from {textDocumentCount} document{textDocumentCount !== 1 ? 's' : ''}</li>
                     <li>Analyzed {imageCount} images with AI vision</li>
                     <li>Generated key insights from content</li>
                   </ul>
