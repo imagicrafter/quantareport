@@ -1,9 +1,20 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Outlet } from 'react-router-dom';
+import { useNavigate, useParams, Outlet, useLocation } from 'react-router-dom';
 import StepIndicator from './StepIndicator';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useWorkflowExit } from '@/hooks/report-workflow/useWorkflowExit';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const steps = [
   { title: 'Start Report', path: 'start' },
@@ -17,10 +28,26 @@ const steps = [
 const ReportWizardContainer = () => {
   const { step } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentWorkflowState, setCurrentWorkflowState] = useState<number | null>(null);
+  const [isNewReport, setIsNewReport] = useState<boolean>(true);
+  
+  const isInWorkflow = currentWorkflowState !== null && currentWorkflowState > 1;
+  
+  const { 
+    isExitDialogOpen, 
+    handleExitAttempt, 
+    confirmExit, 
+    cancelExit 
+  } = useWorkflowExit({
+    projectId,
+    projectName,
+    isInWorkflow
+  });
   
   // Function to fetch the most recent workflow for a specific workflow state
   const fetchActiveWorkflowForState = async (workflowState: number) => {
@@ -52,6 +79,43 @@ const ReportWizardContainer = () => {
     }
   };
   
+  // Function to fetch project details
+  const fetchProjectDetails = async (projectId: string) => {
+    if (!projectId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('name')
+        .eq('id', projectId)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching project details:', error);
+        return;
+      }
+      
+      if (data) {
+        setProjectName(data.name);
+        // Check if this is a new report (no existing reports) or an update
+        const { data: existingReports, error: reportsError } = await supabase
+          .from('reports')
+          .select('id')
+          .eq('project_id', projectId)
+          .limit(1);
+          
+        if (reportsError) {
+          console.error('Error checking for existing reports:', reportsError);
+          return;
+        }
+        
+        setIsNewReport(!existingReports || existingReports.length === 0);
+      }
+    } catch (e) {
+      console.error('Error in fetchProjectDetails:', e);
+    }
+  };
+  
   // Function to get the current active workflow state and project_id
   const fetchCurrentWorkflow = async () => {
     try {
@@ -75,6 +139,12 @@ const ReportWizardContainer = () => {
       if (data) {
         console.log('Current workflow state from DB:', data.workflow_state);
         console.log('Current project ID from DB:', data.project_id);
+        
+        // Only fetch project details if we have a project ID and the workflow state is active
+        if (data.project_id && data.workflow_state > 0) {
+          await fetchProjectDetails(data.project_id);
+        }
+        
         return { 
           workflowState: data.workflow_state, 
           projectId: data.project_id 
@@ -90,7 +160,7 @@ const ReportWizardContainer = () => {
   
   // Function to determine the current step index from workflow_state
   const getStepIndexFromWorkflowState = (workflowState: number | null) => {
-    if (!workflowState) return 0;
+    if (!workflowState || workflowState <= 0) return 0;
     // workflow_state is 1-based, but our step array is 0-based
     const stepIndex = workflowState - 1;
     return stepIndex >= 0 && stepIndex < steps.length ? stepIndex : 0;
@@ -162,7 +232,7 @@ const ReportWizardContainer = () => {
       // If we have an active workflow state but no route parameter,
       // redirect to the appropriate step
       if (!step) {
-        if (workflowState) {
+        if (workflowState && workflowState > 0) {
           const stepIndex = getStepIndexFromWorkflowState(workflowState);
           console.log(`No step specified, redirecting to step ${stepIndex + 1} based on workflow state ${workflowState}`);
           navigate(`/dashboard/report-wizard/${steps[stepIndex].path}`, { replace: true });
@@ -187,7 +257,7 @@ const ReportWizardContainer = () => {
       
       // If we're beyond step 1, verify we have a valid workflow state and project ID
       if (pathStepIndex > 0) {
-        if (!workflowState || !activeProjectId) {
+        if (!workflowState || workflowState <= 0 || !activeProjectId) {
           console.log('Trying to access a step beyond start but no active workflow found');
           toast({
             description: "Please start a new report first.",
@@ -217,6 +287,26 @@ const ReportWizardContainer = () => {
     initializeWorkflow();
   }, [step, navigate]);
   
+  // This effect handles navigation inside the app
+  useEffect(() => {
+    // Override the browser's back/forward to use our exit confirmation
+    const handlePopState = (event: PopStateEvent) => {
+      if (isInWorkflow) {
+        // Prevent the default navigation
+        event.preventDefault();
+        
+        // Handle the exit attempt
+        handleExitAttempt(location.pathname);
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isInWorkflow, location.pathname]);
+  
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 pt-16 pb-12">
@@ -227,25 +317,55 @@ const ReportWizardContainer = () => {
     );
   }
   
+  // Generate the page title based on workflow state and project info
+  const getPageTitle = () => {
+    if (!projectName || currentWorkflowState === null || currentWorkflowState <= 1) {
+      return "Create New Report";
+    }
+    
+    const reportType = isNewReport ? "Create New Report" : "Update Report";
+    return `${reportType}: ${projectName}`;
+  };
+  
   return (
-    <div className="container mx-auto px-4 pt-16 pb-12">
-      <h1 className="text-2xl font-semibold mb-6 text-center">
-        Create New Report
-      </h1>
-      
-      {/* Step Indicator */}
-      <div className="mb-8">
-        <StepIndicator 
-          currentStep={currentWorkflowState || 1}
-          totalSteps={steps.length}
-          onStepClick={(step) => handleStepClick(step - 1)}
-          steps={steps}
-        />
+    <>
+      <div className="container mx-auto px-4 pt-16 pb-12">
+        <h1 className="text-2xl font-semibold mb-6 text-center">
+          {getPageTitle()}
+        </h1>
+        
+        {/* Step Indicator */}
+        <div className="mb-8">
+          <StepIndicator 
+            currentStep={currentWorkflowState || 1}
+            totalSteps={steps.length}
+            onStepClick={(step) => handleStepClick(step - 1)}
+            steps={steps}
+          />
+        </div>
+        
+        {/* Step Content - rendered via Outlet */}
+        <Outlet />
       </div>
       
-      {/* Step Content - rendered via Outlet */}
-      <Outlet />
-    </div>
+      {/* Exit Confirmation Dialog */}
+      <AlertDialog open={isExitDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Exit Report Creation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to leave the report creation workflow for {projectName || "this report"}. 
+              Your progress will be saved, but you'll need to restart the workflow to continue.
+              Are you sure you want to exit?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelExit}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmExit}>Exit Workflow</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
