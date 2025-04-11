@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Outlet, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, Outlet } from 'react-router-dom';
 import StepIndicator from './StepIndicator';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,8 +17,8 @@ const steps = [
 const ReportWizardContainer = () => {
   const { step } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
+  const [projectId, setProjectId] = useState<string | null>(null);
   
   // Get current step number based on the route parameter
   const getCurrentStepIndex = () => {
@@ -29,41 +29,13 @@ const ReportWizardContainer = () => {
   
   const currentStepIndex = getCurrentStepIndex();
   
-  // Get the project ID from state or query params
-  const getProjectId = () => {
-    // First try to get from location state
-    if (location.state?.projectId) {
-      return location.state.projectId;
-    }
-    
-    // Then try to get from URL query parameters
-    const searchParams = new URLSearchParams(window.location.search);
-    const projectIdFromQuery = searchParams.get('projectId');
-    if (projectIdFromQuery) {
-      return projectIdFromQuery;
-    }
-    
-    return null;
-  };
-  
-  const projectId = getProjectId();
-  
-  // ENHANCED LOGGING: Log more details including full location object
-  console.log('ReportWizardContainer render:', {
-    currentStep: step,
-    currentStepIndex,
-    locationState: location.state,
-    locationPathname: location.pathname,
-    locationKey: location.key,
-    projectIdFromFunction: projectId,
-    queryParams: window.location.search
-  });
-  
   // Function to fetch the most recent workflow for a specific step
-  const fetchActiveWorkflowForStep = async (stepIndex) => {
+  const fetchActiveWorkflowForStep = async (stepIndex: number) => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return null;
+      
+      console.log(`Fetching active workflow for step ${stepIndex + 1}`);
       
       const { data, error } = await supabase
         .from('project_workflow')
@@ -79,6 +51,7 @@ const ReportWizardContainer = () => {
         return null;
       }
       
+      console.log(`Result for step ${stepIndex + 1}:`, data);
       return data?.project_id || null;
     } catch (e) {
       console.error('Error in fetchActiveWorkflowForStep:', e);
@@ -87,111 +60,75 @@ const ReportWizardContainer = () => {
   };
   
   const handleStepClick = async (index: number) => {
-    // Get the project ID from multiple sources
-    const projectId = getProjectId();
-    
-    console.log('handleStepClick - Project ID:', projectId);
     console.log('handleStepClick - Trying to navigate to index:', index);
     
     // Check if we're trying to navigate forward but don't have a project ID
     // Only block navigation to steps after "start" if we don't have a project ID
-    if (index > 0 && !projectId) {
+    if (index > 0) {
       // Check if user has an active workflow for the requested step
       const activeProjectId = await fetchActiveWorkflowForStep(index);
       
       if (activeProjectId) {
         console.log(`Found active workflow for step ${index + 1} with project ID:`, activeProjectId);
-        navigate(`/dashboard/report-wizard/${steps[index].path}`, { 
-          state: { projectId: activeProjectId },
-          replace: true
+        setProjectId(activeProjectId);
+        navigate(`/dashboard/report-wizard/${steps[index].path}`);
+        return;
+      }
+      
+      if (index > currentStepIndex) {
+        toast({
+          description: "Please complete the current step before proceeding.",
         });
         return;
       }
       
-      toast({
-        description: "Please complete the first step before proceeding.",
-        variant: "destructive"
-      });
-      navigate(`/dashboard/report-wizard/${steps[0].path}`);
-      return;
+      if (index !== 0 && !activeProjectId) {
+        toast({
+          description: "Please complete the first step before proceeding.",
+          variant: "destructive"
+        });
+        navigate(`/dashboard/report-wizard/${steps[0].path}`);
+        return;
+      }
     }
     
-    // Check if we're trying to navigate forward beyond the current step
-    // This prevents skipping steps
-    if (index > currentStepIndex) {
-      toast({
-        description: "Please complete the current step before proceeding.",
-      });
-      return;
-    }
-    
-    // Otherwise, allow navigation to previous steps
-    // Preserve any state when navigating between steps
-    console.log('Navigation approved to step:', steps[index].path);
-    navigate(`/dashboard/report-wizard/${steps[index].path}`, { 
-      state: { projectId },
-      replace: true
-    });
+    // Allow navigation to previous steps or the first step
+    navigate(`/dashboard/report-wizard/${steps[index].path}`);
   };
   
   // Initialize the wizard at the first step if no step is specified
+  // or load the appropriate project ID for the current step
   useEffect(() => {
-    console.log('Step effect triggered. Current step:', step);
-    console.log('Current location state:', location.state);
-    console.log('Query parameters:', window.location.search);
-    
     if (!step) {
       console.log('No step specified, navigating to first step');
       navigate(`/dashboard/report-wizard/${steps[0].path}`, { replace: true });
       return;
     }
     
-    // Check if we're beyond step 1 but don't have a project ID
+    // Check if we're beyond step 1
     if (currentStepIndex > 0) {
-      const projectId = getProjectId();
+      console.log(`On step ${currentStepIndex + 1} (${step}), fetching project data from database`);
       
-      console.log('Current step index:', currentStepIndex);
-      console.log('Project ID from getProjectId():', projectId);
-      
-      if (!projectId) {
-        // Try to get the active workflow from the database for the current step
-        const checkForActiveWorkflow = async () => {
-          const activeProjectId = await fetchActiveWorkflowForStep(currentStepIndex);
-          
-          if (activeProjectId) {
-            console.log(`Found active workflow for step ${currentStepIndex + 1}:`, activeProjectId);
-            // Re-navigate to the same step but with the project ID in state
-            navigate(`/dashboard/report-wizard/${step}`, {
-              state: { projectId: activeProjectId },
-              replace: true
-            });
-            return;
-          }
-          
-          console.log('No project ID or active workflow found, redirecting to step 1');
+      // Try to get the active workflow from the database for the current step
+      const checkForActiveWorkflow = async () => {
+        const activeProjectId = await fetchActiveWorkflowForStep(currentStepIndex);
+        
+        if (activeProjectId) {
+          console.log(`Found active workflow for step ${currentStepIndex + 1}:`, activeProjectId);
+          setProjectId(activeProjectId);
+        } else {
+          console.log('No active workflow found, redirecting to step 1');
           toast({
             description: "Please start a new report first.",
             variant: "destructive"
           });
           navigate(`/dashboard/report-wizard/${steps[0].path}`, { replace: true });
-        };
-        
-        checkForActiveWorkflow();
-      } else {
-        console.log('Project ID found, staying on current step:', step);
-        
-        // If we have a project ID but it's not in location state,
-        // update the location state to include it
-        if (!location.state?.projectId) {
-          console.log('Project ID not in location state, updating location state');
-          navigate(`/dashboard/report-wizard/${step}`, {
-            state: { projectId },
-            replace: true
-          });
         }
-      }
+      };
+      
+      checkForActiveWorkflow();
     }
-  }, [step, navigate, currentStepIndex, location.pathname]);
+  }, [step, navigate, currentStepIndex]);
   
   return (
     <div className="container mx-auto px-4 pt-16 pb-12">

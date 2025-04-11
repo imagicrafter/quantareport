@@ -187,12 +187,9 @@ export const useReportSave = () => {
         return false;
       }
       
-      // Use React Router navigate with state to preserve the projectId
+      // Simple direct navigation without passing state
       console.log('Navigating to files step with projectId:', projectId);
-      navigate('/dashboard/report-wizard/files', { 
-        state: { projectId },
-        replace: true
-      });
+      navigate('/dashboard/report-wizard/files');
 
       toast({
         title: 'Success',

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import InstructionsPanel from '../start-report/InstructionsPanel';
 import ReportModeSelector from '../start-report/ReportModeSelector';
 import ReportNameInput from '../start-report/ReportNameInput';
@@ -16,24 +16,42 @@ import { supabase } from '@/integrations/supabase/client';
 
 const Step1Start = () => {
   const [reportMode, setReportMode] = useState<'new' | 'update'>('new');
+  const [projectIdFromWorkflow, setProjectIdFromWorkflow] = useState<string | null>(null);
   const navigate = useNavigate();
-  const location = useLocation();
   
-  // Function to get project ID with consistent logic
-  const getProjectIdFromState = (): string | null => {
-    if (location.state?.projectId) {
-      return location.state.projectId;
+  // Function to get active workflow project ID
+  const fetchActiveWorkflow = async () => {
+    try {
+      console.log('Step1Start - Fetching active workflow');
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData.user) {
+        console.error('Step1Start - No authenticated user found');
+        return null;
+      }
+      
+      // Get the most recent workflow for step 1
+      const { data, error } = await supabase
+        .from('project_workflow')
+        .select('project_id')
+        .eq('user_id', userData.user.id)
+        .eq('workflow_state', 1)
+        .order('last_edited_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (error) {
+        console.error('Step1Start - Error fetching workflow:', error);
+        return null;
+      }
+      
+      console.log('Step1Start - Active workflow project ID:', data?.project_id);
+      return data?.project_id || null;
+    } catch (error) {
+      console.error('Step1Start - Error in fetchActiveWorkflow:', error);
+      return null;
     }
-    return null;
   };
-  
-  // Capture any project ID from location state (for when we return from other steps)
-  const projectIdFromState = getProjectIdFromState();
-  
-  console.log('Step1Start - Location state:', location.state);
-  console.log('Step1Start - Project ID from state:', projectIdFromState);
-  console.log('Step1Start - Location pathname:', location.pathname);
-  console.log('Step1Start - Location key:', location.key);
   
   // Custom hooks for data and operations
   const {
@@ -60,89 +78,75 @@ const Step1Start = () => {
   
   const { isSaving, saveReport } = useReportSave();
   
-  // Effect to update workflow state when component mounts
+  // Effect to fetch project ID from workflow when component mounts
   useEffect(() => {
-    const updateWorkflowState = async () => {
-      try {
-        // If we have a project ID from state, update its workflow state to 1
-        if (projectIdFromState) {
-          console.log('Step1Start - Updating workflow state for project:', projectIdFromState);
-          const user = await supabase.auth.getUser();
+    const getActiveWorkflow = async () => {
+      const projectId = await fetchActiveWorkflow();
+      if (projectId) {
+        console.log('Step1Start - Found active workflow project ID:', projectId);
+        setProjectIdFromWorkflow(projectId);
+        
+        // If we have an active workflow, switch to update mode and select the project
+        if (reportMode === 'new') {
+          console.log('Step1Start - Switching to update mode due to active workflow');
+          setReportMode('update');
+        }
+        
+        // Pre-select the project
+        setSelectedProjectId(projectId);
+        
+        // Update workflow state to 1 (start step)
+        const user = await supabase.auth.getUser();
+        if (user.data.user) {
+          console.log('Step1Start - Updating workflow state for project:', projectId);
           
-          if (user.data.user) {
-            // Update workflow state using edge function
-            const response = await fetch(`${window.location.origin}/api/workflow-management`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabase.auth.getSession()}`
-              },
-              body: JSON.stringify({
-                operation: 'update',
-                projectId: projectIdFromState,
-                userId: user.data.user.id,
-                workflowState: 1
-              })
-            });
+          // Check if workflow record exists
+          const { data: existingWorkflow } = await supabase
+            .from('project_workflow')
+            .select('id')
+            .eq('project_id', projectId)
+            .eq('user_id', user.data.user.id)
+            .maybeSingle();
             
-            const result = await response.json();
-            if (result.error) {
-              console.error('Error updating workflow state via edge function:', result.error);
+          if (existingWorkflow) {
+            // Update existing workflow record
+            const { error: updateError } = await supabase
+              .from('project_workflow')
+              .update({ 
+                workflow_state: 1,
+                last_edited_at: new Date().toISOString()
+              })
+              .eq('project_id', projectId)
+              .eq('user_id', user.data.user.id);
               
-              // Fallback method if edge function fails
-              console.log('Attempting direct SQL update for workflow state');
-              
-              // First check if workflow record exists
-              const { data: existingWorkflow } = await supabase
-                .from('project_workflow')
-                .select('id')
-                .eq('project_id', projectIdFromState)
-                .maybeSingle();
-                
-              if (existingWorkflow) {
-                // Update existing workflow record
-                const { error: updateError } = await supabase
-                  .from('project_workflow')
-                  .update({ 
-                    workflow_state: 1,
-                    last_edited_at: new Date().toISOString()
-                  })
-                  .eq('project_id', projectIdFromState);
-                  
-                if (updateError) {
-                  console.error('Error updating workflow state:', updateError);
-                } else {
-                  console.log('Successfully updated workflow state to 1');
-                }
-              } else {
-                // Create new workflow record
-                const { error: insertError } = await supabase
-                  .from('project_workflow')
-                  .insert({
-                    project_id: projectIdFromState,
-                    user_id: user.data.user.id,
-                    workflow_state: 1,
-                    last_edited_at: new Date().toISOString()
-                  });
-                  
-                if (insertError) {
-                  console.error('Error creating workflow state:', insertError);
-                } else {
-                  console.log('Successfully created workflow state with state 1');
-                }
-              }
+            if (updateError) {
+              console.error('Error updating workflow state:', updateError);
             } else {
-              console.log('Successfully updated workflow state to 1 using edge function');
+              console.log('Successfully updated workflow state to 1');
+            }
+          } else {
+            // Create new workflow record
+            const { error: insertError } = await supabase
+              .from('project_workflow')
+              .insert({
+                project_id: projectId,
+                user_id: user.data.user.id,
+                workflow_state: 1,
+                last_edited_at: new Date().toISOString()
+              });
+              
+            if (insertError) {
+              console.error('Error creating workflow state:', insertError);
+            } else {
+              console.log('Successfully created workflow state with state 1');
             }
           }
         }
-      } catch (error) {
-        console.error('Error updating workflow state:', error);
       }
     };
     
-    updateWorkflowState();
-  }, [projectIdFromState]);
+    getActiveWorkflow();
+  }, []);
   
   // Reset form when report mode changes
   useEffect(() => {
@@ -152,30 +156,13 @@ const Step1Start = () => {
       resetForm();
       resetTemplateNoteValues();
     } else if (reportMode === 'update') {
-      // If we're in update mode and have a project ID from state, select it
-      if (projectIdFromState) {
-        console.log('Step1Start - Setting selected project ID from state:', projectIdFromState);
-        setSelectedProjectId(projectIdFromState);
+      // If we're in update mode and have a project ID from workflow, select it
+      if (projectIdFromWorkflow) {
+        console.log('Step1Start - Setting selected project ID from workflow:', projectIdFromWorkflow);
+        setSelectedProjectId(projectIdFromWorkflow);
       }
     }
   }, [reportMode]);
-
-  // Handle project ID from step return (coming back from Step 2, etc.)
-  useEffect(() => {
-    if (projectIdFromState) {
-      console.log('Step1Start - Detected project ID in location state:', projectIdFromState);
-      
-      // If user is coming back to Step 1 with a project ID, switch to update mode
-      // and pre-select the project
-      if (reportMode === 'new') {
-        console.log('Step1Start - Switching to update mode due to project ID in state');
-        setReportMode('update');
-      }
-      
-      // Pre-select the project
-      setSelectedProjectId(projectIdFromState);
-    }
-  }, [projectIdFromState]);
 
   // Separate useEffect for fetching template
   useEffect(() => {
