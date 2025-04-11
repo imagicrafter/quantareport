@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../dashboard/Sidebar';
@@ -94,7 +95,7 @@ const NavigationWrapper = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// Add a prop to track onNavigate in the Sidebar component
+// Remove the outlet context from the DashboardLayout component
 const DashboardLayout = () => {
   return (
     <div className="flex h-screen bg-background">
