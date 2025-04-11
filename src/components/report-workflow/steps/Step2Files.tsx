@@ -6,26 +6,17 @@ import UploadedFilesTable from '../file-upload/UploadedFilesTable';
 import StepBanner from '../StepBanner';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
-
-interface FileUploadAreaProps {
-  onFilesSelected: (files: ProjectFile[]) => void;
-  acceptedFileTypes: string;
-  files: ProjectFile[];
-}
-
-interface UploadedFilesTableProps {
-  files: ProjectFile[];
-  loading: boolean;
-}
 
 const Step2Files = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadedFiles, setUploadedFiles] = useState<ProjectFile[]>([]);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  // Function to get the most recent active workflow
+  // Function to get the most recent active workflow for state 2
   const fetchActiveWorkflow = async () => {
     try {
       console.log('Step2Files - Fetching current user and active workflow');
@@ -54,7 +45,7 @@ const Step2Files = () => {
         return null;
       }
       
-      console.log('Step2Files - Found active workflow:', workflowData);
+      console.log('Step2Files - Found active workflow with project ID:', workflowData?.project_id);
       return workflowData?.project_id || null;
     } catch (error) {
       console.error('Step2Files - Error in fetchActiveWorkflow:', error);
@@ -75,7 +66,7 @@ const Step2Files = () => {
           console.log('Step2Files - Using project ID from database:', activeProjectId);
           setProjectId(activeProjectId);
           
-          // Update workflow state to ensure it's at Step 2
+          // Ensure workflow state is at Step 2
           const { data: userData } = await supabase.auth.getUser();
           
           if (userData.user) {
@@ -97,6 +88,8 @@ const Step2Files = () => {
                 })
                 .eq('project_id', activeProjectId)
                 .eq('user_id', userData.user.id);
+              
+              console.log('Step2Files - Updated workflow state to 2');
             } else {
               // Create new workflow
               await supabase
@@ -107,6 +100,8 @@ const Step2Files = () => {
                   workflow_state: 2,
                   last_edited_at: new Date().toISOString()
                 });
+              
+              console.log('Step2Files - Created new workflow with state 2');
             }
           }
         } else {
@@ -116,6 +111,7 @@ const Step2Files = () => {
             description: "Could not find an active project. Please start a new report.",
             variant: "destructive"
           });
+          // Do NOT navigate back to step 1, just show error message
         }
       } catch (error) {
         console.error('Step2Files - Error setting up step:', error);
@@ -179,17 +175,36 @@ const Step2Files = () => {
   };
 
   const handleNextStep = async () => {
-    if (!projectId) return;
+    if (!projectId) {
+      toast({
+        title: "Error",
+        description: "No project ID found. Unable to proceed.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
       // Update workflow state to 3 (process files step)
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData.user) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be signed in to proceed.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const { error } = await supabase
         .from('project_workflow')
         .update({ 
           workflow_state: 3,
           last_edited_at: new Date().toISOString()
         })
-        .eq('project_id', projectId);
+        .eq('project_id', projectId)
+        .eq('user_id', userData.user.id);
         
       if (error) {
         console.error('Step2Files - Error updating workflow state:', error);
@@ -201,10 +216,17 @@ const Step2Files = () => {
         return;
       }
       
-      // Navigate to next step without appending projectId to URL
-      window.location.href = `/dashboard/report-wizard/process`;
+      console.log('Step2Files - Successfully updated workflow state to 3');
+      
+      // Navigate to next step
+      navigate('/dashboard/report-wizard/process');
     } catch (error) {
       console.error('Step2Files - Error in handleNextStep:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -220,10 +242,10 @@ const Step2Files = () => {
     return (
       <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 max-w-3xl mx-auto">
         <h3 className="text-lg font-semibold mb-2">No Active Project</h3>
-        <p>Could not find an active project for file uploads. This could be because the workflow state was not properly updated.</p>
+        <p>Could not find an active project for file uploads. Please try starting a new report.</p>
         <Button
           className="mt-4"
-          onClick={() => window.location.href = '/dashboard/report-wizard/start'}
+          onClick={() => navigate('/dashboard/report-wizard/start')}
         >
           Start New Report
         </Button>

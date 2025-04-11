@@ -19,44 +19,88 @@ const ReportWizardContainer = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentWorkflowState, setCurrentWorkflowState] = useState<number | null>(null);
   
-  // Get current step number based on the route parameter
-  const getCurrentStepIndex = () => {
-    if (!step) return 0;
-    const index = steps.findIndex(s => s.path === step);
-    return index >= 0 ? index : 0;
-  };
-  
-  const currentStepIndex = getCurrentStepIndex();
-  
-  // Function to fetch the most recent workflow for a specific step
-  const fetchActiveWorkflowForStep = async (stepIndex: number) => {
+  // Function to fetch the most recent workflow for a specific workflow state
+  const fetchActiveWorkflowForState = async (workflowState: number) => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return null;
       
-      console.log(`Fetching active workflow for step ${stepIndex + 1}`);
+      console.log(`Fetching active workflow for state ${workflowState}`);
       
       const { data, error } = await supabase
         .from('project_workflow')
         .select('project_id')
         .eq('user_id', userData.user.id)
-        .eq('workflow_state', stepIndex + 1)
+        .eq('workflow_state', workflowState)
         .order('last_edited_at', { ascending: false })
         .limit(1)
         .maybeSingle();
         
       if (error) {
-        console.error(`Error fetching workflow for step ${stepIndex + 1}:`, error);
+        console.error(`Error fetching workflow for state ${workflowState}:`, error);
         return null;
       }
       
-      console.log(`Result for step ${stepIndex + 1}:`, data);
+      console.log(`Result for workflow state ${workflowState}:`, data);
       return data?.project_id || null;
     } catch (e) {
-      console.error('Error in fetchActiveWorkflowForStep:', e);
+      console.error('Error in fetchActiveWorkflowForState:', e);
       return null;
     }
+  };
+  
+  // Function to get the current active workflow state and project_id
+  const fetchCurrentWorkflow = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return { workflowState: null, projectId: null };
+      
+      // Get the most recent workflow record for the user
+      const { data, error } = await supabase
+        .from('project_workflow')
+        .select('workflow_state, project_id')
+        .eq('user_id', userData.user.id)
+        .order('last_edited_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching current workflow:', error);
+        return { workflowState: null, projectId: null };
+      }
+      
+      if (data) {
+        console.log('Current workflow state from DB:', data.workflow_state);
+        console.log('Current project ID from DB:', data.project_id);
+        return { 
+          workflowState: data.workflow_state, 
+          projectId: data.project_id 
+        };
+      }
+      
+      return { workflowState: null, projectId: null };
+    } catch (e) {
+      console.error('Error in fetchCurrentWorkflow:', e);
+      return { workflowState: null, projectId: null };
+    }
+  };
+  
+  // Function to determine the current step index from workflow_state
+  const getStepIndexFromWorkflowState = (workflowState: number | null) => {
+    if (!workflowState) return 0;
+    // workflow_state is 1-based, but our step array is 0-based
+    const stepIndex = workflowState - 1;
+    return stepIndex >= 0 && stepIndex < steps.length ? stepIndex : 0;
+  };
+  
+  // Get current step index based on the route parameter
+  const getStepIndexFromPath = () => {
+    if (!step) return 0;
+    const index = steps.findIndex(s => s.path === step);
+    return index >= 0 ? index : 0;
   };
   
   const handleStepClick = async (index: number) => {
@@ -65,29 +109,30 @@ const ReportWizardContainer = () => {
     // Check if we're trying to navigate forward but don't have a project ID
     // Only block navigation to steps after "start" if we don't have a project ID
     if (index > 0) {
-      // Check if user has an active workflow for the requested step
-      const activeProjectId = await fetchActiveWorkflowForStep(index);
-      
-      if (activeProjectId) {
-        console.log(`Found active workflow for step ${index + 1} with project ID:`, activeProjectId);
+      // If we don't have current state/project, try to fetch it
+      if (!currentWorkflowState || !projectId) {
+        const { workflowState, projectId: activeProjectId } = await fetchCurrentWorkflow();
+        setCurrentWorkflowState(workflowState);
         setProjectId(activeProjectId);
-        navigate(`/dashboard/report-wizard/${steps[index].path}`);
-        return;
+        
+        // If we still don't have an active workflow or project ID
+        if (!workflowState || !activeProjectId) {
+          toast({
+            description: "Please complete the first step before proceeding.",
+            variant: "destructive"
+          });
+          navigate(`/dashboard/report-wizard/${steps[0].path}`);
+          return;
+        }
       }
       
-      if (index > currentStepIndex) {
+      // Check if user is trying to skip ahead
+      if (index > currentWorkflowState!) {
         toast({
           description: "Please complete the current step before proceeding.",
         });
-        return;
-      }
-      
-      if (index !== 0 && !activeProjectId) {
-        toast({
-          description: "Please complete the first step before proceeding.",
-          variant: "destructive"
-        });
-        navigate(`/dashboard/report-wizard/${steps[0].path}`);
+        // Navigate to the step matching their current workflow state
+        navigate(`/dashboard/report-wizard/${steps[currentWorkflowState! - 1].path}`);
         return;
       }
     }
@@ -96,39 +141,75 @@ const ReportWizardContainer = () => {
     navigate(`/dashboard/report-wizard/${steps[index].path}`);
   };
   
-  // Initialize the wizard at the first step if no step is specified
-  // or load the appropriate project ID for the current step
+  // Handle navigation and determine the correct step based on workflow state
   useEffect(() => {
-    if (!step) {
-      console.log('No step specified, navigating to first step');
-      navigate(`/dashboard/report-wizard/${steps[0].path}`, { replace: true });
-      return;
-    }
-    
-    // Check if we're beyond step 1
-    if (currentStepIndex > 0) {
-      console.log(`On step ${currentStepIndex + 1} (${step}), fetching project data from database`);
+    const initializeWorkflow = async () => {
+      setIsLoading(true);
       
-      // Try to get the active workflow from the database for the current step
-      const checkForActiveWorkflow = async () => {
-        const activeProjectId = await fetchActiveWorkflowForStep(currentStepIndex);
-        
-        if (activeProjectId) {
-          console.log(`Found active workflow for step ${currentStepIndex + 1}:`, activeProjectId);
-          setProjectId(activeProjectId);
+      // Fetch the current workflow state
+      const { workflowState, projectId: activeProjectId } = await fetchCurrentWorkflow();
+      setCurrentWorkflowState(workflowState);
+      setProjectId(activeProjectId);
+      
+      // If we have an active workflow state but no route parameter,
+      // redirect to the appropriate step
+      if (!step) {
+        if (workflowState) {
+          const stepIndex = getStepIndexFromWorkflowState(workflowState);
+          console.log(`No step specified, redirecting to step ${stepIndex + 1} based on workflow state ${workflowState}`);
+          navigate(`/dashboard/report-wizard/${steps[stepIndex].path}`, { replace: true });
         } else {
-          console.log('No active workflow found, redirecting to step 1');
+          console.log('No workflow state found, starting at step 1');
+          navigate(`/dashboard/report-wizard/${steps[0].path}`, { replace: true });
+        }
+        setIsLoading(false);
+        return;
+      }
+      
+      // Get the step index from the URL path
+      const pathStepIndex = getStepIndexFromPath();
+      
+      // If we're beyond step 1, verify we have a valid workflow state and project ID
+      if (pathStepIndex > 0) {
+        if (!workflowState || !activeProjectId) {
+          console.log('Trying to access a step beyond start but no active workflow found');
           toast({
             description: "Please start a new report first.",
             variant: "destructive"
           });
           navigate(`/dashboard/report-wizard/${steps[0].path}`, { replace: true });
+          setIsLoading(false);
+          return;
         }
-      };
+        
+        // If trying to access a step ahead of their workflow state
+        if (pathStepIndex + 1 > workflowState) {
+          console.log(`Trying to access step ${pathStepIndex + 1} but workflow state is ${workflowState}`);
+          toast({
+            description: "Please complete the previous steps first.",
+            variant: "destructive"
+          });
+          navigate(`/dashboard/report-wizard/${steps[workflowState - 1].path}`, { replace: true });
+          setIsLoading(false);
+          return;
+        }
+      }
       
-      checkForActiveWorkflow();
-    }
-  }, [step, navigate, currentStepIndex]);
+      setIsLoading(false);
+    };
+    
+    initializeWorkflow();
+  }, [step, navigate]);
+  
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 pt-16 pb-12">
+        <div className="flex justify-center items-center h-32">
+          <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="container mx-auto px-4 pt-16 pb-12">
@@ -139,7 +220,7 @@ const ReportWizardContainer = () => {
       {/* Step Indicator */}
       <div className="mb-8">
         <StepIndicator 
-          currentStep={currentStepIndex + 1}
+          currentStep={currentWorkflowState || 1}
           totalSteps={steps.length}
           onStepClick={(step) => handleStepClick(step - 1)}
           steps={steps}

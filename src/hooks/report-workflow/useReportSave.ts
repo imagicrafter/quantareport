@@ -77,24 +77,6 @@ export const useReportSave = () => {
         projectId = projectData.id;
         console.log('New project created with ID:', projectId);
         
-        // Insert workflow state for the new project with state 2 (Files step)
-        console.log('Creating workflow state for new project with state 2 (Files step)');
-        const { error: workflowError } = await supabase
-          .from('project_workflow')
-          .insert({
-            project_id: projectId,
-            user_id: user.data.user.id,
-            workflow_state: 2,
-            last_edited_at: new Date().toISOString()
-          });
-        
-        if (workflowError) {
-          console.error('Error creating workflow state:', workflowError);
-          throw workflowError;
-        } else {
-          console.log('Successfully created workflow state with state 2 (Files step)');
-        }
-        
         // Store the templateNotes to database if they exist
         if (templateNotes && templateNotes.length > 0 && templateNoteValues) {
           console.log('Saving template notes for project');
@@ -120,59 +102,6 @@ export const useReportSave = () => {
             console.log('Template notes saved successfully');
           }
         }
-      } else if (reportMode === 'update' && selectedProjectId) {
-        console.log('Using existing project with ID:', selectedProjectId);
-        
-        // Update workflow state for existing project to state 2 (Files step)
-        console.log('Updating workflow state for existing project to state 2 (Files step)');
-        
-        // Check if a workflow entry exists for this project and user
-        const { data: existingWorkflow, error: queryError } = await supabase
-          .from('project_workflow')
-          .select('id')
-          .eq('project_id', selectedProjectId)
-          .eq('user_id', user.data.user.id)
-          .limit(1);
-          
-        if (queryError) {
-          console.error('Error checking for existing workflow:', queryError);
-        }
-        
-        if (!existingWorkflow || existingWorkflow.length === 0) {
-          // No existing workflow found, insert new one
-          console.log('No existing workflow found, creating new entry');
-          const { error: insertError } = await supabase
-            .from('project_workflow')
-            .insert({
-              project_id: selectedProjectId,
-              user_id: user.data.user.id,
-              workflow_state: 2,
-              last_edited_at: new Date().toISOString()
-            });
-          
-          if (insertError) {
-            console.error('Error creating workflow state:', insertError);
-          } else {
-            console.log('Successfully created workflow state with state 2');
-          }
-        } else {
-          // Update existing workflow
-          console.log('Existing workflow found, updating state to 2 (Files step)');
-          const { error: updateError } = await supabase
-            .from('project_workflow')
-            .update({ 
-              workflow_state: 2,
-              last_edited_at: new Date().toISOString()
-            })
-            .eq('project_id', selectedProjectId)
-            .eq('user_id', user.data.user.id);
-          
-          if (updateError) {
-            console.error('Error updating workflow state:', updateError);
-          } else {
-            console.log('Successfully updated workflow state to 2');
-          }
-        }
       }
       
       // Ensure we have a valid project ID before proceeding
@@ -187,10 +116,62 @@ export const useReportSave = () => {
         return false;
       }
       
-      // Simple direct navigation without passing state
-      console.log('Navigating to files step with projectId:', projectId);
+      // Insert or update workflow state to 2 (Files step)
+      console.log('Updating workflow state for project with ID:', projectId);
+      
+      // Check if a workflow entry exists for this project and user
+      const { data: existingWorkflow, error: queryError } = await supabase
+        .from('project_workflow')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('user_id', user.data.user.id)
+        .limit(1);
+        
+      if (queryError) {
+        console.error('Error checking for existing workflow:', queryError);
+      }
+      
+      if (!existingWorkflow || existingWorkflow.length === 0) {
+        // No existing workflow found, insert new one
+        console.log('No existing workflow found, creating new entry with workflow_state = 2');
+        const { error: insertError } = await supabase
+          .from('project_workflow')
+          .insert({
+            project_id: projectId,
+            user_id: user.data.user.id,
+            workflow_state: 2,
+            last_edited_at: new Date().toISOString()
+          });
+        
+        if (insertError) {
+          console.error('Error creating workflow state:', insertError);
+          throw insertError;
+        } else {
+          console.log('Successfully created workflow state with state 2');
+        }
+      } else {
+        // Update existing workflow
+        console.log('Existing workflow found, updating state to 2 (Files step)');
+        const { error: updateError } = await supabase
+          .from('project_workflow')
+          .update({ 
+            workflow_state: 2,
+            last_edited_at: new Date().toISOString()
+          })
+          .eq('project_id', projectId)
+          .eq('user_id', user.data.user.id);
+        
+        if (updateError) {
+          console.error('Error updating workflow state:', updateError);
+          throw updateError;
+        } else {
+          console.log('Successfully updated workflow state to 2');
+        }
+      }
+      
+      // Navigate to the files step
       navigate('/dashboard/report-wizard/files');
-
+      
       toast({
         title: 'Success',
         description: reportMode === 'new' 

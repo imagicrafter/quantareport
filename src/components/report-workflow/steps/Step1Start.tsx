@@ -189,7 +189,7 @@ const Step1Start = () => {
     });
     
     console.log('Step1Start - saveReport result:', success);
-    // Navigation is now handled inside the saveReport function
+    // Navigation is handled inside the saveReport function
   };
   
   const handleCancel = () => {
