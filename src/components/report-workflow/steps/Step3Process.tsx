@@ -145,16 +145,15 @@ const Step3Process = () => {
         setImageCount(images?.length || 0);
       }
       
-      // Count notes with metadata for this project
-      const { data: notes, error: notesError } = await supabase
+      // Count notes with metadata for this project - fixed query
+      const { data, error: notesError } = await supabase
         .from('notes')
-        .select('count')
+        .select('id')
         .eq('project_id', projectId)
-        .not('metadata', 'is', null)
-        .count();
+        .not('metadata', 'is', null);
         
-      if (!notesError && notes) {
-        setNotesCount(notes);
+      if (!notesError && data) {
+        setNotesCount(data.length);
       }
     } catch (error) {
       console.error('Error fetching file counts:', error);
@@ -244,7 +243,7 @@ const Step3Process = () => {
       <StepBanner 
         step={3}
         isActive={true}
-        onClick={() => {}}
+        onClick={handleBannerClick}
       />
       
       <div className="mb-6">
