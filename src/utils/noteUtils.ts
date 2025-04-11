@@ -1,4 +1,3 @@
-
 import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { getWebhookUrl, isDevelopmentEnvironment } from './webhookConfig';
@@ -20,6 +19,10 @@ export interface Note {
   project_id: string;
   position: number | null;
   files_relationships_is_locked?: boolean;
+  metadata?: {
+    category?: string;
+    [key: string]: any;
+  } | null;
 }
 
 // Title to camelCase conversion utility function

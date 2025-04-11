@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import InstructionsPanel from '../start-report/InstructionsPanel';
@@ -9,12 +9,19 @@ import { supabase } from '@/integrations/supabase/client';
 import NotesList from '@/components/dashboard/notes/NotesList';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import { Note } from '@/utils/noteUtils';
-import { DndContext } from '@dnd-kit/core';
+import { DragDropContext } from 'react-beautiful-dnd';
+
+interface NoteWithMetadata extends Note {
+  metadata?: {
+    category?: string;
+    [key: string]: any;
+  } | null;
+}
 
 const Step4Notes = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [notes, setNotes] = useState<NoteWithMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [projectId, setProjectId] = useState<string | null>(null);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
@@ -123,13 +130,13 @@ const Step4Notes = () => {
   };
   
   // Edit note handler (redirects to notes page in a new tab)
-  const handleEditNote = (note: Note) => {
+  const handleEditNote = (note: NoteWithMetadata) => {
     // Open the notes page in a new tab, focused on this project
     window.open(`/dashboard/notes/${projectId}`, '_blank');
   };
   
   // Delete note handler (disabled in this view)
-  const handleDeleteNote = (note: Note) => {
+  const handleDeleteNote = (note: NoteWithMetadata) => {
     toast({
       title: "Note Deletion Disabled",
       description: "Please use the Notes section to manage notes",
