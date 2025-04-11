@@ -48,6 +48,27 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       setIsAnalyzing(true);
       setAnalysisInProgress(true);
       
+      // Get the current user to include the user_id in the payload
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error getting current user:', userError);
+        toast.error('Unable to authenticate user for file analysis');
+        setIsAnalyzing(false);
+        setAnalysisInProgress(false);
+        return;
+      }
+      
+      const userId = userData.user?.id;
+      
+      if (!userId) {
+        console.error('No user ID found');
+        toast.error('User authentication required for file analysis');
+        setIsAnalyzing(false);
+        setAnalysisInProgress(false);
+        return;
+      }
+      
       // Determine if this is a test project based on name
       const isTestMode = projectName.toLowerCase().includes('test');
       
@@ -60,7 +81,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       const jobId = uuidv4();
       setAnalysisJobId(jobId);
       
-      console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
+      console.log(`Starting file analysis for project ${projectId} with job ${jobId} for user ${userId}`);
       
       // Create initial progress record for better UX
       const { error: progressError } = await supabase
@@ -80,12 +101,14 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
         body: {
           project_id: projectId,
+          user_id: userId, // Include the user_id in the payload
           isTestMode: shouldUseTestMode,
           job: jobId,
           type: 'file-analysis',
           env: shouldUseTestMode ? 'development' : isDevelopmentEnvironment() ? 'development' : 'production',
           payload: {
             project_id: projectId,
+            user_id: userId, // Include the user_id in the payload
             isTestMode: shouldUseTestMode,
             job: jobId
           }
@@ -128,16 +151,37 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
     try {
       setAnalysisInProgress(true);
       
+      // Get the current user to include the user_id in the payload
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error getting current user:', userError);
+        toast.error('Unable to authenticate user for image analysis');
+        setAnalysisInProgress(false);
+        return;
+      }
+      
+      const userId = userData.user?.id;
+      
+      if (!userId) {
+        console.error('No user ID found');
+        toast.error('User authentication required for image analysis');
+        setAnalysisInProgress(false);
+        return;
+      }
+      
       // Call the image-analysis edge function using the new consolidated proxy
       const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
         body: {
           file_id: fileId,
           project_id: projectId,
+          user_id: userId, // Include the user_id in the payload
           type: 'file-analysis', // Using file-analysis webhook type
           env: isDevelopmentEnvironment() ? 'development' : 'production',
           payload: {
             file_id: fileId,
-            project_id: projectId
+            project_id: projectId,
+            user_id: userId // Include the user_id in the payload
           }
         }
       });
