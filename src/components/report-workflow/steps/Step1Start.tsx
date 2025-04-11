@@ -78,6 +78,72 @@ const Step1Start = () => {
   
   const { isSaving, saveReport } = useReportSave();
   
+  // Reset workflow state to 1 when user navigates to this page
+  const resetWorkflowToStartStep = async () => {
+    try {
+      console.log('Step1Start - Resetting workflow to step 1');
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData.user) {
+        console.error('Step1Start - No authenticated user found');
+        return;
+      }
+      
+      // Update the workflow state for all user projects to 1 (start step)
+      // This allows for starting over from step 1
+      if (reportMode === 'new') {
+        console.log('Step1Start - Creating fresh workflow state for new report');
+        // Don't do anything for new reports - let the save button create a new workflow
+      } else if (selectedProjectId) {
+        console.log('Step1Start - Updating existing workflow state for project:', selectedProjectId);
+        
+        // Check if workflow record exists
+        const { data: existingWorkflow } = await supabase
+          .from('project_workflow')
+          .select('id')
+          .eq('project_id', selectedProjectId)
+          .eq('user_id', userData.user.id)
+          .maybeSingle();
+          
+        if (existingWorkflow) {
+          // Update existing workflow record
+          const { error: updateError } = await supabase
+            .from('project_workflow')
+            .update({ 
+              workflow_state: 1,
+              last_edited_at: new Date().toISOString()
+            })
+            .eq('project_id', selectedProjectId)
+            .eq('user_id', userData.user.id);
+            
+          if (updateError) {
+            console.error('Error updating workflow state:', updateError);
+          } else {
+            console.log('Successfully updated workflow state to 1');
+          }
+        } else {
+          // Create new workflow record
+          const { error: insertError } = await supabase
+            .from('project_workflow')
+            .insert({
+              project_id: selectedProjectId,
+              user_id: userData.user.id,
+              workflow_state: 1,
+              last_edited_at: new Date().toISOString()
+            });
+            
+          if (insertError) {
+            console.error('Error creating workflow state:', insertError);
+          } else {
+            console.log('Successfully created workflow state with state 1');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Step1Start - Error in resetWorkflowToStartStep:', error);
+    }
+  };
+  
   // Effect to fetch project ID from workflow when component mounts
   useEffect(() => {
     const getActiveWorkflow = async () => {
@@ -96,56 +162,14 @@ const Step1Start = () => {
         setSelectedProjectId(projectId);
         
         // Update workflow state to 1 (start step)
-        const user = await supabase.auth.getUser();
-        if (user.data.user) {
-          console.log('Step1Start - Updating workflow state for project:', projectId);
-          
-          // Check if workflow record exists
-          const { data: existingWorkflow } = await supabase
-            .from('project_workflow')
-            .select('id')
-            .eq('project_id', projectId)
-            .eq('user_id', user.data.user.id)
-            .maybeSingle();
-            
-          if (existingWorkflow) {
-            // Update existing workflow record
-            const { error: updateError } = await supabase
-              .from('project_workflow')
-              .update({ 
-                workflow_state: 1,
-                last_edited_at: new Date().toISOString()
-              })
-              .eq('project_id', projectId)
-              .eq('user_id', user.data.user.id);
-              
-            if (updateError) {
-              console.error('Error updating workflow state:', updateError);
-            } else {
-              console.log('Successfully updated workflow state to 1');
-            }
-          } else {
-            // Create new workflow record
-            const { error: insertError } = await supabase
-              .from('project_workflow')
-              .insert({
-                project_id: projectId,
-                user_id: user.data.user.id,
-                workflow_state: 1,
-                last_edited_at: new Date().toISOString()
-              });
-              
-            if (insertError) {
-              console.error('Error creating workflow state:', insertError);
-            } else {
-              console.log('Successfully created workflow state with state 1');
-            }
-          }
-        }
+        resetWorkflowToStartStep();
       }
     };
     
     getActiveWorkflow();
+    
+    // Reset workflow to step 1 whenever we land on this page
+    resetWorkflowToStartStep();
   }, []);
   
   // Reset form when report mode changes

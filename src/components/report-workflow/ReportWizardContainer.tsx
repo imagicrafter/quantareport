@@ -106,6 +106,14 @@ const ReportWizardContainer = () => {
   const handleStepClick = async (index: number) => {
     console.log('handleStepClick - Trying to navigate to index:', index);
     
+    // If navigating to step 1 (index 0), we'll allow it without any checks
+    // This enables users to restart the workflow
+    if (index === 0) {
+      console.log('Navigating to step 1 to restart workflow');
+      navigate(`/dashboard/report-wizard/${steps[0].path}`);
+      return;
+    }
+    
     // Check if we're trying to navigate forward but don't have a project ID
     // Only block navigation to steps after "start" if we don't have a project ID
     if (index > 0) {
@@ -168,6 +176,14 @@ const ReportWizardContainer = () => {
       
       // Get the step index from the URL path
       const pathStepIndex = getStepIndexFromPath();
+      
+      // Special case: if user is navigating to Step 1, allow it always
+      // This enables users to restart the workflow
+      if (pathStepIndex === 0) {
+        console.log('User accessing Step 1, allowing access to restart workflow');
+        setIsLoading(false);
+        return;
+      }
       
       // If we're beyond step 1, verify we have a valid workflow state and project ID
       if (pathStepIndex > 0) {
