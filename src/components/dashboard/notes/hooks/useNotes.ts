@@ -17,6 +17,7 @@ export const useNotes = (projectId: string) => {
         .from('notes')
         .select('*')
         .eq('project_id', projectId)
+        //.not('metadata', 'is', null)
         .order('position', { ascending: true });
 
       if (error) throw error;

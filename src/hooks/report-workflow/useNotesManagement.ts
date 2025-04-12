@@ -20,6 +20,7 @@ export const useNotesManagement = (projectId: string | null) => {
         .from('notes')
         .select('*')
         .eq('project_id', projectId)
+        .not('metadata', 'is', null)
         .order('position', { ascending: true });
       
       if (error) {

@@ -125,7 +125,7 @@ const EditNoteDialog = ({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Content
+                          Finding
                           {!isRecording && (
                             <Button
                               type="button"
