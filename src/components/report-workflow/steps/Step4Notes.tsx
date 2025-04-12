@@ -29,7 +29,8 @@ const Step4Notes = () => {
     fetchNoteRelatedFiles,
     handleEditNote,
     handleDeleteNote,
-    refreshNotes
+    refreshNotes,
+    setRelatedFiles
   } = useNotesManagement(projectId);
   
   useEffect(() => {
@@ -74,8 +75,12 @@ const Step4Notes = () => {
     navigate('/dashboard/report-wizard/generate');
   };
   
-  const handleFileAdded = () => {
-    refreshNotes();
+  const handleFileAdded = async () => {
+    // Function to handle file relationship changes
+    if (projectId) {
+      // If a specific note is being edited, refresh its related files
+      await refreshNotes();
+    }
   };
   
   return (

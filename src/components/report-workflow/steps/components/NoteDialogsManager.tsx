@@ -3,11 +3,12 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { formSchema, NoteFormValues } from '@/components/dashboard/notes/hooks/useNotesOperations';
-import { Note, NoteFileRelationshipWithType } from '@/utils/noteUtils';
+import { Note, NoteFileRelationshipWithType, submitImageAnalysis } from '@/utils/noteUtils';
 import EditNoteDialog from '@/components/dashboard/notes/EditNoteDialog';
 import DeleteNoteDialog from '@/components/dashboard/notes/DeleteNoteDialog';
 import { useNotesContext } from '@/hooks/report-workflow/NotesContext';
 import { fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
+import { toast } from 'sonner';
 
 interface NoteDialogsManagerProps {
   onEditNote: (note: Note, values: NoteFormValues) => Promise<void>;
@@ -31,6 +32,7 @@ const NoteDialogsManager = ({
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [saving, setSaving] = useState(false);
   const [analyzingImages, setAnalyzingImages] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
   const { setEditNoteHandler, setDeleteNoteHandler } = useNotesContext();
   
   const editForm = useForm<NoteFormValues>({
@@ -97,16 +99,129 @@ const NoteDialogsManager = ({
     }
   };
   
+  const checkAnalysisStatus = async (noteId: string) => {
+    try {
+      const { data, error } = await fetch(`/api/note-analysis-status?noteId=${noteId}`).then(res => res.json());
+        
+      if (error) {
+        console.error('Error fetching note status:', error);
+        return { completed: false, analysis: null };
+      }
+      
+      if (data && data.analysis) {
+        console.log('Analysis completed:', data.analysis.substring(0, 50) + '...');
+        return { completed: true, analysis: data.analysis };
+      }
+      
+      return { completed: false, analysis: null };
+    } catch (error) {
+      console.error('Error checking analysis status:', error);
+      return { completed: false, analysis: null };
+    }
+  };
+
+  const startPollingForAnalysisCompletion = (noteId: string) => {
+    if (pollingInterval !== null) {
+      clearInterval(pollingInterval);
+    }
+    
+    const maxAttempts = 30;
+    let attempts = 0;
+    
+    const intervalId = window.setInterval(async () => {
+      attempts++;
+      console.log(`Checking analysis status: attempt ${attempts}/${maxAttempts}`);
+      
+      try {
+        // Query the note directly from the database to check if analysis has been updated
+        const { data, error } = await fetch(`/api/notes/${noteId}`).then(res => res.json());
+        
+        if (error) {
+          console.error('Error fetching note:', error);
+          return;
+        }
+        
+        if (data && data.analysis) {
+          clearInterval(intervalId);
+          setPollingInterval(null);
+          setAnalyzingImages(false);
+          
+          // Update form values with the new analysis
+          editForm.setValue('analysis', data.analysis);
+          
+          toast.success('Image analysis completed');
+        } else if (attempts >= maxAttempts) {
+          clearInterval(intervalId);
+          setPollingInterval(null);
+          setAnalyzingImages(false);
+          toast.error('Analysis is taking longer than expected. Please check back later.');
+        }
+      } catch (error) {
+        console.error('Error in polling interval:', error);
+      }
+    }, 2000);
+    
+    setPollingInterval(intervalId);
+  };
+  
   const handleAnalyzeImages = async () => {
+    if (!selectedNote || !selectedNote.id || !projectId) {
+      toast.error('Cannot analyze images: Missing note or project information');
+      return;
+    }
+    
     setAnalyzingImages(true);
-    setTimeout(() => {
+    
+    try {
+      // Filter image files
+      const imageRelationships = relatedFiles.filter(rel => 
+        rel.file_type === 'image'
+      );
+      
+      if (imageRelationships.length === 0) {
+        toast.warning('No images available for analysis. Add some images to analyze first.');
+        setAnalyzingImages(false);
+        return;
+      }
+      
+      const imageUrls = imageRelationships.map(rel => rel.file_path);
+      
+      // Determine test mode based on project name
+      const isTestMode = selectedNote.title?.toLowerCase().includes('test') || false;
+      console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for analysis`);
+      
+      // Submit analysis request
+      const success = await submitImageAnalysis(
+        selectedNote.id,
+        projectId,
+        imageUrls,
+        isTestMode
+      );
+      
+      if (success) {
+        toast.success('Image analysis started');
+        startPollingForAnalysisCompletion(selectedNote.id);
+      } else {
+        throw new Error('Failed to submit image analysis request');
+      }
+    } catch (error) {
+      console.error('Error analyzing images:', error);
+      toast.error('Failed to analyze images');
       setAnalyzingImages(false);
-    }, 1000);
+    }
   };
   
   const handleTranscriptionComplete = (text: string) => {
     editForm.setValue('content', text);
   };
+
+  useEffect(() => {
+    return () => {
+      if (pollingInterval !== null) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
 
   return (
     <>

@@ -20,7 +20,6 @@ export const useNotesManagement = (projectId: string | null) => {
         .from('notes')
         .select('*')
         .eq('project_id', projectId)
-        .not('metadata', 'is', null)
         .order('position', { ascending: true });
       
       if (error) {
@@ -168,6 +167,12 @@ export const useNotesManagement = (projectId: string | null) => {
     }
   };
 
+  const refreshNotes = useCallback(async () => {
+    if (projectId) {
+      await fetchNotes(projectId);
+    }
+  }, [projectId]);
+
   return {
     notes,
     loading,
@@ -176,6 +181,7 @@ export const useNotesManagement = (projectId: string | null) => {
     fetchNoteRelatedFiles,
     handleEditNote,
     handleDeleteNote,
-    refreshNotes: () => projectId && fetchNotes(projectId)
+    refreshNotes,
+    setRelatedFiles
   };
 };
