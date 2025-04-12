@@ -328,44 +328,56 @@ const Step4Notes = () => {
   };
   
   return (
-    <div className="flex flex-col h-full">
-      <InstructionsPanel stepNumber={4} />
-      
-      <div className="max-w-3xl mx-auto w-full flex flex-col mb-8" style={{ height: 'calc(100vh - 300px)' }}>
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="all">All Notes</TabsTrigger>
-            <TabsTrigger value="observation">Observations</TabsTrigger>
-            <TabsTrigger value="finding">Findings</TabsTrigger>
-            <TabsTrigger value="recommendation">Recommendations</TabsTrigger>
-          </TabsList>
-          
-          <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
-              {activeTab && (
-                <TabsContent value={activeTab} className="mt-0 h-full">
-                  <NotesList 
-                    notes={filteredNotes()}
-                    loading={loading}
-                    onEditNote={handleEditNote}
-                    onDeleteNote={handleDeleteNote}
-                    onDragEnd={handleOnDragEnd}
-                  />
-                </TabsContent>
-              )}
-            </ScrollArea>
-          </div>
-        </Tabs>
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* Fixed header content */}
+      <div className="flex-none">
+        <InstructionsPanel stepNumber={4} />
       </div>
       
-      <div className="flex justify-between max-w-3xl mx-auto w-full sticky bottom-0 bg-background pt-4 pb-8">
-        <Button variant="outline" onClick={handleBack}>
-          Back
-        </Button>
+      {/* Main content area with fixed height */}
+      <div className="flex flex-col flex-1 px-4 overflow-hidden">
+        {/* Tabs container */}
+        <div className="max-w-3xl mx-auto w-full flex flex-col flex-1 overflow-hidden">
+          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden">
+            {/* Fixed tabs header */}
+            <TabsList className="grid w-full grid-cols-4 mb-6 flex-none">
+              <TabsTrigger value="all">All Notes</TabsTrigger>
+              <TabsTrigger value="observation">Observations</TabsTrigger>
+              <TabsTrigger value="finding">Findings</TabsTrigger>
+              <TabsTrigger value="recommendation">Recommendations</TabsTrigger>
+            </TabsList>
+            
+            {/* Scrollable notes area */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ScrollArea className="h-full">
+                {activeTab && (
+                  <TabsContent value={activeTab} className="mt-0 h-full">
+                    <NotesList 
+                      notes={filteredNotes()}
+                      loading={loading}
+                      onEditNote={handleEditNote}
+                      onDeleteNote={handleDeleteNote}
+                      onDragEnd={handleOnDragEnd}
+                    />
+                  </TabsContent>
+                )}
+              </ScrollArea>
+            </div>
+          </Tabs>
+        </div>
         
-        <Button onClick={handleNext}>
-          Next: Generate Report
-        </Button>
+        {/* Fixed footer with buttons */}
+        <div className="max-w-3xl mx-auto w-full flex-none py-4 bg-background">
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={handleBack}>
+              Back
+            </Button>
+            
+            <Button onClick={handleNext}>
+              Next: Generate Report
+            </Button>
+          </div>
+        </div>
       </div>
       
       {/* Edit Note Dialog */}
