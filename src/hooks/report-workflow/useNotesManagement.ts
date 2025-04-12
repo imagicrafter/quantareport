@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Note, parseNoteMetadata } from '@/utils/noteUtils';
@@ -93,8 +93,15 @@ export const useNotesManagement = (projectId: string | null) => {
     }
   };
 
-  const fetchNoteRelatedFiles = async (noteId: string) => {
+  const fetchNoteRelatedFiles = useCallback(async (noteId: string) => {
+    if (!noteId) {
+      console.log('No note ID provided for fetching related files');
+      return;
+    }
+    
     try {
+      console.log('Fetching related files for note:', noteId);
+      
       const { data, error } = await supabase
         .from('note_file_relationships')
         .select(`
@@ -110,7 +117,10 @@ export const useNotesManagement = (projectId: string | null) => {
         `)
         .eq('note_id', noteId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching related files:', error);
+        throw error;
+      }
       
       const formattedFiles = data.map(rel => ({
         id: rel.id,
@@ -121,11 +131,12 @@ export const useNotesManagement = (projectId: string | null) => {
         file_name: rel.files?.name || '',
       }));
       
+      console.log('Found related files:', formattedFiles.length);
       setRelatedFiles(formattedFiles);
     } catch (error) {
       console.error('Error fetching related files:', error);
     }
-  };
+  }, []);
 
   const handleEditNote = async (note: Note, values: NoteFormValues) => {
     try {

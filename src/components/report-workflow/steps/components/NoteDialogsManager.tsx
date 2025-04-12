@@ -49,7 +49,9 @@ const NoteDialogsManager = ({
       analysis: note.analysis || '',
     });
     
-    fetchNoteRelatedFiles(note.id);
+    if (note.id) {
+      fetchNoteRelatedFiles(note.id);
+    }
     setIsEditDialogOpen(true);
   };
   
@@ -62,6 +64,12 @@ const NoteDialogsManager = ({
   useEffect(() => {
     setEditNoteHandler(handleEditNote);
     setDeleteNoteHandler(handleDeleteNote);
+    
+    return () => {
+      // Clean up by setting handlers to no-ops when component unmounts
+      setEditNoteHandler(() => () => {});
+      setDeleteNoteHandler(() => () => {});
+    };
   }, [setEditNoteHandler, setDeleteNoteHandler]);
   
   const handleEditNoteSubmit = async () => {

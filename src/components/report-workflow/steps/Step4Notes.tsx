@@ -7,7 +7,7 @@ import InstructionsPanel from '../start-report/InstructionsPanel';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import { DragDropContext } from 'react-beautiful-dnd';
 
-// Import our new components
+// Import our components
 import StepNavigationButtons from './components/StepNavigationButtons';
 import NotesTabsPanel from './components/NotesTabsPanel';
 import NoteDialogsManager from './components/NoteDialogsManager';
@@ -28,18 +28,29 @@ const Step4Notes = () => {
     handleOnDragEnd,
     fetchNoteRelatedFiles,
     handleEditNote,
-    handleDeleteNote
+    handleDeleteNote,
+    refreshNotes
   } = useNotesManagement(projectId);
   
   useEffect(() => {
     const getProjectId = async () => {
-      const { projectId: currentProjectId } = await fetchCurrentWorkflow();
-      if (currentProjectId) {
-        setProjectId(currentProjectId);
-      } else {
+      try {
+        const { projectId: currentProjectId } = await fetchCurrentWorkflow();
+        if (currentProjectId) {
+          setProjectId(currentProjectId);
+        } else {
+          toast({
+            title: "Project not found",
+            description: "Unable to load project notes",
+            variant: "destructive"
+          });
+          navigate('/dashboard/report-wizard/start');
+        }
+      } catch (error) {
+        console.error("Error fetching workflow:", error);
         toast({
-          title: "Project not found",
-          description: "Unable to load project notes",
+          title: "Error",
+          description: "Failed to load workflow information",
           variant: "destructive"
         });
         navigate('/dashboard/report-wizard/start');
@@ -47,7 +58,7 @@ const Step4Notes = () => {
     };
     
     getProjectId();
-  }, []);
+  }, [navigate, toast, fetchCurrentWorkflow]);
   
   const handleBack = async () => {
     if (projectId) {
@@ -61,6 +72,10 @@ const Step4Notes = () => {
       await updateWorkflowState(projectId, 5);
     }
     navigate('/dashboard/report-wizard/generate');
+  };
+  
+  const handleFileAdded = () => {
+    refreshNotes();
   };
   
   return (
@@ -94,12 +109,7 @@ const Step4Notes = () => {
           fetchNoteRelatedFiles={fetchNoteRelatedFiles}
           relatedFiles={relatedFiles}
           projectId={projectId}
-          onFileAdded={() => {
-            const selectedNoteId = notes.length > 0 ? notes[0].id : null;
-            if (selectedNoteId) {
-              fetchNoteRelatedFiles(selectedNoteId);
-            }
-          }}
+          onFileAdded={handleFileAdded}
         />
       </div>
     </NotesProvider>

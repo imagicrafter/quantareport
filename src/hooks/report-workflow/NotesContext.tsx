@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { Note } from '@/utils/noteUtils';
 
 interface NotesContextType {
@@ -12,16 +12,22 @@ interface NotesContextType {
 const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
 export const NotesProvider = ({ children }: { children: ReactNode }) => {
-  const [editNoteHandler, setEditNoteHandler] = useState<(note: Note) => void>(() => () => {});
-  const [deleteNoteHandler, setDeleteNoteHandler] = useState<(note: Note) => void>(() => () => {});
+  // Initialize with no-op functions to avoid undefined calls
+  const [editNoteHandler, setEditNoteHandler] = useState<(note: Note) => void>(() => () => {
+    console.log('Edit note handler not initialized yet');
+  });
+  
+  const [deleteNoteHandler, setDeleteNoteHandler] = useState<(note: Note) => void>(() => () => {
+    console.log('Delete note handler not initialized yet');
+  });
 
-  const handleEditNote = (note: Note) => {
+  const handleEditNote = useCallback((note: Note) => {
     editNoteHandler(note);
-  };
+  }, [editNoteHandler]);
 
-  const handleDeleteNote = (note: Note) => {
+  const handleDeleteNote = useCallback((note: Note) => {
     deleteNoteHandler(note);
-  };
+  }, [deleteNoteHandler]);
 
   return (
     <NotesContext.Provider 
