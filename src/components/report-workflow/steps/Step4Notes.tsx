@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import InstructionsPanel from '../start-report/InstructionsPanel';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +11,11 @@ import NotesList from '@/components/dashboard/notes/NotesList';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import { Note, parseNoteMetadata } from '@/utils/noteUtils';
 import { DragDropContext } from 'react-beautiful-dnd';
+import EditNoteDialog from '@/components/dashboard/notes/EditNoteDialog';
+import DeleteNoteDialog from '@/components/dashboard/notes/DeleteNoteDialog';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { formSchema, NoteFormValues } from '@/components/dashboard/notes/hooks/useNotesOperations';
 
 // We can now use the Note interface directly since we've updated it to handle metadata properly
 const Step4Notes = () => {
@@ -20,6 +26,24 @@ const Step4Notes = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   const [activeTab, setActiveTab] = useState('all');
+  
+  // State variables for edit and delete functionality
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [relatedFiles, setRelatedFiles] = useState<any[]>([]);
+  const [analyzingImages, setAnalyzingImages] = useState(false);
+  
+  // Edit form for the dialog
+  const editForm = useForm<NoteFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: '',
+      content: '',
+      analysis: '',
+    },
+  });
   
   // Fetch the current project ID from workflow
   useEffect(() => {
@@ -125,18 +149,121 @@ const Step4Notes = () => {
     }
   };
   
-  // Edit note handler (redirects to notes page in a new tab)
+  // Edit note handler - now opens the edit dialog
   const handleEditNote = (note: Note) => {
-    // Open the notes page in a new tab, focused on this project
-    window.open(`/dashboard/notes/${projectId}`, '_blank');
+    setSelectedNote(note);
+    editForm.reset({
+      title: note.title,
+      content: note.content || '',
+      analysis: note.analysis || '',
+    });
+    
+    // Fetch related files if needed
+    fetchNoteRelatedFiles(note.id);
+    
+    setIsEditDialogOpen(true);
   };
   
-  // Delete note handler (disabled in this view)
+  // Delete note handler - now opens the delete dialog
   const handleDeleteNote = (note: Note) => {
-    toast({
-      title: "Note Deletion Disabled",
-      description: "Please use the Notes section to manage notes",
-    });
+    setSelectedNote(note);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  // Fetch related files for a note
+  const fetchNoteRelatedFiles = async (noteId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('note_file_relationships')
+        .select('*, files:file_id(id, name, type, path)')
+        .eq('note_id', noteId);
+      
+      if (error) throw error;
+      
+      // Format related files for the component
+      const formattedFiles = data.map(rel => ({
+        id: rel.id,
+        note_id: rel.note_id,
+        file_id: rel.file_id,
+        file_type: rel.files?.type || '',
+        file_path: rel.files?.path || '',
+        file_name: rel.files?.name || '',
+      }));
+      
+      setRelatedFiles(formattedFiles);
+    } catch (error) {
+      console.error('Error fetching related files:', error);
+    }
+  };
+  
+  // Handle edit note submission
+  const handleEditNoteSubmit = async () => {
+    if (!selectedNote) return;
+    
+    try {
+      setSaving(true);
+      const values = editForm.getValues();
+      
+      const { error } = await supabase
+        .from('notes')
+        .update({
+          title: values.title,
+          content: values.content || '',
+          analysis: values.analysis || null,
+        })
+        .eq('id', selectedNote.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Note updated successfully!",
+      });
+      
+      setIsEditDialogOpen(false);
+      fetchNotes(projectId!);
+    } catch (error) {
+      console.error('Error updating note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update note. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+  
+  // Handle delete note submission
+  const handleDeleteNoteSubmit = async () => {
+    if (!selectedNote) return;
+    
+    try {
+      setSaving(true);
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', selectedNote.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Note deleted successfully!",
+      });
+      
+      setIsDeleteDialogOpen(false);
+      fetchNotes(projectId!);
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete note. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
   
   // Navigation handlers with workflow state updates
@@ -156,6 +283,25 @@ const Step4Notes = () => {
     navigate('/dashboard/report-wizard/generate');
   };
   
+  // Analyze images handler for edit dialog
+  const handleAnalyzeImages = async () => {
+    setAnalyzingImages(true);
+    // This would normally trigger the image analysis
+    // For now, simulate analysis with a timeout
+    setTimeout(() => {
+      setAnalyzingImages(false);
+      toast({
+        title: "Image Analysis",
+        description: "Analysis feature available in the Notes section"
+      });
+    }, 1000);
+  };
+  
+  // Handle transcription complete
+  const handleTranscriptionComplete = (text: string) => {
+    editForm.setValue('content', text);
+  };
+  
   // Filter notes based on the active tab
   const filteredNotes = () => {
     if (activeTab === 'all') return notes;
@@ -172,11 +318,11 @@ const Step4Notes = () => {
   };
   
   return (
-    <div>
+    <div className="flex flex-col h-full">
       <InstructionsPanel stepNumber={4} />
       
-      <div className="max-w-3xl mx-auto mb-8">
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+      <div className="max-w-3xl mx-auto w-full flex flex-col mb-8" style={{ height: 'calc(100vh - 300px)' }}>
+        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="all">All Notes</TabsTrigger>
             <TabsTrigger value="observation">Observations</TabsTrigger>
@@ -184,19 +330,23 @@ const Step4Notes = () => {
             <TabsTrigger value="recommendation">Recommendations</TabsTrigger>
           </TabsList>
           
-          <TabsContent value={activeTab} className="mt-6">
-            <NotesList 
-              notes={filteredNotes()}
-              loading={loading}
-              onEditNote={handleEditNote}
-              onDeleteNote={handleDeleteNote}
-              onDragEnd={handleOnDragEnd}
-            />
-          </TabsContent>
+          <div className="flex-1 overflow-hidden mt-6">
+            <ScrollArea className="h-full pr-4">
+              <TabsContent value={activeTab} className="mt-0 h-full">
+                <NotesList 
+                  notes={filteredNotes()}
+                  loading={loading}
+                  onEditNote={handleEditNote}
+                  onDeleteNote={handleDeleteNote}
+                  onDragEnd={handleOnDragEnd}
+                />
+              </TabsContent>
+            </ScrollArea>
+          </div>
         </Tabs>
       </div>
       
-      <div className="flex justify-between max-w-3xl mx-auto">
+      <div className="flex justify-between max-w-3xl mx-auto w-full sticky bottom-0 bg-background pt-4 pb-8">
         <Button variant="outline" onClick={handleBack}>
           Back
         </Button>
@@ -205,6 +355,30 @@ const Step4Notes = () => {
           Next: Generate Report
         </Button>
       </div>
+      
+      {/* Edit Note Dialog */}
+      <EditNoteDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        form={editForm}
+        onSubmit={handleEditNoteSubmit}
+        saving={saving}
+        selectedNote={selectedNote}
+        analyzingImages={analyzingImages}
+        relatedFiles={relatedFiles}
+        onAnalyzeImages={handleAnalyzeImages}
+        onFileAdded={() => fetchNoteRelatedFiles(selectedNote?.id || '')}
+        projectId={projectId || ''}
+        onTranscriptionComplete={handleTranscriptionComplete}
+      />
+      
+      {/* Delete Note Dialog */}
+      <DeleteNoteDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={handleDeleteNoteSubmit}
+        saving={saving}
+      />
     </div>
   );
 };
