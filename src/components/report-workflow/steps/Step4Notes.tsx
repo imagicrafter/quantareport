@@ -76,9 +76,8 @@ const Step4Notes = () => {
   };
   
   const handleFileAdded = async () => {
-    // Function to handle file relationship changes
+    // Function to handle file relationship changes - refresh notes data
     if (projectId) {
-      // If a specific note is being edited, refresh its related files
       await refreshNotes();
     }
   };

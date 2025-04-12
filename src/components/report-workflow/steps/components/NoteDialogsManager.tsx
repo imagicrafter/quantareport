@@ -9,6 +9,7 @@ import DeleteNoteDialog from '@/components/dashboard/notes/DeleteNoteDialog';
 import { useNotesContext } from '@/hooks/report-workflow/NotesContext';
 import { fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NoteDialogsManagerProps {
   onEditNote: (note: Note, values: NoteFormValues) => Promise<void>;
@@ -63,8 +64,7 @@ const NoteDialogsManager = ({
     setIsDeleteDialogOpen(true);
   };
   
-  // Register the handlers with the context - use useEffect with empty dependency array 
-  // to ensure handlers are only registered once
+  // Register the handlers with the context
   useEffect(() => {
     setEditNoteHandler(handleEditNote);
     setDeleteNoteHandler(handleDeleteNote);
@@ -98,27 +98,6 @@ const NoteDialogsManager = ({
       setSaving(false);
     }
   };
-  
-  const checkAnalysisStatus = async (noteId: string) => {
-    try {
-      const { data, error } = await fetch(`/api/note-analysis-status?noteId=${noteId}`).then(res => res.json());
-        
-      if (error) {
-        console.error('Error fetching note status:', error);
-        return { completed: false, analysis: null };
-      }
-      
-      if (data && data.analysis) {
-        console.log('Analysis completed:', data.analysis.substring(0, 50) + '...');
-        return { completed: true, analysis: data.analysis };
-      }
-      
-      return { completed: false, analysis: null };
-    } catch (error) {
-      console.error('Error checking analysis status:', error);
-      return { completed: false, analysis: null };
-    }
-  };
 
   const startPollingForAnalysisCompletion = (noteId: string) => {
     if (pollingInterval !== null) {
@@ -133,8 +112,12 @@ const NoteDialogsManager = ({
       console.log(`Checking analysis status: attempt ${attempts}/${maxAttempts}`);
       
       try {
-        // Query the note directly from the database to check if analysis has been updated
-        const { data, error } = await fetch(`/api/notes/${noteId}`).then(res => res.json());
+        // Query the note directly from the database instead of using the API endpoint
+        const { data, error } = await supabase
+          .from('notes')
+          .select('analysis')
+          .eq('id', noteId)
+          .single();
         
         if (error) {
           console.error('Error fetching note:', error);
@@ -215,6 +198,16 @@ const NoteDialogsManager = ({
     editForm.setValue('content', text);
   };
 
+  const handleFileRelationshipChanged = () => {
+    // Refresh the related files for the current note
+    if (selectedNote?.id) {
+      fetchNoteRelatedFiles(selectedNote.id);
+    }
+    
+    // Notify parent component to refresh notes
+    onFileAdded();
+  };
+
   useEffect(() => {
     return () => {
       if (pollingInterval !== null) {
@@ -235,7 +228,7 @@ const NoteDialogsManager = ({
         analyzingImages={analyzingImages}
         relatedFiles={relatedFiles}
         onAnalyzeImages={handleAnalyzeImages}
-        onFileAdded={onFileAdded}
+        onFileAdded={handleFileRelationshipChanged}
         projectId={projectId || ''}
         onTranscriptionComplete={handleTranscriptionComplete}
       />
