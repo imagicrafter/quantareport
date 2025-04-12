@@ -2,13 +2,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Note, parseNoteMetadata } from '@/utils/noteUtils';
+import { Note, parseNoteMetadata, NoteFileRelationshipWithType } from '@/utils/noteUtils';
 import { NoteFormValues } from '@/components/dashboard/notes/hooks/useNotesOperations';
+import { fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 
 export const useNotesManagement = (projectId: string | null) => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
-  const [relatedFiles, setRelatedFiles] = useState<any[]>([]);
+  const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
   const { toast } = useToast();
 
   const fetchNotes = async (projectId: string) => {
@@ -102,37 +103,10 @@ export const useNotesManagement = (projectId: string | null) => {
     try {
       console.log('Fetching related files for note:', noteId);
       
-      const { data, error } = await supabase
-        .from('note_file_relationships')
-        .select(`
-          id, 
-          note_id, 
-          file_id, 
-          files:file_id (
-            id, 
-            name, 
-            type, 
-            file_path
-          )
-        `)
-        .eq('note_id', noteId);
+      const filesWithTypes = await fetchRelatedFiles(noteId);
+      setRelatedFiles(filesWithTypes);
       
-      if (error) {
-        console.error('Error fetching related files:', error);
-        throw error;
-      }
-      
-      const formattedFiles = data.map(rel => ({
-        id: rel.id,
-        note_id: rel.note_id,
-        file_id: rel.file_id,
-        file_type: rel.files?.type || '',
-        file_path: rel.files?.file_path || '',
-        file_name: rel.files?.name || '',
-      }));
-      
-      console.log('Found related files:', formattedFiles.length);
-      setRelatedFiles(formattedFiles);
+      console.log('Found related files:', filesWithTypes.length);
     } catch (error) {
       console.error('Error fetching related files:', error);
     }

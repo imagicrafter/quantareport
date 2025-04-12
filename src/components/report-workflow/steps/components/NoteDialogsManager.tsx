@@ -3,16 +3,17 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { formSchema, NoteFormValues } from '@/components/dashboard/notes/hooks/useNotesOperations';
-import { Note } from '@/utils/noteUtils';
+import { Note, NoteFileRelationshipWithType } from '@/utils/noteUtils';
 import EditNoteDialog from '@/components/dashboard/notes/EditNoteDialog';
 import DeleteNoteDialog from '@/components/dashboard/notes/DeleteNoteDialog';
 import { useNotesContext } from '@/hooks/report-workflow/NotesContext';
+import { fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 
 interface NoteDialogsManagerProps {
   onEditNote: (note: Note, values: NoteFormValues) => Promise<void>;
   onDeleteNote: (note: Note) => Promise<void>;
   fetchNoteRelatedFiles: (noteId: string) => Promise<void>;
-  relatedFiles: any[];
+  relatedFiles: NoteFileRelationshipWithType[];
   projectId: string | null;
   onFileAdded: () => void;
 }
