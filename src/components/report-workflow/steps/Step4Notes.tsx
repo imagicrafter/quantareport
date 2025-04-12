@@ -175,7 +175,17 @@ const Step4Notes = () => {
     try {
       const { data, error } = await supabase
         .from('note_file_relationships')
-        .select('*, files:file_id(id, name, type, path)')
+        .select(`
+          id, 
+          note_id, 
+          file_id, 
+          files:file_id (
+            id, 
+            name, 
+            type, 
+            file_path
+          )
+        `)
         .eq('note_id', noteId);
       
       if (error) throw error;
@@ -186,7 +196,7 @@ const Step4Notes = () => {
         note_id: rel.note_id,
         file_id: rel.file_id,
         file_type: rel.files?.type || '',
-        file_path: rel.files?.path || '',
+        file_path: rel.files?.file_path || '',
         file_name: rel.files?.name || '',
       }));
       
