@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,77 +22,91 @@ const Step6Review = () => {
   const [reportTitle, setReportTitle] = useState<string>('Report');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   
-  useEffect(() => {
-    const initializeComponent = async () => {
-      try {
-        setLoading(true);
+  // Use useCallback to prevent recreation of this function on each render
+  const initializeComponent = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Get current workflow state and project ID
+      const { projectId: currentProjectId } = await fetchCurrentWorkflow();
+      
+      if (!currentProjectId) {
+        toast({
+          title: "Error",
+          description: "No active project found. Please start a new report.",
+          variant: "destructive"
+        });
+        navigate('/dashboard/report-wizard/start');
+        return;
+      }
+      
+      setProjectId(currentProjectId);
+      
+      // Update workflow state to 6
+      await updateWorkflowState(currentProjectId, 6);
+      
+      // Find the most recent report for this project
+      const { data: reports, error: reportsError } = await supabase
+        .from('reports')
+        .select('*')
+        .eq('project_id', currentProjectId)
+        .order('created_at', { ascending: false })
+        .limit(1);
         
-        // Get current workflow state and project ID
-        const { projectId: currentProjectId } = await fetchCurrentWorkflow();
-        
-        if (!currentProjectId) {
-          toast({
-            title: "Error",
-            description: "No active project found. Please start a new report.",
-            variant: "destructive"
-          });
-          navigate('/dashboard/report-wizard/start');
-          return;
-        }
-        
-        setProjectId(currentProjectId);
-        
-        // Update workflow state to 6
-        await updateWorkflowState(currentProjectId, 6);
-        
-        // Find the most recent report for this project
-        const { data: reports, error: reportsError } = await supabase
-          .from('reports')
-          .select('*')
-          .eq('project_id', currentProjectId)
-          .order('created_at', { ascending: false })
-          .limit(1);
-          
-        if (reportsError) {
-          console.error('Error fetching reports:', reportsError);
-          setError('Failed to load report data.');
-          return;
-        }
-        
-        if (reports.length === 0) {
-          setError('No report found for this project.');
-          return;
-        }
-        
-        const report = reports[0];
-        setReportId(report.id);
-        setReportTitle(report.title || 'Report');
-        
-        // If content exists, use it directly
-        if (report.content) {
-          setReportContent(report.content);
-          // Rough estimate of pages based on content length
-          const contentLength = report.content.length;
-          setTotalPages(Math.max(1, Math.ceil(contentLength / 3000)));
-        } else {
-          // Fallback to fetching the report by ID
+      if (reportsError) {
+        console.error('Error fetching reports:', reportsError);
+        setError('Failed to load report data.');
+        setLoading(false);
+        return;
+      }
+      
+      if (reports.length === 0) {
+        setError('No report found for this project.');
+        setLoading(false);
+        return;
+      }
+      
+      const report = reports[0];
+      console.log('Found report:', report.id);
+      setReportId(report.id);
+      setReportTitle(report.title || 'Report');
+      
+      // If content exists, use it directly
+      if (report.content) {
+        setReportContent(report.content);
+        // Rough estimate of pages based on content length
+        const contentLength = report.content.length;
+        setTotalPages(Math.max(1, Math.ceil(contentLength / 3000)));
+      } else {
+        // Fallback to fetching the report by ID
+        try {
           const fullReport = await fetchReportById(report.id);
           setReportContent(fullReport.content);
           const contentLength = fullReport.content?.length || 0;
           setTotalPages(Math.max(1, Math.ceil(contentLength / 3000)));
+        } catch (err) {
+          console.error('Error fetching report by ID:', err);
+          setError('Failed to load report content. Please try again.');
         }
-      } catch (error) {
-        console.error('Error initializing Step6Review:', error);
-        setError('Failed to load report data. Please try again.');
-      } finally {
-        setLoading(false);
       }
-    };
-    
-    initializeComponent();
-  }, [navigate, toast, fetchCurrentWorkflow, updateWorkflowState]);
+    } catch (error) {
+      console.error('Error initializing Step6Review:', error);
+      setError('Failed to load report data. Please try again.');
+    } finally {
+      setLoading(false);
+      setInitialized(true);
+    }
+  }, [fetchCurrentWorkflow, navigate, toast, updateWorkflowState]);
+  
+  useEffect(() => {
+    // Only run initialization once
+    if (!initialized) {
+      initializeComponent();
+    }
+  }, [initialized, initializeComponent]);
   
   const handleBack = () => {
     navigate('/dashboard/report-wizard/generate');
