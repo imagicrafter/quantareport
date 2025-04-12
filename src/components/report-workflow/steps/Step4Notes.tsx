@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { formSchema, NoteFormValues } from '@/components/dashboard/notes/hooks/useNotesOperations';
 
-// We can now use the Note interface directly since we've updated it to handle metadata properly
 const Step4Notes = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -27,7 +25,6 @@ const Step4Notes = () => {
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   const [activeTab, setActiveTab] = useState('all');
   
-  // State variables for edit and delete functionality
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -35,7 +32,6 @@ const Step4Notes = () => {
   const [relatedFiles, setRelatedFiles] = useState<any[]>([]);
   const [analyzingImages, setAnalyzingImages] = useState(false);
   
-  // Edit form for the dialog
   const editForm = useForm<NoteFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -45,7 +41,6 @@ const Step4Notes = () => {
     },
   });
   
-  // Fetch the current project ID from workflow
   useEffect(() => {
     const getProjectId = async () => {
       const { projectId: currentProjectId } = await fetchCurrentWorkflow();
@@ -65,7 +60,6 @@ const Step4Notes = () => {
     getProjectId();
   }, []);
   
-  // Fetch notes for the project with metadata filter
   const fetchNotes = async (projectId: string) => {
     try {
       setLoading(true);
@@ -85,7 +79,6 @@ const Step4Notes = () => {
           variant: "destructive"
         });
       } else {
-        // Process notes data - parse metadata if needed
         const processedNotes = data.map(note => parseNoteMetadata(note));
         setNotes(processedNotes);
       }
@@ -96,7 +89,6 @@ const Step4Notes = () => {
     }
   };
   
-  // Handle note reordering (same as in NotesSection)
   const handleOnDragEnd = async (result: any) => {
     if (!result.destination || !projectId) return;
 
@@ -106,12 +98,10 @@ const Step4Notes = () => {
       
       if (sourceIndex === destinationIndex) return;
       
-      // Create a copy of the notes array
       const reorderedNotes = [...notes];
       const [removed] = reorderedNotes.splice(sourceIndex, 1);
       reorderedNotes.splice(destinationIndex, 0, removed);
       
-      // Update position values
       const updatedNotes = reorderedNotes.map((note, index) => ({
         ...note,
         position: index + 1
@@ -119,11 +109,9 @@ const Step4Notes = () => {
       
       setNotes(updatedNotes);
       
-      // Update positions in database
       const updates = updatedNotes.map(note => ({
         id: note.id,
         position: note.position,
-        // Include these required fields from the existing note
         name: note.name,
         title: note.title,
         project_id: note.project_id,
@@ -141,7 +129,6 @@ const Step4Notes = () => {
           description: "Failed to update note order",
           variant: "destructive"
         });
-        // Refresh notes to restore original order
         fetchNotes(projectId);
       }
     } catch (error) {
@@ -149,7 +136,6 @@ const Step4Notes = () => {
     }
   };
   
-  // Edit note handler - now opens the edit dialog
   const handleEditNote = (note: Note) => {
     setSelectedNote(note);
     editForm.reset({
@@ -158,19 +144,16 @@ const Step4Notes = () => {
       analysis: note.analysis || '',
     });
     
-    // Fetch related files if needed
     fetchNoteRelatedFiles(note.id);
     
     setIsEditDialogOpen(true);
   };
   
-  // Delete note handler - now opens the delete dialog
   const handleDeleteNote = (note: Note) => {
     setSelectedNote(note);
     setIsDeleteDialogOpen(true);
   };
   
-  // Fetch related files for a note
   const fetchNoteRelatedFiles = async (noteId: string) => {
     try {
       const { data, error } = await supabase
@@ -190,7 +173,6 @@ const Step4Notes = () => {
       
       if (error) throw error;
       
-      // Format related files for the component
       const formattedFiles = data.map(rel => ({
         id: rel.id,
         note_id: rel.note_id,
@@ -206,7 +188,6 @@ const Step4Notes = () => {
     }
   };
   
-  // Handle edit note submission
   const handleEditNoteSubmit = async () => {
     if (!selectedNote) return;
     
@@ -244,7 +225,6 @@ const Step4Notes = () => {
     }
   };
   
-  // Handle delete note submission
   const handleDeleteNoteSubmit = async () => {
     if (!selectedNote) return;
     
@@ -276,10 +256,8 @@ const Step4Notes = () => {
     }
   };
   
-  // Navigation handlers with workflow state updates
   const handleBack = async () => {
     if (projectId) {
-      // Update workflow state to 3 (Process Files)
       await updateWorkflowState(projectId, 3);
     }
     navigate('/dashboard/report-wizard/process');
@@ -287,17 +265,13 @@ const Step4Notes = () => {
   
   const handleNext = async () => {
     if (projectId) {
-      // Update workflow state to 5 (Generate Report)
       await updateWorkflowState(projectId, 5);
     }
     navigate('/dashboard/report-wizard/generate');
   };
   
-  // Analyze images handler for edit dialog
   const handleAnalyzeImages = async () => {
     setAnalyzingImages(true);
-    // This would normally trigger the image analysis
-    // For now, simulate analysis with a timeout
     setTimeout(() => {
       setAnalyzingImages(false);
       toast({
@@ -307,12 +281,10 @@ const Step4Notes = () => {
     }, 1000);
   };
   
-  // Handle transcription complete
   const handleTranscriptionComplete = (text: string) => {
     editForm.setValue('content', text);
   };
   
-  // Filter notes based on the active tab
   const filteredNotes = () => {
     if (activeTab === 'all') return notes;
     
@@ -329,17 +301,13 @@ const Step4Notes = () => {
   
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Fixed header content */}
       <div className="flex-none">
         <InstructionsPanel stepNumber={4} />
       </div>
       
-      {/* Main content area with fixed height */}
-      <div className="flex flex-col flex-1 px-4 overflow-hidden">
-        {/* Tabs container */}
-        <div className="max-w-3xl mx-auto w-full flex flex-col flex-1 overflow-hidden">
-          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden">
-            {/* Fixed tabs header */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col overflow-hidden px-4">
+          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
             <TabsList className="grid w-full grid-cols-4 mb-6 flex-none">
               <TabsTrigger value="all">All Notes</TabsTrigger>
               <TabsTrigger value="observation">Observations</TabsTrigger>
@@ -347,7 +315,6 @@ const Step4Notes = () => {
               <TabsTrigger value="recommendation">Recommendations</TabsTrigger>
             </TabsList>
             
-            {/* Scrollable notes area */}
             <div className="flex-1 min-h-0 overflow-hidden">
               <ScrollArea className="h-full">
                 {activeTab && (
@@ -365,22 +332,20 @@ const Step4Notes = () => {
             </div>
           </Tabs>
         </div>
-        
-        {/* Fixed footer with buttons */}
-        <div className="max-w-3xl mx-auto w-full flex-none py-4 bg-background">
-          <div className="flex justify-between">
-            <Button variant="outline" onClick={handleBack}>
-              Back
-            </Button>
-            
-            <Button onClick={handleNext}>
-              Next: Generate Report
-            </Button>
-          </div>
+      </div>
+      
+      <div className="flex-none border-t bg-background w-full py-4">
+        <div className="max-w-3xl mx-auto w-full px-4 flex justify-between">
+          <Button variant="outline" onClick={handleBack}>
+            Back
+          </Button>
+          
+          <Button onClick={handleNext}>
+            Next: Generate Report
+          </Button>
         </div>
       </div>
       
-      {/* Edit Note Dialog */}
       <EditNoteDialog
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
@@ -396,7 +361,6 @@ const Step4Notes = () => {
         onTranscriptionComplete={handleTranscriptionComplete}
       />
       
-      {/* Delete Note Dialog */}
       <DeleteNoteDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
