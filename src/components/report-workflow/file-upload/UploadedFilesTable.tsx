@@ -8,15 +8,25 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { FileImage, FileText, File as FileIcon, Music } from 'lucide-react';
+import { FileImage, FileText, File as FileIcon, Music, Trash2 } from 'lucide-react';
 import { formatDistance } from 'date-fns';
+import { useState } from 'react';
+import DeleteFileDialog from '@/components/dashboard/files/DeleteFileDialog';
+import { deleteFile } from '@/components/dashboard/files/services/DeleteFileService';
+import { useToast } from '@/components/ui/use-toast';
 
 interface UploadedFilesTableProps {
   files: ProjectFile[];
   loading?: boolean;
+  onFileDeleted?: () => void;
 }
 
-const UploadedFilesTable = ({ files, loading = false }: UploadedFilesTableProps) => {
+const UploadedFilesTable = ({ files, loading = false, onFileDeleted }: UploadedFilesTableProps) => {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<ProjectFile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { toast } = useToast();
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -68,31 +78,84 @@ const UploadedFilesTable = ({ files, loading = false }: UploadedFilesTableProps)
     }
   };
 
+  const handleDeleteClick = (file: ProjectFile) => {
+    setFileToDelete(file);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!fileToDelete) return;
+    
+    try {
+      setIsDeleting(true);
+      await deleteFile(fileToDelete);
+      
+      toast({
+        title: "Success",
+        description: "File deleted successfully",
+      });
+      
+      setIsDeleteDialogOpen(false);
+      
+      if (onFileDeleted) {
+        onFileDeleted();
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete file. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
-    <div className="border rounded-md">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[40px]"></TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Size</TableHead>
-            <TableHead>Uploaded</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {files.map((file) => (
-            <TableRow key={file.id}>
-              <TableCell>{getFileIcon(file.type)}</TableCell>
-              <TableCell className="font-medium">{file.name}</TableCell>
-              <TableCell className="capitalize">{file.type}</TableCell>
-              <TableCell>{formatFileSize(file.size)}</TableCell>
-              <TableCell>{formatDate(file.created_at)}</TableCell>
+    <>
+      <div className="border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[40px]"></TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Size</TableHead>
+              <TableHead>Uploaded</TableHead>
+              <TableHead className="w-[60px]"></TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {files.map((file) => (
+              <TableRow key={file.id}>
+                <TableCell>{getFileIcon(file.type)}</TableCell>
+                <TableCell className="font-medium">{file.name}</TableCell>
+                <TableCell className="capitalize">{file.type}</TableCell>
+                <TableCell>{formatFileSize(file.size)}</TableCell>
+                <TableCell>{formatDate(file.created_at)}</TableCell>
+                <TableCell>
+                  <button 
+                    onClick={() => handleDeleteClick(file)}
+                    className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                    aria-label="Delete file"
+                  >
+                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                  </button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <DeleteFileDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onDelete={handleDeleteConfirm}
+        uploading={isDeleting}
+      />
+    </>
   );
 };
 

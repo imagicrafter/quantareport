@@ -113,90 +113,64 @@ const Step2Files = () => {
     setupStep();
   }, [toast]);
 
-  useEffect(() => {
-    const fetchFiles = async () => {
-      if (!projectId) return;
-      
-      try {
-        console.log(`Fetching files for project: ${projectId}`);
-        const { data, error } = await supabase
-          .from('files')
-          .select('*')
-          .eq('project_id', projectId)
-          .order('created_at', { ascending: false });
-          
-        if (error) {
-          console.error('Step2Files - Error fetching files:', error);
-          return;
-        }
-        
-        console.log('Step2Files - Fetched files:', data);
-        
-        if (data) {
-          const mappedFiles: ProjectFile[] = data.map(file => ({
-            id: file.id,
-            name: file.name,
-            title: file.title || '',
-            description: file.description || '',
-            file_path: file.file_path,
-            type: file.type as FileType,
-            size: file.size,
-            created_at: file.created_at,
-            project_id: file.project_id,
-            user_id: file.user_id,
-            position: file.position || 0,
-            metadata: file.metadata || {}
-          }));
-          
-          setUploadedFiles(mappedFiles);
-        }
-      } catch (error) {
-        console.error('Step2Files - Error in fetchFiles:', error);
-      }
-    };
+  const fetchFiles = async () => {
+    if (!projectId) return;
     
-    fetchFiles();
+    try {
+      console.log(`Fetching files for project: ${projectId}`);
+      const { data, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        console.error('Step2Files - Error fetching files:', error);
+        return;
+      }
+      
+      console.log('Step2Files - Fetched files:', data);
+      
+      if (data) {
+        const mappedFiles: ProjectFile[] = data.map(file => ({
+          id: file.id,
+          name: file.name,
+          title: file.title || '',
+          description: file.description || '',
+          file_path: file.file_path,
+          type: file.type as FileType,
+          size: file.size,
+          created_at: file.created_at,
+          project_id: file.project_id,
+          user_id: file.user_id,
+          position: file.position || 0,
+          metadata: file.metadata || {}
+        }));
+        
+        setUploadedFiles(mappedFiles);
+      }
+    } catch (error) {
+      console.error('Step2Files - Error in fetchFiles:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (projectId) {
+      fetchFiles();
+    }
   }, [projectId]);
 
   const handleFilesUploaded = (newFiles: ProjectFile[]) => {
     console.log("Files uploaded:", newFiles);
     if (projectId) {
-      const fetchFiles = async () => {
-        const { data, error } = await supabase
-          .from('files')
-          .select('*')
-          .eq('project_id', projectId)
-          .order('created_at', { ascending: false });
-          
-        if (error) {
-          console.error('Error fetching files after upload:', error);
-          return;
-        }
-        
-        if (data) {
-          const mappedFiles: ProjectFile[] = data.map(file => ({
-            id: file.id,
-            name: file.name,
-            title: file.title || '',
-            description: file.description || '',
-            file_path: file.file_path,
-            type: file.type as FileType,
-            size: file.size,
-            created_at: file.created_at,
-            project_id: file.project_id,
-            user_id: file.user_id,
-            position: file.position || 0,
-            metadata: file.metadata || {}
-          }));
-          
-          setUploadedFiles(mappedFiles);
-        }
-      };
-      
       fetchFiles();
     } else {
       setUploadedFiles((prev) => [...newFiles, ...prev]);
     }
+  };
+
+  const handleFileDeleted = () => {
+    fetchFiles();
   };
 
   const handleNextStep = async () => {
@@ -299,6 +273,7 @@ const Step2Files = () => {
       <UploadedFilesTable 
         files={uploadedFiles} 
         loading={false}
+        onFileDeleted={handleFileDeleted}
       />
       
       <div className="flex justify-end max-w-4xl mx-auto mt-8">
