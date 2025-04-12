@@ -333,24 +333,26 @@ const Step4Notes = () => {
       
       <div className="max-w-3xl mx-auto w-full flex flex-col mb-8" style={{ height: 'calc(100vh - 300px)' }}>
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="all">All Notes</TabsTrigger>
             <TabsTrigger value="observation">Observations</TabsTrigger>
             <TabsTrigger value="finding">Findings</TabsTrigger>
             <TabsTrigger value="recommendation">Recommendations</TabsTrigger>
           </TabsList>
           
-          <div className="flex-1 overflow-hidden mt-6">
-            <ScrollArea className="h-full pr-4">
-              <TabsContent value={activeTab} className="mt-0 h-full">
-                <NotesList 
-                  notes={filteredNotes()}
-                  loading={loading}
-                  onEditNote={handleEditNote}
-                  onDeleteNote={handleDeleteNote}
-                  onDragEnd={handleOnDragEnd}
-                />
-              </TabsContent>
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              {activeTab && (
+                <TabsContent value={activeTab} className="mt-0 h-full">
+                  <NotesList 
+                    notes={filteredNotes()}
+                    loading={loading}
+                    onEditNote={handleEditNote}
+                    onDeleteNote={handleDeleteNote}
+                    onDragEnd={handleOnDragEnd}
+                  />
+                </TabsContent>
+              )}
             </ScrollArea>
           </div>
         </Tabs>
