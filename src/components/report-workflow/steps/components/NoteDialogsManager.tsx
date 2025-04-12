@@ -60,16 +60,11 @@ const NoteDialogsManager = ({
     setIsDeleteDialogOpen(true);
   };
   
-  // Register the handlers with the context
+  // Register the handlers with the context - use useEffect with empty dependency array 
+  // to ensure handlers are only registered once
   useEffect(() => {
     setEditNoteHandler(handleEditNote);
     setDeleteNoteHandler(handleDeleteNote);
-    
-    return () => {
-      // Clean up by setting handlers to no-ops when component unmounts
-      setEditNoteHandler(() => () => {});
-      setDeleteNoteHandler(() => () => {});
-    };
   }, [setEditNoteHandler, setDeleteNoteHandler]);
   
   const handleEditNoteSubmit = async () => {
