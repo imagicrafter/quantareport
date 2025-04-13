@@ -103,8 +103,8 @@ const StartNewReport = () => {
   const handleProjectSelection = (projectId: string) => {
     handleProjectSelect(
       projectId, 
-      (loading: boolean) => isLoading, 
-      (template: any) => defaultTemplate, 
+      () => isLoading, // Fix: Return the boolean value directly, not a function that takes an argument
+      () => defaultTemplate, 
       setTemplateNotes, 
       setTemplateNoteValues
     );
