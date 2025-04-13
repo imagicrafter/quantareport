@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ const Step5Generate = () => {
     creatingReport,
     generationInProgress,
     reportCreated,
+    setReportCreated,
     progressUpdate,
     handleCreateReport,
     navigateToReport
@@ -146,10 +148,12 @@ const Step5Generate = () => {
           };
           
           // Use the report generation hook to update progress
-          setReportCreated({
-            id: reportId,
-            content: existingReport?.content || ''
-          });
+          if (setReportCreated) {
+            setReportCreated({
+              id: reportId,
+              content: existingReport?.content || ''
+            });
+          }
         }
       }
     } catch (error) {
@@ -222,10 +226,12 @@ const Step5Generate = () => {
       });
       
       // Go to the next step with the existing report
-      setReportCreated({
-        id: existingReport.id,
-        content: existingReport.content
-      });
+      if (setReportCreated) {
+        setReportCreated({
+          id: existingReport.id,
+          content: existingReport.content
+        });
+      }
       await handleNext();
       return;
     }

@@ -126,6 +126,7 @@ export const useReportGeneration = () => {
     creatingReport,
     generationInProgress,
     reportCreated,
+    setReportCreated,
     progressUpdate,
     handleCreateReport,
     navigateToReport
