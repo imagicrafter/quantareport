@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import InstructionsPanel from '../start-report/InstructionsPanel';
 import StepBanner from '../StepBanner';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileSearch, CheckCircle, AlertCircle } from 'lucide-react';
+import { FileSearch, CheckCircle, AlertCircle, PlayCircle } from 'lucide-react';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import { useImageAnalysis } from '@/components/dashboard/files/hooks/useImageAnalysis';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +23,7 @@ const Step3Process = () => {
   const [textDocumentCount, setTextDocumentCount] = useState(0);
   const [imageCount, setImageCount] = useState(0);
   const [notesCount, setNotesCount] = useState(0);
+  const [manualProcessing, setManualProcessing] = useState(false);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   
   const {
@@ -82,14 +84,14 @@ const Step3Process = () => {
   }, [projectId, checkUnprocessedFiles]);
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || manualProcessing) return;
     
     const startProcessing = async () => {
       setProcessingStatus('processing');
       
       if (hasUnprocessedFiles) {
-        console.log('Unprocessed files found, starting analysis...');
-        await analyzeFiles();
+        console.log('Unprocessed files found, enabling manual processing button');
+        setManualProcessing(true);
       } else {
         console.log('No unprocessed files found, skipping analysis');
         const interval = setInterval(() => {
@@ -169,6 +171,18 @@ const Step3Process = () => {
       
     } catch (error) {
       console.error('Error in fetchAnalyzedFiles:', error);
+    }
+  };
+
+  const handleManualProcessing = async () => {
+    setProcessingStatus('processing');
+    setProgress(10);
+    
+    // Call analyzeFiles with the appropriate start point
+    if (hasUnprocessedFiles) {
+      await analyzeFiles('generate_descriptions');
+    } else {
+      await analyzeFiles('process_notes');
     }
   };
 
@@ -265,6 +279,20 @@ const Step3Process = () => {
                   {processingStatus === 'error' && 'An error occurred during processing'}
                 </p>
               </div>
+              
+              {/* Manual processing button */}
+              {manualProcessing && processingStatus !== 'complete' && (
+                <div className="mt-4 mb-6">
+                  <Button
+                    onClick={handleManualProcessing}
+                    disabled={isAnalyzing}
+                    className="flex items-center gap-2"
+                  >
+                    <PlayCircle className="h-5 w-5" />
+                    {hasUnprocessedFiles ? 'Process Files' : 'Process Notes'}
+                  </Button>
+                </div>
+              )}
               
               {processingStatus === 'complete' && (
                 <div className="bg-muted p-4 rounded-md w-full mt-4">

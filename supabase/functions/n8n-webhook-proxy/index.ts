@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 // CORS headers for all responses
@@ -9,7 +8,7 @@ const corsHeaders = {
 };
 
 // Version tracking to help identify if deployment was successful
-const FUNCTION_VERSION = "1.4.0";
+const FUNCTION_VERSION = "1.5.0";
 
 // The actual n8n webhook URLs for various operations
 const webhookConfigs = {
@@ -183,12 +182,13 @@ async function handleConfigRequest(req: Request, url: URL) {
 
 // Handle proxy requests
 async function handleProxyRequest(req: Request, url: URL) {
-  let payload, type, env, isTestMode = false;
+  let payload, type, env, isTestMode = false, fileAnalysisStartPoint;
   
   // Check if parameters are in URL query params
   type = url.searchParams.get("type");
   env = url.searchParams.get("env");
   isTestMode = url.searchParams.get("isTestMode") === "true";
+  fileAnalysisStartPoint = url.searchParams.get("file_analysis_start_point");
   
   try {
     // Try to get parameters from request body
@@ -214,6 +214,7 @@ async function handleProxyRequest(req: Request, url: URL) {
         if (!type) type = body.type;
         if (!env) env = body.env;
         if (isTestMode === false) isTestMode = body.isTestMode === true;
+        if (!fileAnalysisStartPoint) fileAnalysisStartPoint = body.file_analysis_start_point;
       } else {
         console.error("Invalid JSON body:", body);
         throw new Error("Invalid JSON body - expected an object");
@@ -230,6 +231,7 @@ async function handleProxyRequest(req: Request, url: URL) {
         if (!type) type = body.type;
         if (!env) env = body.env;
         if (isTestMode === false) isTestMode = body.isTestMode === true;
+        if (!fileAnalysisStartPoint) fileAnalysisStartPoint = body.file_analysis_start_point;
       } catch (e) {
         console.error("Failed to parse body as JSON:", e);
         
@@ -251,6 +253,12 @@ async function handleProxyRequest(req: Request, url: URL) {
           status: 400,
         }
       );
+    }
+    
+    // Add file_analysis_start_point to payload if it exists
+    if (fileAnalysisStartPoint && typeof payload === 'object') {
+      payload.file_analysis_start_point = fileAnalysisStartPoint;
+      console.log(`Added file_analysis_start_point: ${fileAnalysisStartPoint} to payload`);
     }
   } catch (e) {
     console.error("Error processing request body:", e);
@@ -275,6 +283,9 @@ async function handleProxyRequest(req: Request, url: URL) {
        env || "production";
   
   console.log(`Proxying ${type} request for ${env} environment. Test mode: ${isTestMode ? 'Yes' : 'No'}`);
+  if (fileAnalysisStartPoint) {
+    console.log(`File analysis start point: ${fileAnalysisStartPoint}`);
+  }
   
   // Determine which webhook URL to use
   let webhookUrl;
