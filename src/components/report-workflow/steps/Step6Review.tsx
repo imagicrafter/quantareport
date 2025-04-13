@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -25,12 +24,10 @@ const Step6Review = () => {
   const [initialized, setInitialized] = useState(false);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   
-  // Use useCallback to prevent recreation of this function on each render
   const initializeComponent = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Get current workflow state and project ID
       const { projectId: currentProjectId } = await fetchCurrentWorkflow();
       
       if (!currentProjectId) {
@@ -45,10 +42,8 @@ const Step6Review = () => {
       
       setProjectId(currentProjectId);
       
-      // Update workflow state to 6
       await updateWorkflowState(currentProjectId, 6);
       
-      // Find the most recent report for this project
       const { data: reports, error: reportsError } = await supabase
         .from('reports')
         .select('*')
@@ -74,14 +69,11 @@ const Step6Review = () => {
       setReportId(report.id);
       setReportTitle(report.title || 'Report');
       
-      // If content exists, use it directly
       if (report.content) {
         setReportContent(report.content);
-        // Rough estimate of pages based on content length
         const contentLength = report.content.length;
         setTotalPages(Math.max(1, Math.ceil(contentLength / 3000)));
       } else {
-        // Fallback to fetching the report by ID
         try {
           const fullReport = await fetchReportById(report.id);
           setReportContent(fullReport.content);
@@ -102,20 +94,23 @@ const Step6Review = () => {
   }, [fetchCurrentWorkflow, navigate, toast, updateWorkflowState]);
   
   useEffect(() => {
-    // Only run initialization once
     if (!initialized) {
       initializeComponent();
     }
   }, [initialized, initializeComponent]);
   
-  const handleBack = () => {
-    navigate('/dashboard/report-wizard/generate');
+  const handleBack = async () => {
+    if (projectId) {
+      await updateWorkflowState(projectId, 5);
+      navigate('/dashboard/report-wizard/generate');
+    } else {
+      navigate('/dashboard/report-wizard/generate');
+    }
   };
   
   const handleFinish = async () => {
     if (reportId && projectId) {
       try {
-        // Update report status to completed if it's still draft
         await updateReport(reportId, { status: 'completed' });
         
         toast({
@@ -123,7 +118,6 @@ const Step6Review = () => {
           description: "Your report has been finalized and saved."
         });
         
-        // Reset workflow state
         await updateWorkflowState(projectId, 0);
         
         navigate('/dashboard/reports');
@@ -163,7 +157,15 @@ const Step6Review = () => {
   };
   
   const handleEdit = () => {
-    navigate('/dashboard/report-wizard/notes');
+    if (reportId) {
+      navigate(`/dashboard/reports/editor/${reportId}`);
+    } else {
+      toast({
+        title: "Error",
+        description: "Report ID not found. Cannot open editor.",
+        variant: "destructive"
+      });
+    }
   };
   
   const changePage = (direction: 'prev' | 'next') => {
@@ -231,7 +233,6 @@ const Step6Review = () => {
                   </div>
                 ) : (
                   <div className="aspect-[8.5/11] bg-white p-8 border-b relative">
-                    {/* Render the actual report content from the database */}
                     <div dangerouslySetInnerHTML={{ __html: reportContent || '' }} />
                     
                     <div className="absolute bottom-4 right-4 text-muted-foreground text-sm">
@@ -240,7 +241,6 @@ const Step6Review = () => {
                   </div>
                 )}
                 
-                {/* Page navigation */}
                 <div className="flex justify-between items-center p-4 bg-muted/30">
                   <Button 
                     variant="outline" 

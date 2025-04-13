@@ -124,15 +124,29 @@ export const useWorkflowNavigation = () => {
     return index >= 0 ? index : 0;
   };
   
-  // Modified handleStepClick to update workflow state when navigating to step 1
+  // Enhanced handleStepClick to update workflow state when navigating between steps
   const handleStepClick = async (index: number, currentWorkflowState: number | null, projectId: string | null) => {
     console.log('handleStepClick - Trying to navigate to index:', index);
     
-    // If navigating to step 1 (index 0) and we have a project in workflow state 2+,
-    // update the workflow state to 1 first
-    if (index === 0 && currentWorkflowState && currentWorkflowState > 1 && projectId) {
-      console.log('Navigating back to step 1, updating workflow state to 1');
-      await updateWorkflowState(projectId, 1);
+    // Don't allow navigating to future steps that haven't been reached yet
+    if (currentWorkflowState && index + 1 > currentWorkflowState) {
+      console.log(`Cannot skip ahead to step ${index + 1} from workflow state ${currentWorkflowState}`);
+      toast({
+        description: "Please complete the current step before proceeding.",
+      });
+      return;
+    }
+    
+    // If navigating to any previous step and we have a project ID, update the workflow state
+    if (projectId && currentWorkflowState && index + 1 <= currentWorkflowState) {
+      console.log(`Navigating to step ${index + 1}, updating workflow state from ${currentWorkflowState}`);
+      
+      // Update the workflow state to match the selected step
+      await updateWorkflowState(projectId, index + 1);
+      
+      // Navigate to the selected step
+      navigate(`/dashboard/report-wizard/${workflowSteps[index].path}`);
+      return;
     }
     
     // If navigating to step 1 (index 0), we'll allow it without any checks
