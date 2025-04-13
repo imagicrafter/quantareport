@@ -13,6 +13,7 @@ export const useNotes = (projectId: string) => {
   const fetchNotes = async () => {
     try {
       setLoading(true);
+      // Use regular notes table query with ordering
       const { data, error } = await supabase
         .from('notes')
         .select('*')

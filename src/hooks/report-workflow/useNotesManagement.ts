@@ -16,11 +16,11 @@ export const useNotesManagement = (projectId: string | null) => {
     try {
       setLoading(true);
       
+      // Use the view to get notes excluding template notes
       const { data, error } = await supabase
-        .from('notes')
+        .from('v_project_notes_excluding_template')
         .select('*')
         .eq('project_id', projectId)
-        .not('metadata', 'is', null)
         .order('position', { ascending: true });
       
       if (error) {

@@ -134,10 +134,9 @@ const Step3Process = () => {
       }
       
       const { data, error: notesError } = await supabase
-        .from('notes')
+        .from('v_project_notes_excluding_template')
         .select('id')
-        .eq('project_id', projectId)
-        .not('metadata', 'is', null);
+        .eq('project_id', projectId);
         
       if (!notesError && data) {
         setNotesCount(data.length);

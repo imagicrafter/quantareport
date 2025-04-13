@@ -223,6 +223,13 @@ export type Database = {
             referencedRelation: "notes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_notes_excluding_template"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notes: {
@@ -794,6 +801,13 @@ export type Database = {
             referencedRelation: "notes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_notes_excluding_template"
+            referencedColumns: ["id"]
+          },
         ]
       }
       job_report_error_count: {
@@ -880,6 +894,13 @@ export type Database = {
             referencedRelation: "notes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_notes_excluding_template"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_notes_with_image_relationships: {
@@ -899,6 +920,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_notes_excluding_template"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notes_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -911,6 +939,73 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_projects_last_update"
             referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      v_project_notes_excluding_template: {
+        Row: {
+          analysis: string | null
+          content: string | null
+          created_at: string | null
+          files_relationships_is_locked: boolean | null
+          id: string | null
+          last_edited_at: string | null
+          metadata: Json | null
+          name: string | null
+          position: number | null
+          project_id: string | null
+          title: string | null
+          user_id: string | null
+        }
+        Insert: {
+          analysis?: string | null
+          content?: string | null
+          created_at?: string | null
+          files_relationships_is_locked?: boolean | null
+          id?: string | null
+          last_edited_at?: string | null
+          metadata?: Json | null
+          name?: string | null
+          position?: number | null
+          project_id?: string | null
+          title?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          analysis?: string | null
+          content?: string | null
+          created_at?: string | null
+          files_relationships_is_locked?: boolean | null
+          id?: string | null
+          last_edited_at?: string | null
+          metadata?: Json | null
+          name?: string | null
+          position?: number | null
+          project_id?: string | null
+          title?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
