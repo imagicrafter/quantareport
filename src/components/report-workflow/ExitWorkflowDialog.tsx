@@ -56,6 +56,14 @@ const ExitWorkflowDialog: React.FC<ExitWorkflowDialogProps> = ({
       
       // Close dialog and navigate
       setIsOpen(false);
+      
+      // Special case for navigating back to step 1
+      if (targetPath === '/dashboard/report-wizard/start') {
+        // Force a page reload to clear any stale state
+        window.location.href = targetPath;
+        return;
+      }
+      
       navigate(targetPath);
     } catch (error) {
       console.error('Error resetting workflow state:', error);

@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -127,6 +126,14 @@ export const useWorkflowNavigation = () => {
   // Enhanced handleStepClick to update workflow state when navigating between steps
   const handleStepClick = async (index: number, currentWorkflowState: number | null, projectId: string | null) => {
     console.log('handleStepClick - Trying to navigate to index:', index);
+    
+    // Special handling for Step 1 (index 0)
+    if (index === 0 && currentWorkflowState && currentWorkflowState > 1 && projectId) {
+      // If clicking on Step 1 from any other step, show exit dialog instead of direct navigation
+      setExitTarget('/dashboard/report-wizard/start');
+      setShowExitDialog(true);
+      return;
+    }
     
     // Don't allow navigating to future steps that haven't been reached yet
     if (currentWorkflowState && index + 1 > currentWorkflowState) {
