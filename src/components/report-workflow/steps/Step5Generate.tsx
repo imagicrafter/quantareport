@@ -45,8 +45,49 @@ const Step5Generate = () => {
         // Update workflow state to 5
         await updateWorkflowState(currentProjectId, 5);
         
-        // Start report generation automatically - but only once
+        // Check if a report already exists for this project
+        const { data: existingReports, error: reportsError } = await supabase
+          .from('reports')
+          .select('id, content, status')
+          .eq('project_id', currentProjectId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (reportsError) {
+          console.error('Error checking for existing reports:', reportsError);
+        }
+        
+        if (existingReports && existingReports.length > 0) {
+          console.log('Found existing report:', existingReports[0]);
+          const latestReport = existingReports[0];
+          
+          // Check if report is already complete or in-progress
+          if (latestReport.status === 'processing') {
+            console.log('Report is already being processed. Using existing report.');
+            setReportCreated({
+              id: latestReport.id,
+              content: latestReport.content || ''
+            });
+            setStatus('generating');
+            setProgress(15);
+            setMessage('Report generation in progress...');
+            return;
+          } else if (latestReport.status !== 'draft' && latestReport.content) {
+            console.log('Report is already completed. Using existing report.');
+            setReportCreated({
+              id: latestReport.id,
+              content: latestReport.content
+            });
+            setStatus('completed');
+            setProgress(100);
+            setMessage('Report has already been generated.');
+            return;
+          }
+        }
+        
+        // If no existing valid report, start report generation (but only once)
         if (!generationInitiated) {
+          console.log('No valid existing report found. Starting new report generation.');
           setGenerationInitiated(true);
           startGeneration(currentProjectId);
         }
@@ -178,6 +219,30 @@ const Step5Generate = () => {
       // Check if we already have started generation to prevent duplicate calls
       if (status === 'generating') {
         console.log('Report generation already in progress, skipping duplicate start');
+        return;
+      }
+      
+      // Check for existing reports to prevent duplicates
+      const { data: existingReports, error: reportsError } = await supabase
+        .from('reports')
+        .select('id, content, status')
+        .eq('project_id', projectId)
+        .eq('status', 'processing')
+        .limit(1);
+        
+      if (reportsError) {
+        console.error('Error checking for existing processing reports:', reportsError);
+      }
+      
+      if (existingReports && existingReports.length > 0) {
+        console.log('Found existing processing report:', existingReports[0]);
+        setReportCreated({
+          id: existingReports[0].id,
+          content: existingReports[0].content || ''
+        });
+        setStatus('generating');
+        setProgress(15);
+        setMessage('Report generation in progress...');
         return;
       }
       
