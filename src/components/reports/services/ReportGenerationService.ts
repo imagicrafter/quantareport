@@ -194,7 +194,7 @@ export const generateReport = async (
   userId: string,
   setCreatingReport?: (id: string | null) => void,
   setReportCreated?: (data: {id: string, content: string} | null) => void,
-  setGenerationInProgress?: (state: {[key: string]: boolean}) => void
+  setGenerationInProgress?: React.Dispatch<React.SetStateAction<{[key: string]: boolean}>>
 ) => {
   try {
     if (setCreatingReport) {
@@ -420,3 +420,4 @@ export const checkReportContent = async (
     return false;
   }
 };
+
