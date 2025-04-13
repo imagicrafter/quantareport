@@ -23,7 +23,6 @@ const Step3Process = () => {
   const [textDocumentCount, setTextDocumentCount] = useState(0);
   const [imageCount, setImageCount] = useState(0);
   const [notesCount, setNotesCount] = useState(0);
-  const [manualProcessing, setManualProcessing] = useState(false);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   
   const {
@@ -84,32 +83,29 @@ const Step3Process = () => {
   }, [projectId, checkUnprocessedFiles]);
 
   useEffect(() => {
-    if (!projectId || manualProcessing) return;
+    if (!projectId) return;
     
     const startProcessing = async () => {
       setProcessingStatus('processing');
       
-      if (hasUnprocessedFiles) {
-        console.log('Unprocessed files found, enabling manual processing button');
-        setManualProcessing(true);
-      } else {
-        console.log('No unprocessed files found, skipping analysis');
-        const interval = setInterval(() => {
-          setProgress(prev => {
-            if (prev >= 100) {
-              clearInterval(interval);
-              setProcessingComplete(true);
-              setProcessingStatus('complete');
-              return 100;
-            }
-            return prev + 10;
-          });
-        }, 200);
-      }
+      // Set initial progress
+      setProgress(10);
+      
+      // Don't auto-start file analysis, always display the button
+      // Just increment progress a bit to show something is happening
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 30) {
+            clearInterval(interval);
+            return 30;
+          }
+          return prev + 5;
+        });
+      }, 200);
     };
     
     startProcessing();
-  }, [projectId, hasUnprocessedFiles, analyzeFiles]);
+  }, [projectId]);
 
   const fetchFileCounts = async () => {
     if (!projectId) return;
@@ -164,9 +160,8 @@ const Step3Process = () => {
       
       if (!unprocessedFiles || unprocessedFiles.length === 0) {
         await fetchFileCounts();
-        setProcessingComplete(true);
-        setProcessingStatus('complete');
-        setProgress(100);
+        // Don't automatically mark processing as complete
+        // We'll wait until the user clicks the button and the process completes
       }
       
     } catch (error) {
@@ -177,6 +172,7 @@ const Step3Process = () => {
   const handleManualProcessing = async () => {
     setProcessingStatus('processing');
     setProgress(10);
+    setProcessingComplete(false);
     
     // Call analyzeFiles with the appropriate start point
     if (hasUnprocessedFiles) {
@@ -280,8 +276,8 @@ const Step3Process = () => {
                 </p>
               </div>
               
-              {/* Manual processing button */}
-              {manualProcessing && processingStatus !== 'complete' && (
+              {/* Always show processing button unless complete */}
+              {processingStatus !== 'complete' && (
                 <div className="mt-4 mb-6">
                   <Button
                     onClick={handleManualProcessing}
