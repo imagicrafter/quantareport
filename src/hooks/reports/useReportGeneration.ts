@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -126,7 +125,7 @@ export const useReportGeneration = () => {
     creatingReport,
     generationInProgress,
     reportCreated,
-    setReportCreated,
+    setReportCreated,  // Ensure setReportCreated is properly exported
     progressUpdate,
     handleCreateReport,
     navigateToReport

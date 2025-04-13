@@ -378,7 +378,56 @@ export const navigateToReportEditor = async (reportId: string, navigate: Functio
     const report = await fetchReportById(reportId);
     
     if (report.status === 'processing') {
+      // Update report status to draft
       await updateReport(report.id, { status: 'draft' });
+      
+      // Also update the project workflow state to 6
+      console.log(`Updating project workflow state to 6 for project ${report.project_id}`);
+      
+      // Get current user
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        console.error('No active session found when updating workflow state');
+      } else {
+        const userId = session.session.user.id;
+        
+        // Check if workflow record exists
+        const { data: existingWorkflow } = await supabase
+          .from('project_workflow')
+          .select('id')
+          .eq('project_id', report.project_id)
+          .maybeSingle();
+          
+        if (existingWorkflow) {
+          // Update existing workflow state
+          const { error: updateError } = await supabase
+            .from('project_workflow')
+            .update({ workflow_state: 6, last_edited_at: new Date().toISOString() })
+            .eq('project_id', report.project_id);
+            
+          if (updateError) {
+            console.error('Error updating workflow state:', updateError);
+          } else {
+            console.log(`Successfully updated workflow state to 6 for project ${report.project_id}`);
+          }
+        } else if (userId) {
+          // Create new workflow record if it doesn't exist
+          const { error: insertError } = await supabase
+            .from('project_workflow')
+            .insert({
+              project_id: report.project_id,
+              user_id: userId,
+              workflow_state: 6,
+              last_edited_at: new Date().toISOString()
+            });
+            
+          if (insertError) {
+            console.error('Error creating workflow state:', insertError);
+          } else {
+            console.log(`Successfully created workflow state 6 for project ${report.project_id}`);
+          }
+        }
+      }
     }
     
     if (onClose) {
