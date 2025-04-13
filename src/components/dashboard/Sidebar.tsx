@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, LayoutDashboard, FileText, Image, FileEdit, Settings, Users, FilePlus, ChevronDown, ChevronRight, Menu } from 'lucide-react';
@@ -22,7 +21,6 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
   
   const isReportsActive = () => {
     return location.pathname.includes('/reports') || 
-           location.pathname.includes('/start-new-report') ||
            location.pathname.includes('/report-wizard');
   };
 
@@ -153,17 +151,6 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
                   )}
                 >
                   <span>All Reports</span>
-                </Link>
-                <Link
-                  to="/dashboard/start-new-report"
-                  className={cn(
-                    "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
-                    isActive('/dashboard/start-new-report')
-                      ? "bg-accent text-quanta-blue"
-                      : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
-                  )}
-                >
-                  <span>Quick Start</span>
                 </Link>
                 <Link
                   to="/dashboard/report-wizard/start"

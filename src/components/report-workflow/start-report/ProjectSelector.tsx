@@ -16,7 +16,7 @@ const ProjectSelector = ({ projects, selectedId, onSelect }: ProjectSelectorProp
   return (
     <div>
       <label className="block mb-2 text-sm font-medium">Select Existing Project</label>
-      <Select onValueChange={onSelect} value={selectedId || undefined}>
+      <Select value={selectedId || undefined} onValueChange={onSelect}>
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Select an existing project" />
         </SelectTrigger>

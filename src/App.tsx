@@ -13,7 +13,6 @@ import ReportEditor from './pages/ReportEditor';
 import Images from './pages/Images';
 import Notes from './pages/Notes';
 import Admin from './pages/Admin';
-import StartNewReport from './pages/StartNewReport';
 import './App.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
@@ -47,7 +46,6 @@ function App() {
           <Route path="notes" element={<Notes />} />
           <Route path="settings" element={<Settings />} />
           <Route path="admin" element={<Admin />} />
-          <Route path="start-new-report" element={<StartNewReport />} />
           
           {/* Report Wizard Routes */}
           <Route path="report-wizard" element={<ReportWizardContainer />}>
