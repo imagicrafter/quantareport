@@ -10,16 +10,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import ReportGenerationProgress from '@/components/reports/ReportGenerationProgress';
 import { useReportGeneration } from '@/hooks/reports/useReportGeneration';
-import { checkInitialReportStatus, checkReportContent, navigateToReportEditor } from '@/components/reports/services/ReportGenerationService';
+import { navigateToReportEditor } from '@/components/reports/services/ReportGenerationService';
 
 const Step5Generate = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [projectId, setProjectId] = useState<string | null>(null);
   const { updateWorkflowState, fetchCurrentWorkflow } = useWorkflowNavigation();
-  const [generationInitiated, setGenerationInitiated] = useState(false);
-
-  // Use the new hook for consistent report generation functionality
+  
+  // Use the report generation hook for consistent functionality
   const {
     creatingReport,
     generationInProgress,
@@ -62,6 +61,8 @@ const Step5Generate = () => {
           console.error('Error checking for existing reports:', reportsError);
         }
         
+        // Important: Only initiate report generation if we don't have an existing report
+        // or if the existing report is in draft state and doesn't have content
         if (existingReports && existingReports.length > 0) {
           console.log('Found existing report:', existingReports[0]);
           const latestReport = existingReports[0];
@@ -69,7 +70,6 @@ const Step5Generate = () => {
           // Check if report is already complete or in-progress
           if (latestReport.status === 'processing') {
             console.log('Report is already being processed. Using existing report.');
-            // No need to start generation, just set report as created
             return;
           } else if (latestReport.status !== 'draft' && latestReport.content) {
             console.log('Report is already completed. Using existing report.');
@@ -77,11 +77,12 @@ const Step5Generate = () => {
           }
         }
         
-        // If no existing valid report, start report generation (but only once)
-        if (!generationInitiated && currentProjectId) {
-          console.log('No valid existing report found. Starting new report generation.');
-          setGenerationInitiated(true);
+        // Only start report generation when there's no already active generation
+        if (currentProjectId && !generationInProgress[currentProjectId]) {
+          console.log('No valid existing report found and no generation in progress. Starting new report generation.');
           await handleCreateReport(currentProjectId);
+        } else {
+          console.log(`Report generation already in progress for project ${currentProjectId} or no project ID available`);
         }
       } catch (error) {
         console.error('Error initializing Step5Generate:', error);
