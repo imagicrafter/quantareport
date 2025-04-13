@@ -19,6 +19,8 @@ import AddNoteDialog from '@/components/dashboard/notes/AddNoteDialog';
 import { Note } from '@/utils/noteUtils';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { formSchema } from '@/components/dashboard/notes/hooks/useNotesOperations';
 
 const Step4Notes = () => {
   const navigate = useNavigate();
@@ -44,8 +46,9 @@ const Step4Notes = () => {
     setRelatedFiles
   } = useNotesManagement(projectId);
   
-  // Add Note form setup
+  // Add Note form setup with proper validation schema
   const form = useForm({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       title: '',
       content: '',
@@ -174,13 +177,13 @@ const Step4Notes = () => {
     }
   };
 
-  const handleAnalyzeImages = (isAddNote: boolean = false) => {
+  const handleAnalyzeImages = () => {
     setAnalyzingImages(true);
     // This will be enhanced in NoteDialogsManager
   };
 
-  const handleTranscriptionComplete = () => {
-    setAnalyzingImages(false);
+  const handleTranscriptionComplete = (text: string) => {
+    form.setValue('content', text);
   };
   
   return (
@@ -237,7 +240,7 @@ const Step4Notes = () => {
           tempNoteId={tempNoteId}
           analyzingImages={analyzingImages}
           relatedFiles={addNoteRelatedFiles}
-          onAnalyzeImages={() => handleAnalyzeImages(true)}
+          onAnalyzeImages={() => handleAnalyzeImages()}
           onFileAdded={() => {
             refreshNotes();
           }}

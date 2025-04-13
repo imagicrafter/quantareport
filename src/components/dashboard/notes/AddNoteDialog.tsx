@@ -29,11 +29,11 @@ import RelatedFiles from '@/components/dashboard/notes/RelatedFiles';
 import AudioRecorder from '../files/AudioRecorder';
 import { supabase } from '@/integrations/supabase/client';
 
-// Updated interface to match the form type from Step4Notes
+// Support both strict and optional form values to work with different form implementations
 interface AddNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  form: UseFormReturn<NoteFormValues>; // Using the NoteFormValues type from useNotesOperations
+  form: UseFormReturn<any>; // Using any to accommodate both form types
   onSubmit: () => void;
   saving: boolean;
   tempNoteId: string | null;
