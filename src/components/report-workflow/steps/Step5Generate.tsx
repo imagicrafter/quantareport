@@ -22,6 +22,7 @@ const Step5Generate = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [reportCreated, setReportCreated] = useState<{ id: string, content: string } | null>(null);
   const { updateWorkflowState, fetchCurrentWorkflow } = useWorkflowNavigation();
+  const [generationInitiated, setGenerationInitiated] = useState(false);
   
   useEffect(() => {
     const initializeComponent = async () => {
@@ -44,8 +45,11 @@ const Step5Generate = () => {
         // Update workflow state to 5
         await updateWorkflowState(currentProjectId, 5);
         
-        // Start report generation automatically
-        startGeneration(currentProjectId);
+        // Start report generation automatically - but only once
+        if (!generationInitiated) {
+          setGenerationInitiated(true);
+          startGeneration(currentProjectId);
+        }
       } catch (error) {
         console.error('Error initializing Step5Generate:', error);
         setStatus('error');
@@ -171,6 +175,12 @@ const Step5Generate = () => {
   
   const startGeneration = async (projectId: string) => {
     try {
+      // Check if we already have started generation to prevent duplicate calls
+      if (status === 'generating') {
+        console.log('Report generation already in progress, skipping duplicate start');
+        return;
+      }
+      
       setStatus('generating');
       setProgress(5);
       setMessage('Starting report generation...');

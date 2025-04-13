@@ -19,7 +19,7 @@ interface ProjectDetails {
   notes_count: number;
   has_report: boolean;
   template_id: string | null;
-  last_update?: string; // Added for sorting purposes
+  last_update?: string;
 }
 
 interface ProgressUpdate {
@@ -43,6 +43,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
   const [reportCreated, setReportCreated] = useState<{id: string, content: string} | null>(null);
   const [progressUpdate, setProgressUpdate] = useState<ProgressUpdate | null>(null);
   const navigate = useNavigate();
+  const [generationInProgress, setGenerationInProgress] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     if (isOpen) {
@@ -211,7 +212,7 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
           }));
 
           const sortedProjects = projectsWithUpdateTime.sort((a, b) => {
-            if (!a.last_update) return 1;  // null values go last
+            if (!a.last_update) return 1;
             if (!b.last_update) return -1;
             return new Date(b.last_update).getTime() - new Date(a.last_update).getTime();
           });
@@ -297,7 +298,14 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
 
   const handleCreateReport = async (projectId: string) => {
     try {
+      if (generationInProgress[projectId]) {
+        console.log(`Report generation already in progress for project ${projectId}, skipping duplicate request`);
+        return;
+      }
+      
+      setGenerationInProgress(prev => ({...prev, [projectId]: true}));
       setCreatingReport(projectId);
+      
       const { data: session } = await supabase.auth.getSession();
       
       if (!session.session) {
@@ -464,6 +472,11 @@ const CreateReportModal = ({ isOpen, onClose }: CreateReportModalProps) => {
       console.error('Error creating report:', error);
       toast.error('Failed to create report. Please try again.');
       setCreatingReport(null);
+      setGenerationInProgress(prev => {
+        const updated = {...prev};
+        delete updated[projectId];
+        return updated;
+      });
     }
   };
 
