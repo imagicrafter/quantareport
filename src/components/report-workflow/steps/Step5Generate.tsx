@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, CheckCircle } from 'lucide-react';
+import { FileText, CheckCircle, Play } from 'lucide-react';
 import InstructionsPanel from '../start-report/InstructionsPanel';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,12 +10,14 @@ import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNaviga
 import ReportGenerationProgress from '@/components/reports/ReportGenerationProgress';
 import { useReportGeneration } from '@/hooks/reports/useReportGeneration';
 import { navigateToReportEditor } from '@/components/reports/services/ReportGenerationService';
+import StepNavigationButtons from './components/StepNavigationButtons';
 
 const Step5Generate = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [projectId, setProjectId] = useState<string | null>(null);
   const { updateWorkflowState, fetchCurrentWorkflow } = useWorkflowNavigation();
+  const [existingReport, setExistingReport] = useState<{ id: string, status: string, content?: string } | null>(null);
   
   // Use the report generation hook for consistent functionality
   const {
@@ -61,28 +62,18 @@ const Step5Generate = () => {
           console.error('Error checking for existing reports:', reportsError);
         }
         
-        // Important: Only initiate report generation if we don't have an existing report
-        // or if the existing report is in draft state and doesn't have content
+        // If we have an existing report, set it to display its status
         if (existingReports && existingReports.length > 0) {
           console.log('Found existing report:', existingReports[0]);
           const latestReport = existingReports[0];
           
-          // Check if report is already complete or in-progress
-          if (latestReport.status === 'processing') {
-            console.log('Report is already being processed. Using existing report.');
-            return;
-          } else if (latestReport.status !== 'draft' && latestReport.content) {
+          // Set existing report
+          setExistingReport(latestReport);
+          
+          // If report is already completed, set it so the UI shows proper state
+          if (latestReport.status !== 'draft' && latestReport.content) {
             console.log('Report is already completed. Using existing report.');
-            return;
           }
-        }
-        
-        // Only start report generation when there's no already active generation
-        if (currentProjectId && !generationInProgress[currentProjectId]) {
-          console.log('No valid existing report found and no generation in progress. Starting new report generation.');
-          await handleCreateReport(currentProjectId);
-        } else {
-          console.log(`Report generation already in progress for project ${currentProjectId} or no project ID available`);
         }
       } catch (error) {
         console.error('Error initializing Step5Generate:', error);
@@ -120,9 +111,47 @@ const Step5Generate = () => {
     } else {
       toast({
         title: "Report Not Ready",
-        description: "Please wait for the report to be generated before proceeding.",
+        description: "Please generate the report before proceeding.",
       });
     }
+  };
+  
+  const handleGenerateReport = async () => {
+    if (!projectId) return;
+    
+    // Prevent duplicate generations
+    if (generationInProgress[projectId]) {
+      toast({
+        title: "Already in Progress",
+        description: "Report generation is already in progress. Please wait.",
+      });
+      return;
+    }
+    
+    // Check if we already have a completed report
+    if (existingReport?.status === 'processing') {
+      toast({
+        title: "Report Processing",
+        description: "A report is already being processed. Please wait for it to complete.",
+      });
+      return;
+    }
+    
+    // If we have a completed report, ask if they want to regenerate
+    if (existingReport?.status !== 'draft' && existingReport?.content) {
+      toast({
+        title: "Using Existing Report",
+        description: "Your report has already been generated. Proceeding to review.",
+      });
+      
+      // Go to the next step with the existing report
+      await handleNext();
+      return;
+    }
+    
+    // Otherwise, generate a new report
+    console.log('Starting new report generation for project:', projectId);
+    await handleCreateReport(projectId);
   };
   
   // Determine component status based on report generation state
@@ -132,7 +161,7 @@ const Step5Generate = () => {
   };
   
   const getMessage = () => {
-    if (!progressUpdate) return 'Preparing report generation...';
+    if (!progressUpdate) return 'Click the Generate Report button to start.';
     return progressUpdate.message;
   };
   
@@ -160,7 +189,7 @@ const Step5Generate = () => {
               <h3 className="text-lg font-medium mb-4">
                 {getStatus() === 'generating' ? 'Generating Report' : 
                  getStatus() === 'completed' ? 'Report Generated' : 
-                 getStatus() === 'error' ? 'Error Generating Report' : 'Preparing Report'}
+                 getStatus() === 'error' ? 'Error Generating Report' : 'Generate Your Report'}
               </h3>
               
               <div className="w-full max-w-md mb-6">
@@ -170,6 +199,17 @@ const Step5Generate = () => {
                   status={getStatus() as 'idle' | 'generating' | 'completed' | 'error'}
                 />
               </div>
+              
+              {getStatus() === 'idle' && (
+                <Button 
+                  className="w-full max-w-md flex items-center justify-center"
+                  onClick={handleGenerateReport}
+                  disabled={!projectId || generationInProgress[projectId || '']}
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  Generate Report
+                </Button>
+              )}
               
               {getStatus() === 'completed' && reportCreated && (
                 <div className="space-y-4 w-full max-w-md">
