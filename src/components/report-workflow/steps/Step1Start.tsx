@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -57,14 +58,14 @@ const Step1Start = () => {
   
   const { isSaving, saveReport } = useReportSave();
   
-  // Modified to ensure we don't preselect projects when coming back to Step 1
+  // Initialize the form when first loading the component
   useEffect(() => {
-    const checkWorkflowState = async () => {
+    const initializeForm = async () => {
       try {
         const { workflowState } = await fetchCurrentWorkflow();
         setWorkflowState(workflowState);
         
-        // Always reset form when arriving at Step 1
+        // Always start with a clean form when arriving at Step 1
         resetForm();
         resetTemplateNoteValues();
         
@@ -73,12 +74,13 @@ const Step1Start = () => {
           fetchDefaultTemplate();
         }
       } catch (error) {
-        console.error('Error checking workflow state:', error);
+        console.error('Error initializing form:', error);
       }
     };
     
-    checkWorkflowState();
-  }, [fetchCurrentWorkflow, resetForm, resetTemplateNoteValues, defaultTemplate?.id, fetchDefaultTemplate]);
+    initializeForm();
+    // Only run this effect once when the component mounts
+  }, []);
   
   const handleReportModeChange = (mode: 'new' | 'update') => {
     // If we're in workflow state 1 and changing mode, show the exit dialog
@@ -92,6 +94,17 @@ const Step1Start = () => {
     }
     
     setReportMode(mode);
+    
+    // Reset form when switching to new mode
+    if (mode === 'new') {
+      resetForm();
+      resetTemplateNoteValues();
+      
+      // If we have a default template, fetch it
+      if (defaultTemplate?.id) {
+        fetchDefaultTemplate();
+      }
+    }
   };
 
   const handleProjectChange = (projectId: string) => {
@@ -105,10 +118,14 @@ const Step1Start = () => {
       return;
     }
     
+    // First set the project ID directly to update the select component
+    setSelectedProjectId(projectId);
+    
+    // Then load the project details (handle all the async operations)
     handleProjectSelect(
       projectId, 
-      (loading: boolean) => isLoading, 
-      (template: any) => defaultTemplate, 
+      () => isLoading, 
+      () => defaultTemplate, 
       setTemplateNotes, 
       setTemplateNoteValues
     );
@@ -161,10 +178,11 @@ const Step1Start = () => {
             }
           }
         } else if (exitAction.type === 'project-change') {
+          setSelectedProjectId(exitAction.value);
           handleProjectSelect(
             exitAction.value, 
-            (loading: boolean) => isLoading, 
-            (template: any) => defaultTemplate, 
+            () => isLoading, 
+            () => defaultTemplate, 
             setTemplateNotes, 
             setTemplateNoteValues
           );

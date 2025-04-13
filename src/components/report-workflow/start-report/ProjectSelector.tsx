@@ -14,18 +14,27 @@ interface ProjectSelectorProps {
 
 const ProjectSelector = ({ projects, selectedId, onSelect }: ProjectSelectorProps) => {
   return (
-    <Select onValueChange={onSelect} value={selectedId}>
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder="Select an existing project" />
-      </SelectTrigger>
-      <SelectContent>
-        {projects.map(project => (
-          <SelectItem key={project.id} value={project.id}>
-            {project.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div>
+      <label className="block mb-2 text-sm font-medium">Select Existing Project</label>
+      <Select onValueChange={onSelect} value={selectedId || undefined}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Select an existing project" />
+        </SelectTrigger>
+        <SelectContent>
+          {projects.length > 0 ? (
+            projects.map(project => (
+              <SelectItem key={project.id} value={project.id}>
+                {project.name}
+              </SelectItem>
+            ))
+          ) : (
+            <SelectItem value="no-projects" disabled>
+              No projects available
+            </SelectItem>
+          )}
+        </SelectContent>
+      </Select>
+    </div>
   );
 };
 

@@ -43,13 +43,12 @@ export const useProjectData = () => {
 
   const handleProjectSelect = async (
     projectId: string,
-    setIsLoading: (isLoading: boolean) => void,
-    setDefaultTemplate: (template: any) => void,
+    getIsLoading: () => boolean,
+    getDefaultTemplate: () => any,
     setTemplateNotes: (notes: any[]) => void,
     setTemplateNoteValues: (values: Record<string, string>) => void
   ) => {
-    setSelectedProjectId(projectId);
-    setIsLoading(true);
+    if (!projectId) return;
     
     try {
       // Fetch project details
@@ -73,7 +72,6 @@ export const useProjectData = () => {
           .single();
           
         if (templateError) throw templateError;
-        setDefaultTemplate(template);
         
         // Load template notes structure first
         const templateNotes = await loadTemplateNotes(template.id);
@@ -111,8 +109,6 @@ export const useProjectData = () => {
         title: 'Error',
         description: 'Failed to load project information. Please try again.',
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
