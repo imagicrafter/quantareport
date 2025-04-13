@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { NoteFormValues } from '@/components/dashboard/notes/hooks/useNotesOperations';
@@ -28,10 +29,11 @@ import RelatedFiles from '@/components/dashboard/notes/RelatedFiles';
 import AudioRecorder from '../files/AudioRecorder';
 import { supabase } from '@/integrations/supabase/client';
 
+// Updated interface to match the form type from Step4Notes
 interface AddNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  form: UseFormReturn<NoteFormValues>;
+  form: UseFormReturn<NoteFormValues>; // Using the NoteFormValues type from useNotesOperations
   onSubmit: () => void;
   saving: boolean;
   tempNoteId: string | null;
