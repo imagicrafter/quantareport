@@ -173,7 +173,7 @@ const Step3Process = () => {
 
   const handleManualProcessing = async () => {
     setProcessingStatus('processing');
-    setProgress(10);
+    setProgress(10); // Set some initial progress when user clicks Process Files
     setProcessingComplete(false);
     
     // Call analyzeFiles with the appropriate start point
