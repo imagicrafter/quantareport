@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, LayoutDashboard, FileText, Image, FileEdit, Settings, Users, FilePlus, ChevronDown, ChevronRight, Menu } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, FileText, Image, FileEdit, Settings, Users, FilePlus, ChevronDown, ChevronRight, Menu, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -13,7 +14,7 @@ interface SidebarProps {
 const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarProps) => {
   const location = useLocation();
   const [reportsExpanded, setReportsExpanded] = useState(false);
-  const [projectsExpanded, setProjectsExpanded] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   const isActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
@@ -21,21 +22,31 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
   
   const isReportsActive = () => {
     return location.pathname.includes('/reports') || 
-           location.pathname.includes('/report-wizard');
+           location.pathname.includes('/report-wizard') ||
+           location.pathname.includes('/dashboard/projects');
   };
 
-  const isProjectsActive = () => {
-    return location.pathname.includes('/dashboard/projects');
-  };
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+          
+          setIsAdmin(profile?.role === 'admin');
+        }
+      } catch (error) {
+        console.error('Error checking admin role:', error);
+      }
+    };
+
+    checkAdminRole();
+  }, []);
   
-  const expandReports = () => {
-    setReportsExpanded(!reportsExpanded);
-  };
-
-  const expandProjects = () => {
-    setProjectsExpanded(!projectsExpanded);
-  };
-
   return (
     <aside 
       className={cn(
@@ -64,59 +75,10 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
       {/* Sidebar Content */}
       <div className="flex-1 flex flex-col justify-between py-4 overflow-y-auto">
         <div className="px-4 space-y-1">
-          {/* Projects Section with Submenu */}
-          <div>
-            <button
-              onClick={expandProjects}
-              className={cn(
-                "w-full flex items-center justify-between rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
-                isProjectsActive()
-                  ? "bg-quanta-blue text-white"
-                  : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
-              )}
-            >
-              <div className="flex items-center">
-                <LayoutDashboard 
-                  size={20} 
-                  className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
-                />
-                {sidebarOpen && <span>Projects</span>}
-              </div>
-              {sidebarOpen && (
-                projectsExpanded ? 
-                <ChevronDown size={16} /> : 
-                <ChevronRight size={16} />
-              )}
-            </button>
-
-            {/* Projects Submenu */}
-            {(sidebarOpen && projectsExpanded) && (
-              <div className="ml-8 mt-1 space-y-1">
-                <Link
-                  to="/dashboard/projects"
-                  className={cn(
-                    "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
-                    isActive('/dashboard/projects')
-                      ? "bg-accent text-quanta-blue"
-                      : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
-                  )}
-                >
-                  <span>View Projects</span>
-                </Link>
-                <button
-                  onClick={() => setShowCreateProject(true)}
-                  className="w-full flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors text-gray-700 hover:bg-accent/50 hover:text-quanta-blue text-left"
-                >
-                  <span>New Project</span>
-                </button>
-              </div>
-            )}
-          </div>
-
           {/* Reports Section with Submenu */}
           <div>
             <button
-              onClick={expandReports}
+              onClick={() => setReportsExpanded(!reportsExpanded)}
               className={cn(
                 "w-full flex items-center justify-between rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
                 isReportsActive()
@@ -142,17 +104,6 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
             {(sidebarOpen && reportsExpanded) && (
               <div className="ml-8 mt-1 space-y-1">
                 <Link
-                  to="/dashboard/reports"
-                  className={cn(
-                    "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
-                    isActive('/dashboard/reports')
-                      ? "bg-accent text-quanta-blue"
-                      : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
-                  )}
-                >
-                  <span>All Reports</span>
-                </Link>
-                <Link
                   to="/dashboard/report-wizard/start"
                   className={cn(
                     "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
@@ -161,7 +112,32 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
                       : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
                   )}
                 >
-                  <span>Wizard</span>
+                  <Wand2 size={16} className="mr-2" />
+                  <span>Report Wizard</span>
+                </Link>
+                <Link
+                  to="/dashboard/reports"
+                  className={cn(
+                    "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
+                    isActive('/dashboard/reports')
+                      ? "bg-accent text-quanta-blue"
+                      : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+                  )}
+                >
+                  <FileText size={16} className="mr-2" />
+                  <span>View Reports</span>
+                </Link>
+                <Link
+                  to="/dashboard/projects"
+                  className={cn(
+                    "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
+                    isActive('/dashboard/projects')
+                      ? "bg-accent text-quanta-blue"
+                      : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+                  )}
+                >
+                  <LayoutDashboard size={16} className="mr-2" />
+                  <span>View Projects</span>
                 </Link>
               </div>
             )}
@@ -231,21 +207,23 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
             {sidebarOpen && <span>Settings</span>}
           </Link>
           
-          <Link
-            to="/dashboard/admin"
-            className={cn(
-              "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
-              isActive('/dashboard/admin')
-                ? "bg-quanta-blue text-white"
-                : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
-            )}
-          >
-            <Users 
-              size={20} 
-              className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
-            />
-            {sidebarOpen && <span>Admin</span>}
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/dashboard/admin"
+              className={cn(
+                "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+                isActive('/dashboard/admin')
+                  ? "bg-quanta-blue text-white"
+                  : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+              )}
+            >
+              <Users 
+                size={20} 
+                className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+              />
+              {sidebarOpen && <span>Admin</span>}
+            </Link>
+          )}
         </div>
         
         {/* User Profile */}
