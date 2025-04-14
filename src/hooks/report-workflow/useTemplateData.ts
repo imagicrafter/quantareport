@@ -10,6 +10,7 @@ export interface TemplateNote {
   title: string;
   name: string;
   custom_content: string | null;
+  position: number | null;
 }
 
 export const useTemplateData = (projectId?: string) => {
@@ -81,11 +82,21 @@ export const useTemplateData = (projectId?: string) => {
           try {
             const notes = await loadTemplateNotes(templateId);
             console.log('Template notes loaded:', notes);
-            setTemplateNotes(notes || []);
+            
+            // Sort notes by position if available
+            const sortedNotes = [...notes].sort((a, b) => {
+              // Handle null positions by placing them at the end
+              if (a.position === null && b.position === null) return 0;
+              if (a.position === null) return 1;
+              if (b.position === null) return -1;
+              return a.position - b.position;
+            });
+            
+            setTemplateNotes(sortedNotes);
             
             // Initialize template note values with the custom_content values if they exist
             const initialValues: Record<string, string> = {};
-            notes.forEach(note => {
+            sortedNotes.forEach(note => {
               // Pre-populate with custom_content value or empty string
               initialValues[note.id] = note.custom_content || '';
             });

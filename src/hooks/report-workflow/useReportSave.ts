@@ -4,12 +4,20 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
+interface TemplateNote {
+  id: string;
+  title: string;
+  name: string;
+  custom_content: string | null;
+  position: number | null;
+}
+
 interface ReportSaveProps {
   reportMode: 'new' | 'update';
   reportName: string;
   templateId?: string;
   selectedProjectId?: string;
-  templateNotes?: any[];
+  templateNotes?: TemplateNote[];
   templateNoteValues?: Record<string, string>;
 }
 
@@ -79,8 +87,8 @@ export const useReportSave = () => {
         
         // Store the templateNotes to database if they exist
         if (templateNotes && templateNotes.length > 0 && templateNoteValues) {
-          console.log('Saving template notes for project');
-          // Convert templateNoteValues to notes
+          console.log('Saving template notes for project with positions:', templateNotes);
+          // Convert templateNoteValues to notes, preserving position values
           const notes = templateNotes.map((noteTemplate) => {
             return {
               project_id: projectId,
@@ -88,6 +96,7 @@ export const useReportSave = () => {
               title: noteTemplate.title,
               name: noteTemplate.name,
               content: templateNoteValues[noteTemplate.id] || '',
+              position: noteTemplate.position, // Ensure position is properly copied over
             };
           });
           
@@ -99,7 +108,7 @@ export const useReportSave = () => {
           if (notesError) {
             console.error('Error saving template notes:', notesError);
           } else {
-            console.log('Template notes saved successfully');
+            console.log('Template notes saved successfully with positions');
           }
         }
       }

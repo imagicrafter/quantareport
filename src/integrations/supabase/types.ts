@@ -631,6 +631,7 @@ export type Database = {
           custom_content: string | null
           id: string
           name: string
+          position: number | null
           template_id: string
           title: string
         }
@@ -639,6 +640,7 @@ export type Database = {
           custom_content?: string | null
           id?: string
           name: string
+          position?: number | null
           template_id: string
           title: string
         }
@@ -647,6 +649,7 @@ export type Database = {
           custom_content?: string | null
           id?: string
           name?: string
+          position?: number | null
           template_id?: string
           title?: string
         }
