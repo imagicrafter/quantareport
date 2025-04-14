@@ -4,12 +4,20 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
+interface TemplateNote {
+  id: string;
+  title: string;
+  name: string;
+  custom_content: string | null;
+  position: number | null;
+}
+
 interface ReportSaveProps {
   reportMode: 'new' | 'update';
   reportName: string;
   templateId?: string;
   selectedProjectId?: string;
-  templateNotes?: any[];
+  templateNotes?: TemplateNote[];
   templateNoteValues?: Record<string, string>;
 }
 
@@ -88,6 +96,7 @@ export const useReportSave = () => {
               title: noteTemplate.title,
               name: noteTemplate.name,
               content: templateNoteValues[noteTemplate.id] || '',
+              position: noteTemplate.position, // Add position from template note
             };
           });
           

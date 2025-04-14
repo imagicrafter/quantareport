@@ -7,6 +7,7 @@ export interface TemplateNote {
   title: string;
   name: string;
   custom_content: string | null;
+  position: number | null;
 }
 
 /**
@@ -21,7 +22,8 @@ export const loadTemplateNotes = async (templateId: string): Promise<TemplateNot
         template_id,
         title,
         name,
-        custom_content
+        custom_content,
+        position
       `)
       .eq('template_id', templateId);
 
@@ -40,7 +42,8 @@ export const loadTemplateNotes = async (templateId: string): Promise<TemplateNot
 export const addNoteToTemplate = async (
   templateId: string, 
   title: string, 
-  name: string
+  name: string,
+  position?: number | null
 ): Promise<TemplateNote> => {
   try {
     const { data, error } = await supabase
@@ -49,7 +52,8 @@ export const addNoteToTemplate = async (
         template_id: templateId,
         title: title.trim(),
         name: name.trim(),
-        custom_content: ""
+        custom_content: "",
+        position: position || null
       })
       .select()
       .single();
@@ -68,7 +72,7 @@ export const addNoteToTemplate = async (
  */
 export const updateTemplateNote = async (
   noteId: string, 
-  updates: { title?: string; name?: string; custom_content?: string }
+  updates: { title?: string; name?: string; custom_content?: string; position?: number | null }
 ): Promise<void> => {
   try {
     const { error } = await supabase

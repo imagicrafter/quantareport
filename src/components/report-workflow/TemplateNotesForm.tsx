@@ -9,6 +9,7 @@ interface TemplateNote {
   title: string;
   name: string;
   custom_content: string | null;
+  position: number | null;
 }
 
 interface TemplateNotesFormProps {
@@ -23,7 +24,16 @@ const TemplateNotesForm: FC<TemplateNotesFormProps> = ({
   onChange 
 }) => {
   // Show notes that have a name (rather than filtering by custom_content)
-  const notesToShow = templateNotes.filter(note => Boolean(note.name));
+  // and sort them by position
+  const notesToShow = templateNotes
+    .filter(note => Boolean(note.name))
+    .sort((a, b) => {
+      // Handle null positions by placing them at the end
+      if (a.position === null && b.position === null) return 0;
+      if (a.position === null) return 1;
+      if (b.position === null) return -1;
+      return a.position - b.position;
+    });
   
   if (notesToShow.length === 0) {
     return null;
