@@ -17,7 +17,7 @@ const Step3Process = () => {
   const location = useLocation();
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string>('');
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState(0); // Start at 0
   const [processingComplete, setProcessingComplete] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'complete' | 'error'>('idle');
   const [textDocumentCount, setTextDocumentCount] = useState(0);
@@ -88,24 +88,28 @@ const Step3Process = () => {
     const startProcessing = async () => {
       setProcessingStatus('processing');
       
-      // Set initial progress
-      setProgress(10);
+      // Set initial progress to 0
+      setProgress(0);
       
       // Don't auto-start file analysis, always display the button
-      // Just increment progress a bit to show something is happening
-      const interval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 30) {
-            clearInterval(interval);
-            return 30;
-          }
-          return prev + 5;
-        });
-      }, 200);
+      // If no unprocessed files (hasUnprocessedFiles is false), auto-progress toward completion
+      if (!hasUnprocessedFiles) {
+        const interval = setInterval(() => {
+          setProgress(prev => {
+            if (prev >= 100) {
+              clearInterval(interval);
+              setProcessingComplete(true);
+              setProcessingStatus('complete');
+              return 100;
+            }
+            return prev + 5;
+          });
+        }, 200);
+      }
     };
     
     startProcessing();
-  }, [projectId]);
+  }, [projectId, hasUnprocessedFiles]);
 
   const fetchFileCounts = async () => {
     if (!projectId) return;
@@ -160,8 +164,6 @@ const Step3Process = () => {
       
       if (!unprocessedFiles || unprocessedFiles.length === 0) {
         await fetchFileCounts();
-        // Don't automatically mark processing as complete
-        // We'll wait until the user clicks the button and the process completes
       }
       
     } catch (error) {
@@ -276,8 +278,8 @@ const Step3Process = () => {
                 </p>
               </div>
               
-              {/* Always show processing button unless complete */}
-              {processingStatus !== 'complete' && (
+              {/* Show processing button only if status is not complete AND hasUnprocessedFiles is true */}
+              {processingStatus !== 'complete' && hasUnprocessedFiles && (
                 <div className="mt-4 mb-6">
                   <Button
                     onClick={handleManualProcessing}
@@ -285,7 +287,7 @@ const Step3Process = () => {
                     className="flex items-center gap-2"
                   >
                     <PlayCircle className="h-5 w-5" />
-                    {hasUnprocessedFiles ? 'Process Files' : 'Process Notes'}
+                    Process Files
                   </Button>
                 </div>
               )}
