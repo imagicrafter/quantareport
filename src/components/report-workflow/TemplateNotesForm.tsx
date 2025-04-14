@@ -9,6 +9,7 @@ interface TemplateNote {
   title: string;
   name: string;
   custom_content: string | null;
+  position: number | null;
 }
 
 interface TemplateNotesFormProps {
