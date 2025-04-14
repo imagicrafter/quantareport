@@ -23,8 +23,7 @@ const TemplateNotesForm: FC<TemplateNotesFormProps> = ({
   values, 
   onChange 
 }) => {
-  // Show notes that have a name (rather than filtering by custom_content)
-  // and sort them by position
+  // Show notes that have a name and sort them by position
   const notesToShow = templateNotes
     .filter(note => Boolean(note.name))
     .sort((a, b) => {

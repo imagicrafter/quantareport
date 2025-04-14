@@ -198,15 +198,16 @@ const Templates = () => {
       console.log("Template notes to copy:", templateNotes);
       
       if (templateNotes.length > 0) {
-        // Create new template_notes entries for the new template
+        // Create new template_notes entries for the new template, preserving position values
         const newTemplateNotes = templateNotes.map(note => ({
           template_id: completeTemplate.id,
           title: note.title,
           name: note.name,
-          custom_content: note.custom_content
+          custom_content: note.custom_content,
+          position: note.position // Ensure position is copied over
         }));
         
-        console.log("Creating new template notes:", newTemplateNotes);
+        console.log("Creating new template notes with positions preserved:", newTemplateNotes);
         
         const { error: notesError } = await supabase
           .from("template_notes")
@@ -220,7 +221,7 @@ const Templates = () => {
             variant: "destructive",
           });
         } else {
-          console.log("Successfully copied template notes");
+          console.log("Successfully copied template notes with positions");
         }
       }
 
