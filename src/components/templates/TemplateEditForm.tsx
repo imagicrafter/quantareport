@@ -1,8 +1,7 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, PlusCircle, Trash2 } from "lucide-react";
+import { AlertCircle, PlusCircle, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,11 +27,6 @@ import {
 } from "@/components/ui/select";
 import { Template } from "@/types/template.types";
 import { formSchema, FormValues, formatJsonForDisplay } from "@/utils/templateFormSchema";
-import { 
-  loadTemplateNotes,
-  updateTemplateNote,
-  removeNoteFromTemplate
-} from "@/utils/templateNoteUtils";
 
 interface TemplateEditFormProps {
   currentTemplate: Template | null;
@@ -48,7 +42,6 @@ interface TemplateNote {
   title: string;
   name: string;
   custom_content: string | null;
-  position: number | null;
 }
 
 const TemplateEditForm = ({ 
@@ -95,26 +88,28 @@ const TemplateEditForm = ({
 
   useEffect(() => {
     if (!isCreating && currentTemplate?.id) {
-      loadTemplateNotesData(currentTemplate.id);
+      loadTemplateNotes(currentTemplate.id);
     }
   }, [currentTemplate, isCreating]);
 
-  const loadTemplateNotesData = async (templateId: string) => {
+  const loadTemplateNotes = async (templateId: string) => {
     try {
       setLoadingNotes(true);
       
-      const notes = await loadTemplateNotes(templateId);
+      const { data, error } = await supabase
+        .from('template_notes')
+        .select(`
+          id,
+          template_id,
+          title,
+          name,
+          custom_content
+        `)
+        .eq('template_id', templateId);
+
+      if (error) throw error;
       
-      // Sort notes by position
-      const sortedNotes = [...notes].sort((a, b) => {
-        // Handle null positions by placing them at the end
-        if (a.position === null && b.position === null) return 0;
-        if (a.position === null) return 1;
-        if (b.position === null) return -1;
-        return a.position - b.position;
-      });
-      
-      setTemplateNotes(sortedNotes);
+      setTemplateNotes(data || []);
     } catch (error) {
       console.error('Error loading template notes:', error);
       toast.error('Failed to load template notes');
@@ -210,21 +205,13 @@ const TemplateEditForm = ({
     }
 
     try {
-      // Find the highest position to place the new note at the end
-      const highestPosition = templateNotes.reduce((max, note) => {
-        return note.position !== null && note.position > max ? note.position : max;
-      }, 0);
-      
-      const nextPosition = highestPosition + 1;
-      
       const { data, error } = await supabase
         .from('template_notes')
         .insert({
           template_id: currentTemplate.id,
           title: noteTitle.trim(),
           name: noteName.trim(),
-          custom_content: "",
-          position: nextPosition
+          custom_content: ""
         })
         .select()
         .single();
@@ -241,51 +228,15 @@ const TemplateEditForm = ({
     }
   };
 
-  const moveNotePosition = async (templateNoteId: string, direction: 'up' | 'down') => {
+  const removeNoteFromTemplate = async (templateNoteId: string) => {
     try {
-      const noteIndex = templateNotes.findIndex(note => note.id === templateNoteId);
-      if (noteIndex === -1) return;
-      
-      // Can't move up if already at top
-      if (direction === 'up' && noteIndex === 0) return;
-      
-      // Can't move down if already at bottom
-      if (direction === 'down' && noteIndex === templateNotes.length - 1) return;
-      
-      const targetIndex = direction === 'up' ? noteIndex - 1 : noteIndex + 1;
-      
-      // Create a copy of the notes for reordering
-      const updatedNotes = [...templateNotes];
-      const noteToMove = updatedNotes[noteIndex];
-      const targetNote = updatedNotes[targetIndex];
-      
-      // Swap positions
-      const tempPosition = noteToMove.position;
-      noteToMove.position = targetNote.position;
-      targetNote.position = tempPosition;
-      
-      // Update in the database
-      const promises = [
-        updateTemplateNote(noteToMove.id, { position: noteToMove.position }),
-        updateTemplateNote(targetNote.id, { position: targetNote.position })
-      ];
-      
-      await Promise.all(promises);
-      
-      // Swap in the array to update UI
-      [updatedNotes[noteIndex], updatedNotes[targetIndex]] = [updatedNotes[targetIndex], updatedNotes[noteIndex]];
-      setTemplateNotes(updatedNotes);
-      
-      toast.success(`Note moved ${direction}`);
-    } catch (error) {
-      console.error(`Error moving note ${direction}:`, error);
-      toast.error(`Failed to move note ${direction}`);
-    }
-  };
+      const { error } = await supabase
+        .from('template_notes')
+        .delete()
+        .eq('id', templateNoteId);
 
-  const removeNoteFromTemplateHandler = async (templateNoteId: string) => {
-    try {
-      await removeNoteFromTemplate(templateNoteId);
+      if (error) throw error;
+
       setTemplateNotes(prev => prev.filter(tn => tn.id !== templateNoteId));
       toast.success("Note removed from template");
     } catch (error) {
@@ -423,37 +374,17 @@ const TemplateEditForm = ({
                   <div className="text-center py-4 text-muted-foreground">No notes attached to this template</div>
                 ) : (
                   <div className="space-y-2">
-                    {templateNotes.map((templateNote, index) => (
+                    {templateNotes.map(templateNote => (
                       <div key={templateNote.id} className="flex items-center justify-between rounded-md border p-2">
                         <span className="font-medium">{templateNote.title}</span>
-                        <div className="flex items-center space-x-1">
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => moveNotePosition(templateNote.id, 'up')}
-                            disabled={index === 0}
-                          >
-                            <ArrowUp className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => moveNotePosition(templateNote.id, 'down')}
-                            disabled={index === templateNotes.length - 1}
-                          >
-                            <ArrowDown className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => removeNoteFromTemplateHandler(templateNote.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => removeNoteFromTemplate(templateNote.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
                     ))}
                   </div>

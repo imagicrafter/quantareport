@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import InstructionsPanel from '../start-report/InstructionsPanel';
 import StepBanner from '../StepBanner';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileSearch, CheckCircle, AlertCircle, PlayCircle } from 'lucide-react';
+import { FileSearch, CheckCircle, AlertCircle } from 'lucide-react';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import { useImageAnalysis } from '@/components/dashboard/files/hooks/useImageAnalysis';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,7 +16,7 @@ const Step3Process = () => {
   const location = useLocation();
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string>('');
-  const [progress, setProgress] = useState(0); // Start at 0
+  const [progress, setProgress] = useState(0);
   const [processingComplete, setProcessingComplete] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'complete' | 'error'>('idle');
   const [textDocumentCount, setTextDocumentCount] = useState(0);
@@ -88,12 +87,11 @@ const Step3Process = () => {
     const startProcessing = async () => {
       setProcessingStatus('processing');
       
-      // Set initial progress to 0
-      setProgress(0);
-      
-      // Don't auto-start file analysis, always display the button
-      // If no unprocessed files (hasUnprocessedFiles is false), auto-progress toward completion
-      if (!hasUnprocessedFiles) {
+      if (hasUnprocessedFiles) {
+        console.log('Unprocessed files found, starting analysis...');
+        await analyzeFiles();
+      } else {
+        console.log('No unprocessed files found, skipping analysis');
         const interval = setInterval(() => {
           setProgress(prev => {
             if (prev >= 100) {
@@ -102,14 +100,14 @@ const Step3Process = () => {
               setProcessingStatus('complete');
               return 100;
             }
-            return prev + 5;
+            return prev + 10;
           });
         }, 200);
       }
     };
     
     startProcessing();
-  }, [projectId, hasUnprocessedFiles]);
+  }, [projectId, hasUnprocessedFiles, analyzeFiles]);
 
   const fetchFileCounts = async () => {
     if (!projectId) return;
@@ -164,23 +162,13 @@ const Step3Process = () => {
       
       if (!unprocessedFiles || unprocessedFiles.length === 0) {
         await fetchFileCounts();
+        setProcessingComplete(true);
+        setProcessingStatus('complete');
+        setProgress(100);
       }
       
     } catch (error) {
       console.error('Error in fetchAnalyzedFiles:', error);
-    }
-  };
-
-  const handleManualProcessing = async () => {
-    setProcessingStatus('processing');
-    setProgress(10); // Set some initial progress when user clicks Process Files
-    setProcessingComplete(false);
-    
-    // Call analyzeFiles with the appropriate start point
-    if (hasUnprocessedFiles) {
-      await analyzeFiles('generate_descriptions');
-    } else {
-      await analyzeFiles('process_notes');
     }
   };
 
@@ -277,20 +265,6 @@ const Step3Process = () => {
                   {processingStatus === 'error' && 'An error occurred during processing'}
                 </p>
               </div>
-              
-              {/* Show processing button only if status is not complete AND hasUnprocessedFiles is true */}
-              {processingStatus !== 'complete' && hasUnprocessedFiles && (
-                <div className="mt-4 mb-6">
-                  <Button
-                    onClick={handleManualProcessing}
-                    disabled={isAnalyzing}
-                    className="flex items-center gap-2"
-                  >
-                    <PlayCircle className="h-5 w-5" />
-                    Process Files
-                  </Button>
-                </div>
-              )}
               
               {processingStatus === 'complete' && (
                 <div className="bg-muted p-4 rounded-md w-full mt-4">

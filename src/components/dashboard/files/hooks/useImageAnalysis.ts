@@ -38,7 +38,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
     }
   }, [projectId]);
 
-  const analyzeFiles = useCallback(async (fileAnalysisStartPoint?: string) => {
+  const analyzeFiles = useCallback(async () => {
     if (!projectId || !projectName) {
       toast.error('Project information is missing');
       return;
@@ -97,29 +97,21 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
         console.error('Error creating initial progress record:', progressError);
       }
       
-      // Add file_analysis_start_point to the payload if provided
-      const payload = {
-        project_id: projectId,
-        user_id: userId,
-        isTestMode: shouldUseTestMode,
-        job: jobId
-      };
-      
-      if (fileAnalysisStartPoint) {
-        Object.assign(payload, { file_analysis_start_point: fileAnalysisStartPoint });
-      }
-      
       // Call the file-analysis edge function using the new consolidated proxy
       const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
         body: {
           project_id: projectId,
-          user_id: userId,
+          user_id: userId, // Include the user_id in the payload
           isTestMode: shouldUseTestMode,
           job: jobId,
           type: 'file-analysis',
           env: shouldUseTestMode ? 'development' : isDevelopmentEnvironment() ? 'development' : 'production',
-          file_analysis_start_point: fileAnalysisStartPoint, // Include in the main body as well
-          payload
+          payload: {
+            project_id: projectId,
+            user_id: userId, // Include the user_id in the payload
+            isTestMode: shouldUseTestMode,
+            job: jobId
+          }
         }
       });
       
