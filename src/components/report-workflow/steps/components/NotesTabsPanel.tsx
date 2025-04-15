@@ -21,6 +21,7 @@ const NotesTabsPanel = ({
   projectId
 }: NotesTabsPanelProps) => {
   const [activeTab, setActiveTab] = useState('all');
+  const [analyzingImages, setAnalyzingImages] = useState(false);
   const { 
     handleEditNote, 
     handleDeleteNote,
@@ -36,7 +37,9 @@ const NotesTabsPanel = ({
     return notes.filter(note => {
       if (!note.metadata) return false;
       try {
-        const metadata = note.metadata;
+        const metadata = typeof note.metadata === 'string' 
+          ? JSON.parse(note.metadata) 
+          : note.metadata;
         return metadata.category === activeTab;
       } catch (e) {
         return false;
@@ -59,27 +62,35 @@ const NotesTabsPanel = ({
             <TabsContent value={activeTab} className="mt-0 h-full">
               {activeTab === 'finding' ? (
                 <div className="space-y-4">
-                  {filteredNotes().map((note) => (
-                    <ExpandableNote
-                      key={note.id}
-                      note={note}
-                      onDelete={handleDeleteNote}
-                      onUpdateNote={(n, values) => handleEditNote(n, values)}
-                      onAnalyzeImages={() => handleAnalyzeImages(note.id)}
-                      onTranscriptionComplete={handleTranscriptionComplete}
-                      analyzingImages={false}
-                      projectId={projectId}
-                      relatedFiles={relatedFiles[note.id] || []}
-                      onFileAdded={() => onFileAdded(note.id)}
-                      isLocked={note.files_relationships_is_locked || false}
-                      onLockToggle={(locked) => handleEditNote(note, { 
-                        title: note.title, 
-                        content: note.content || '', 
-                        analysis: note.analysis || '',
-                        files_relationships_is_locked: locked 
-                      })}
-                    />
-                  ))}
+                  {filteredNotes().length === 0 ? (
+                    <div className="py-8 text-center text-muted-foreground border rounded-lg">
+                      No findings added yet. Add a note with category "finding" to get started.
+                    </div>
+                  ) : (
+                    filteredNotes().map((note) => (
+                      <ExpandableNote
+                        key={note.id}
+                        note={note}
+                        onDelete={handleDeleteNote}
+                        onUpdateNote={(n, values) => handleEditNote(n, values)}
+                        onAnalyzeImages={() => handleAnalyzeImages(note.id)}
+                        onTranscriptionComplete={handleTranscriptionComplete}
+                        analyzingImages={analyzingImages}
+                        projectId={projectId}
+                        relatedFiles={relatedFiles[note.id] || []}
+                        onFileAdded={() => onFileAdded(note.id)}
+                        isLocked={note.files_relationships_is_locked || false}
+                        onLockToggle={async (locked) => {
+                          return handleEditNote(note, { 
+                            title: note.title, 
+                            content: note.content || '', 
+                            analysis: note.analysis || '',
+                            files_relationships_is_locked: locked 
+                          });
+                        }}
+                      />
+                    ))
+                  )}
                 </div>
               ) : (
                 <NotesList 

@@ -21,7 +21,7 @@ interface ExpandableNoteProps {
   relatedFiles: NoteFileRelationshipWithType[];
   onFileAdded: () => void;
   isLocked: boolean;
-  onLockToggle: (locked: boolean) => Promise<void> | void;
+  onLockToggle: (locked: boolean) => Promise<void>;
 }
 
 const ExpandableNote = ({
@@ -55,6 +55,11 @@ const ExpandableNote = ({
       content,
       analysis,
     });
+  };
+
+  // Wrapper function to ensure onLockToggle always returns a Promise
+  const handleLockToggle = async (locked: boolean): Promise<void> => {
+    return Promise.resolve(onLockToggle(locked));
   };
 
   return (
@@ -178,7 +183,7 @@ const ExpandableNote = ({
                 onFileAdded={onFileAdded}
                 relatedFiles={relatedFiles}
                 isLocked={isLocked}
-                onLockToggle={onLockToggle}
+                onLockToggle={handleLockToggle}
               />
             </div>
             <RelatedFiles 

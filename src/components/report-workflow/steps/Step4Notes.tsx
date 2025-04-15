@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -101,6 +100,16 @@ const Step4Notes = () => {
     }
   };
 
+  const wrappedHandleEditNote = async (note: Note, values: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }): Promise<void> => {
+    try {
+      await handleEditNote(note, values);
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error updating note:', error);
+      return Promise.reject(error);
+    }
+  };
+
   const handleAddNote = async (values: { title: string; content: string; analysis: string }) => {
     if (!projectId) return;
     
@@ -169,9 +178,9 @@ const Step4Notes = () => {
     }
   };
 
-  const handleAnalyzeImages = (noteId: string) => {
+  const handleAnalyzeImagesForNote = (noteId: string) => {
     setAnalyzingImages(true);
-    // Logic is now handled by the context provider
+    // Logic would be handled through context
   };
 
   const handleTranscriptionComplete = (text: string) => {
@@ -216,7 +225,7 @@ const Step4Notes = () => {
         />
         
         <NoteDialogsManager 
-          onEditNote={handleEditNote}
+          onEditNote={wrappedHandleEditNote}
           onDeleteNote={handleDeleteNote}
           fetchNoteRelatedFiles={fetchNoteRelatedFiles}
           relatedFiles={relatedFiles}
@@ -233,7 +242,7 @@ const Step4Notes = () => {
           tempNoteId={tempNoteId}
           analyzingImages={analyzingImages}
           relatedFiles={addNoteRelatedFiles}
-          onAnalyzeImages={() => handleAnalyzeImages(tempNoteId)}
+          onAnalyzeImages={() => handleAnalyzeImagesForNote(tempNoteId)}
           onFileAdded={() => {
             refreshNotes();
           }}

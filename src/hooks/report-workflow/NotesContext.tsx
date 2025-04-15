@@ -1,10 +1,11 @@
+
 import React, { createContext, useContext, useState, ReactNode, useCallback, useRef } from 'react';
 import { Note, NoteFileRelationshipWithType } from '@/utils/noteUtils';
 
 interface NotesContextType {
-  handleEditNote: (note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => void;
+  handleEditNote: (note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => Promise<void>;
   handleDeleteNote: (note: Note) => void;
-  setEditNoteHandler: (handler: (note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => void) => void;
+  setEditNoteHandler: (handler: (note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => Promise<void>) => void;
   setDeleteNoteHandler: (handler: (note: Note) => void) => void;
   handleAnalyzeImages: (noteId: string) => void;
   setAnalyzeImagesHandler: (handler: (noteId: string) => void) => void;
@@ -20,7 +21,7 @@ const NotesContext = createContext<NotesContextType | undefined>(undefined);
 
 export const NotesProvider = ({ children }: { children: ReactNode }) => {
   // Use refs to maintain function identity across renders
-  const editNoteHandlerRef = useRef<(note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => void>(() => {
+  const editNoteHandlerRef = useRef<(note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => Promise<void>>(async () => {
     console.log('Edit note handler not initialized yet');
   });
   
@@ -43,7 +44,7 @@ export const NotesProvider = ({ children }: { children: ReactNode }) => {
   // Keep track of related files for each note
   const [relatedFilesMap, setRelatedFilesMap] = useState<Record<string, NoteFileRelationshipWithType[]>>({});
   
-  const setEditNoteHandler = useCallback((handler: (note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => void) => {
+  const setEditNoteHandler = useCallback((handler: (note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => Promise<void>) => {
     editNoteHandlerRef.current = handler;
   }, []);
 
@@ -70,8 +71,8 @@ export const NotesProvider = ({ children }: { children: ReactNode }) => {
     }));
   }, []);
 
-  const handleEditNote = useCallback((note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => {
-    editNoteHandlerRef.current(note, values);
+  const handleEditNote = useCallback(async (note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => {
+    return editNoteHandlerRef.current(note, values);
   }, []);
 
   const handleDeleteNote = useCallback((note: Note) => {
