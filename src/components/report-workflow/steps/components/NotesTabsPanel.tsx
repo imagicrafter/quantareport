@@ -36,16 +36,29 @@ const NotesTabsPanel = ({
     
     return notes.filter(note => {
       if (!note.metadata) return false;
+      
       try {
         const metadata = typeof note.metadata === 'string' 
           ? JSON.parse(note.metadata) 
           : note.metadata;
+          
+        // Debug the metadata structure to verify category values
+        console.log('Note metadata for filtering:', note.id, metadata);
+        
+        // Check if category exists and matches activeTab
         return metadata.category === activeTab;
       } catch (e) {
+        console.error('Error parsing note metadata:', e, note.metadata);
         return false;
       }
     });
   };
+
+  // Get the filtered notes for the current tab
+  const notesToDisplay = filteredNotes();
+  
+  // Debug the filtering results
+  console.log(`Tab: ${activeTab}, Total Notes: ${notes.length}, Filtered Notes: ${notesToDisplay.length}`);
 
   return (
     <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
@@ -62,12 +75,12 @@ const NotesTabsPanel = ({
             <TabsContent value={activeTab} className="mt-0 h-full">
               {activeTab === 'finding' ? (
                 <div className="space-y-4">
-                  {filteredNotes().length === 0 ? (
+                  {notesToDisplay.length === 0 ? (
                     <div className="py-8 text-center text-muted-foreground border rounded-lg">
                       No findings added yet. Add a note with category "finding" to get started.
                     </div>
                   ) : (
-                    filteredNotes().map((note) => (
+                    notesToDisplay.map((note) => (
                       <ExpandableNote
                         key={note.id}
                         note={note}
@@ -94,7 +107,7 @@ const NotesTabsPanel = ({
                 </div>
               ) : (
                 <NotesList 
-                  notes={filteredNotes()}
+                  notes={notesToDisplay}
                   loading={loading}
                   onEditNote={handleEditNote}
                   onDeleteNote={handleDeleteNote}

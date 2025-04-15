@@ -1,4 +1,3 @@
-
 import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { getWebhookUrl, isDevelopmentEnvironment } from './webhookConfig';
@@ -120,20 +119,17 @@ export const submitImageAnalysis = async (
 
 // Helper to parse metadata safely
 export const parseNoteMetadata = (note: any): Note => {
-  let parsedMetadata = note.metadata;
-  
-  // If metadata is a string, try to parse it as JSON
-  if (typeof note.metadata === 'string') {
-    try {
-      parsedMetadata = JSON.parse(note.metadata);
-    } catch (e) {
-      console.log('Error parsing metadata string', e);
-      parsedMetadata = null;
+  try {
+    if (note.metadata && typeof note.metadata === 'string') {
+      const parsedMetadata = JSON.parse(note.metadata);
+      console.log('Parsed note metadata:', note.id, parsedMetadata);
+      return {
+        ...note,
+        metadata: parsedMetadata
+      };
     }
+  } catch (e) {
+    console.error('Error parsing note metadata:', e, note.metadata);
   }
-  
-  return {
-    ...note,
-    metadata: parsedMetadata
-  };
+  return note;
 };

@@ -31,7 +31,15 @@ export const useNotesManagement = (projectId: string | null) => {
           variant: "destructive"
         });
       } else {
-        const processedNotes = data.map(note => parseNoteMetadata(note));
+        // Debug the raw note data
+        console.log('Raw notes data:', data);
+        
+        const processedNotes = data.map(note => {
+          const parsedNote = parseNoteMetadata(note);
+          console.log('Processed note with metadata:', parsedNote);
+          return parsedNote;
+        });
+        
         setNotes(processedNotes);
       }
     } catch (error) {
@@ -120,6 +128,7 @@ export const useNotesManagement = (projectId: string | null) => {
           title: values.title,
           content: values.content || '',
           analysis: values.analysis || null,
+          files_relationships_is_locked: values.files_relationships_is_locked
         })
         .eq('id', note.id);
       
@@ -171,6 +180,12 @@ export const useNotesManagement = (projectId: string | null) => {
   const refreshNotes = useCallback(async () => {
     if (projectId) {
       await fetchNotes(projectId);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    if (projectId) {
+      fetchNotes(projectId);
     }
   }, [projectId]);
 
