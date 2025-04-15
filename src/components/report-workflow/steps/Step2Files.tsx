@@ -4,14 +4,18 @@ import FileUploadArea from '../file-upload/FileUploadArea';
 import UploadedFilesTable from '../file-upload/UploadedFilesTable';
 import StepBanner from '../StepBanner';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
 
 const Step2Files = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [uploadedFiles, setUploadedFiles] = useState<ProjectFile[]>([]);
+  const [pastedText, setPastedText] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -60,6 +64,16 @@ const Step2Files = () => {
         if (activeProjectId) {
           console.log('Step2Files - Using project ID from database:', activeProjectId);
           setProjectId(activeProjectId);
+          
+          const { data: projectData } = await supabase
+            .from('projects')
+            .select('name')
+            .eq('id', activeProjectId)
+            .single();
+            
+          if (projectData) {
+            setProjectName(projectData.name);
+          }
           
           const { data: userData } = await supabase.auth.getUser();
           
@@ -173,6 +187,76 @@ const Step2Files = () => {
     fetchFiles();
   };
 
+  const handleSaveText = async () => {
+    if (!projectId || !pastedText.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter some text before saving.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const timestamp = new Date().toISOString().split('T')[0];
+      const fileName = `${projectName}_${timestamp}.txt`;
+      const filePath = `${projectId}/${fileName}`;
+
+      const file = new File([pastedText], fileName, { type: 'text/plain' });
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('pub_documents')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: urlData } = await supabase.storage
+        .from('pub_documents')
+        .getPublicUrl(filePath);
+
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData.user) {
+        throw new Error('No authenticated user found');
+      }
+
+      const { data: fileData, error: fileError } = await supabase
+        .from('files')
+        .insert({
+          name: fileName,
+          file_path: urlData.publicUrl,
+          type: 'text',
+          project_id: projectId,
+          user_id: userData.user.id,
+          size: file.size,
+          metadata: { content: pastedText }
+        })
+        .select()
+        .single();
+
+      if (fileError) {
+        throw fileError;
+      }
+
+      toast({
+        title: "Success",
+        description: "Text file saved successfully!",
+      });
+
+      setPastedText('');
+      fetchFiles();
+    } catch (error) {
+      console.error('Error saving text file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save text file. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleNextStep = async () => {
     if (!projectId) {
       toast({
@@ -262,13 +346,40 @@ const Step2Files = () => {
         <h2 className="text-2xl font-semibold mb-2">Upload Files</h2>
         <p className="text-muted-foreground">Add photos, documents, or audio files to your report.</p>
       </div>
-      
-      <FileUploadArea 
-        onFilesSelected={handleFilesUploaded} 
-        acceptedFileTypes=".jpg,.jpeg,.png,.pdf,.doc,.docx,.txt"
-        files={[]}
-        projectId={projectId}
-      />
+
+      <Tabs defaultValue="upload" className="w-full">
+        <TabsList className="grid w-[400px] grid-cols-2">
+          <TabsTrigger value="upload">Upload Files</TabsTrigger>
+          <TabsTrigger value="text">Paste Text</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="upload">
+          <FileUploadArea 
+            onFilesSelected={handleFilesUploaded} 
+            acceptedFileTypes=".jpg,.jpeg,.png,.pdf,.doc,.docx,.txt"
+            files={[]}
+            projectId={projectId}
+          />
+        </TabsContent>
+
+        <TabsContent value="text">
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Paste your text here..."
+              value={pastedText}
+              onChange={(e) => setPastedText(e.target.value)}
+              className="min-h-[200px] w-full p-4"
+            />
+            <Button
+              onClick={handleSaveText}
+              disabled={!pastedText.trim()}
+              className="w-full"
+            >
+              Save Text as File
+            </Button>
+          </div>
+        </TabsContent>
+      </Tabs>
       
       <UploadedFilesTable 
         files={uploadedFiles} 
