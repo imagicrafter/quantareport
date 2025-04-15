@@ -7,12 +7,13 @@ export const useNoteRelationships = () => {
   const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
   const [addNoteRelatedFiles, setAddNoteRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
 
-  const fetchFileRelationships = async (noteId: string) => {
+  const fetchFileRelationships = async (noteId: string): Promise<NoteFileRelationshipWithType[]> => {
     try {
       const filesWithTypes = await fetchRelatedFiles(noteId);
-      setRelatedFiles(filesWithTypes);
+      return filesWithTypes;
     } catch (error) {
       console.error('Error fetching related files:', error);
+      return [];
     }
   };
 
@@ -24,4 +25,3 @@ export const useNoteRelationships = () => {
     fetchFileRelationships,
   };
 };
-
