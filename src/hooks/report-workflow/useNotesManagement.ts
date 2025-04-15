@@ -1,49 +1,35 @@
 
-import { useState, useEffect, useCallback } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Note, parseNoteMetadata, NoteFileRelationshipWithType } from '@/utils/noteUtils';
-import { NoteFormValues } from '@/components/dashboard/notes/hooks/useNotesOperations';
+import { Note, NoteFileRelationshipWithType, parseNoteMetadata } from '@/utils/noteUtils';
+import { toast } from 'sonner';
 import { fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 
 export const useNotesManagement = (projectId: string | null) => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
-  const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
-  const { toast } = useToast();
+  const [relatedFiles, setRelatedFiles] = useState<Record<string, NoteFileRelationshipWithType[]>>({});
 
-  const fetchNotes = async (projectId: string) => {
+  const fetchNotes = async () => {
+    if (!projectId) return;
+    
     try {
       setLoading(true);
       
-      // Use the view to get notes excluding template notes
       const { data, error } = await supabase
-        .from('v_project_notes_excluding_template')
+        .from('notes')
         .select('*')
         .eq('project_id', projectId)
         .order('position', { ascending: true });
       
-      if (error) {
-        console.error('Error fetching notes:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load notes",
-          variant: "destructive"
-        });
-      } else {
-        // Debug the raw note data
-        console.log('Raw notes data:', data);
-        
-        const processedNotes = data.map(note => {
-          const parsedNote = parseNoteMetadata(note);
-          console.log('Processed note with metadata:', parsedNote);
-          return parsedNote;
-        });
-        
-        setNotes(processedNotes);
-      }
+      if (error) throw error;
+
+      // Process metadata for each note
+      const processedNotes = data.map(parseNoteMetadata);
+      setNotes(processedNotes);
     } catch (error) {
-      console.error('Error in fetchNotes:', error);
+      console.error('Error fetching notes:', error);
+      toast.error('Failed to load notes');
     } finally {
       setLoading(false);
     }
@@ -51,30 +37,114 @@ export const useNotesManagement = (projectId: string | null) => {
 
   useEffect(() => {
     if (projectId) {
-      fetchNotes(projectId);
+      fetchNotes();
     }
   }, [projectId]);
 
-  const handleOnDragEnd = async (result: any) => {
-    if (!result.destination || !projectId) return;
-
+  const fetchNoteRelatedFiles = async (noteId: string) => {
     try {
-      const sourceIndex = result.source.index;
-      const destinationIndex = result.destination.index;
+      const filesWithTypes = await fetchRelatedFiles(noteId);
       
-      if (sourceIndex === destinationIndex) return;
-      
-      const reorderedNotes = [...notes];
-      const [removed] = reorderedNotes.splice(sourceIndex, 1);
-      reorderedNotes.splice(destinationIndex, 0, removed);
-      
-      const updatedNotes = reorderedNotes.map((note, index) => ({
-        ...note,
-        position: index + 1
+      setRelatedFiles(prev => ({
+        ...prev,
+        [noteId]: filesWithTypes
       }));
       
-      setNotes(updatedNotes);
+      return filesWithTypes;
+    } catch (error) {
+      console.error('Error fetching related files for note:', error);
+      toast.error('Failed to load related files');
+      return [];
+    }
+  };
+
+  const handleEditNote = async (
+    note: Note,
+    values: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }
+  ) => {
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .update({
+          title: values.title,
+          content: values.content,
+          analysis: values.analysis,
+          files_relationships_is_locked: values.files_relationships_is_locked !== undefined
+            ? values.files_relationships_is_locked
+            : note.files_relationships_is_locked
+        })
+        .eq('id', note.id);
+
+      if (error) throw error;
+
+      // Update the note in the local state
+      setNotes(prevNotes => 
+        prevNotes.map(n => 
+          n.id === note.id 
+            ? { 
+                ...n, 
+                title: values.title, 
+                content: values.content, 
+                analysis: values.analysis,
+                files_relationships_is_locked: values.files_relationships_is_locked !== undefined
+                  ? values.files_relationships_is_locked
+                  : n.files_relationships_is_locked
+              } 
+            : n
+        )
+      );
+
+      toast.success('Note updated successfully');
+    } catch (error) {
+      console.error('Error updating note:', error);
+      toast.error('Failed to update note');
+      throw error;
+    }
+  };
+
+  const handleDeleteNote = async (note: Note) => {
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', note.id);
+
+      if (error) throw error;
+
+      // Remove the note from the local state
+      setNotes(prevNotes => prevNotes.filter(n => n.id !== note.id));
       
+      // Remove related files from the local state
+      setRelatedFiles(prev => {
+        const newRelatedFiles = { ...prev };
+        delete newRelatedFiles[note.id];
+        return newRelatedFiles;
+      });
+
+      toast.success('Note deleted successfully');
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      toast.error('Failed to delete note');
+    }
+  };
+
+  const handleOnDragEnd = async (result: any) => {
+    if (!result.destination) return;
+    
+    const reorderedNotes = [...notes];
+    const [removed] = reorderedNotes.splice(result.source.index, 1);
+    reorderedNotes.splice(result.destination.index, 0, removed);
+    
+    // Update positions in the local state
+    const updatedNotes = reorderedNotes.map((note, index) => ({
+      ...note,
+      position: index + 1
+    }));
+    
+    setNotes(updatedNotes);
+    
+    // Update positions in the database
+    try {
       const updates = updatedNotes.map(note => ({
         id: note.id,
         position: note.position,
@@ -88,122 +158,27 @@ export const useNotesManagement = (projectId: string | null) => {
         .from('notes')
         .upsert(updates);
       
-      if (error) {
-        console.error('Error updating note positions:', error);
-        toast({
-          title: "Error",
-          description: "Failed to update note order",
-          variant: "destructive"
-        });
-        if (projectId) fetchNotes(projectId);
-      }
-    } catch (error) {
-      console.error('Error in handleOnDragEnd:', error);
-    }
-  };
-
-  const fetchNoteRelatedFiles = useCallback(async (noteId: string) => {
-    if (!noteId) {
-      console.log('No note ID provided for fetching related files');
-      return;
-    }
-    
-    try {
-      console.log('Fetching related files for note:', noteId);
-      
-      const filesWithTypes = await fetchRelatedFiles(noteId);
-      setRelatedFiles(filesWithTypes);
-      
-      console.log('Found related files:', filesWithTypes.length);
-    } catch (error) {
-      console.error('Error fetching related files:', error);
-    }
-  }, []);
-
-  // Fix: Update the parameter type to include files_relationships_is_locked
-  const handleEditNote = async (note: Note, values: { 
-    title: string; 
-    content: string; 
-    analysis: string | null; 
-    files_relationships_is_locked?: boolean 
-  }) => {
-    try {
-      const { error } = await supabase
-        .from('notes')
-        .update({
-          title: values.title,
-          content: values.content || '',
-          analysis: values.analysis || null,
-          files_relationships_is_locked: values.files_relationships_is_locked
-        })
-        .eq('id', note.id);
-      
       if (error) throw error;
       
-      toast({
-        title: "Success",
-        description: "Note updated successfully!",
-      });
-      
-      if (projectId) fetchNotes(projectId);
+      toast.success('Note order updated');
     } catch (error) {
-      console.error('Error updating note:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update note. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
+      console.error('Error updating note positions:', error);
+      toast.error('Failed to update note order');
+      
+      // Revert to the original order on error
+      fetchNotes();
     }
   };
-
-  const handleDeleteNote = async (note: Note) => {
-    try {
-      const { error } = await supabase
-        .from('notes')
-        .delete()
-        .eq('id', note.id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Success",
-        description: "Note deleted successfully!",
-      });
-      
-      if (projectId) fetchNotes(projectId);
-    } catch (error) {
-      console.error('Error deleting note:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete note. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const refreshNotes = useCallback(async () => {
-    if (projectId) {
-      await fetchNotes(projectId);
-    }
-  }, [projectId]);
-
-  useEffect(() => {
-    if (projectId) {
-      fetchNotes(projectId);
-    }
-  }, [projectId]);
 
   return {
     notes,
     loading,
     relatedFiles,
-    handleOnDragEnd,
+    setRelatedFiles,
+    refreshNotes: fetchNotes,
     fetchNoteRelatedFiles,
     handleEditNote,
     handleDeleteNote,
-    refreshNotes,
-    setRelatedFiles
+    handleOnDragEnd,
   };
 };

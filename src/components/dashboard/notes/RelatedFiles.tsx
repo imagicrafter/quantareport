@@ -58,7 +58,7 @@ const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged, compac
       <div className="space-y-2">
         {noteId && projectId && onRelationshipsChanged && (
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">Related Files</h3>
+            <h3 className="text-sm font-medium">Related Files ({files.length})</h3>
             <FilePicker 
               projectId={projectId} 
               noteId={noteId}
@@ -84,7 +84,7 @@ const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged, compac
     <div className="space-y-2">
       {noteId && projectId && onRelationshipsChanged && (
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">Related Files</h3>
+          <h3 className="text-sm font-medium">Related Files ({files.length})</h3>
           <FilePicker 
             projectId={projectId} 
             noteId={noteId}

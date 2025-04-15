@@ -173,22 +173,11 @@ const ExpandableNote = ({
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">
-                Related Files ({relatedFiles.length})
-              </label>
-              <FilePicker
-                projectId={projectId}
-                noteId={note.id}
-                onFileAdded={onFileAdded}
-                relatedFiles={relatedFiles}
-                isLocked={isLocked}
-                onLockToggle={handleLockToggle}
-                buttonLabel="Manage Files"
-              />
-            </div>
             <RelatedFiles 
               files={relatedFiles}
+              noteId={note.id}
+              projectId={projectId}
+              onRelationshipsChanged={onFileAdded}
             />
           </div>
         </div>

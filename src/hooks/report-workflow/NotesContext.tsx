@@ -1,122 +1,105 @@
 
-import React, { createContext, useContext, useState, ReactNode, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { Note, NoteFileRelationshipWithType } from '@/utils/noteUtils';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 
 interface NotesContextType {
-  handleEditNote: (note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => Promise<void>;
+  handleEditNote: (note: Note, values: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => Promise<void>;
   handleDeleteNote: (note: Note) => void;
-  setEditNoteHandler: (handler: (note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => Promise<void>) => void;
-  setDeleteNoteHandler: (handler: (note: Note) => void) => void;
   handleAnalyzeImages: (noteId: string) => void;
-  setAnalyzeImagesHandler: (handler: (noteId: string) => void) => void;
-  relatedFiles: Record<string, NoteFileRelationshipWithType[]>;
-  setRelatedFilesData: (noteId: string, files: NoteFileRelationshipWithType[]) => void;
-  onFileAdded: (noteId: string) => void;
-  setFileAddedHandler: (handler: (noteId: string) => void) => void;
   handleTranscriptionComplete: (text: string) => void;
-  setTranscriptionCompleteHandler: (handler: (text: string) => void) => void;
+  relatedFiles: Record<string, NoteFileRelationshipWithType[]>;
+  onFileAdded: (noteId: string) => void;
+  fetchNoteRelatedFiles: (noteId: string) => Promise<void>;
 }
 
-const NotesContext = createContext<NotesContextType | undefined>(undefined);
+const defaultContext: NotesContextType = {
+  handleEditNote: async () => {},
+  handleDeleteNote: () => {},
+  handleAnalyzeImages: () => {},
+  handleTranscriptionComplete: () => {},
+  relatedFiles: {},
+  onFileAdded: () => {},
+  fetchNoteRelatedFiles: async () => {}
+};
 
-export const NotesProvider = ({ children }: { children: ReactNode }) => {
-  // Use refs to maintain function identity across renders
-  const editNoteHandlerRef = useRef<(note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => Promise<void>>(async () => {
-    console.log('Edit note handler not initialized yet');
-  });
-  
-  const deleteNoteHandlerRef = useRef<(note: Note) => void>(() => {
-    console.log('Delete note handler not initialized yet');
-  });
+const NotesContext = createContext<NotesContextType>(defaultContext);
 
-  const analyzeImagesHandlerRef = useRef<(noteId: string) => void>(() => {
-    console.log('Analyze images handler not initialized yet');
-  });
+export const useNotesContext = () => useContext(NotesContext);
 
-  const fileAddedHandlerRef = useRef<(noteId: string) => void>(() => {
-    console.log('File added handler not initialized yet');
-  });
+export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [relatedFiles, setRelatedFiles] = useState<Record<string, NoteFileRelationshipWithType[]>>({});
 
-  const transcriptionCompleteHandlerRef = useRef<(text: string) => void>(() => {
-    console.log('Transcription complete handler not initialized yet');
-  });
-  
-  // Keep track of related files for each note
-  const [relatedFilesMap, setRelatedFilesMap] = useState<Record<string, NoteFileRelationshipWithType[]>>({});
-  
-  const setEditNoteHandler = useCallback((handler: (note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => Promise<void>) => {
-    editNoteHandlerRef.current = handler;
-  }, []);
+  const fetchNoteRelatedFiles = async (noteId: string) => {
+    try {
+      const filesWithTypes = await fetchRelatedFiles(noteId);
+      setRelatedFiles(prev => ({
+        ...prev,
+        [noteId]: filesWithTypes
+      }));
+    } catch (error) {
+      console.error('Error fetching related files for note:', error);
+    }
+  };
 
-  const setDeleteNoteHandler = useCallback((handler: (note: Note) => void) => {
-    deleteNoteHandlerRef.current = handler;
-  }, []);
+  const handleEditNote = async (
+    note: Note,
+    values: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }
+  ) => {
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .update({
+          title: values.title,
+          content: values.content,
+          analysis: values.analysis,
+          files_relationships_is_locked: values.files_relationships_is_locked !== undefined
+            ? values.files_relationships_is_locked
+            : note.files_relationships_is_locked
+        })
+        .eq('id', note.id);
 
-  const setAnalyzeImagesHandler = useCallback((handler: (noteId: string) => void) => {
-    analyzeImagesHandlerRef.current = handler;
-  }, []);
+      if (error) throw error;
 
-  const setFileAddedHandler = useCallback((handler: (noteId: string) => void) => {
-    fileAddedHandlerRef.current = handler;
-  }, []);
+      toast.success('Note updated successfully');
+    } catch (error) {
+      console.error('Error updating note:', error);
+      toast.error('Failed to update note');
+      throw error;
+    }
+  };
 
-  const setTranscriptionCompleteHandler = useCallback((handler: (text: string) => void) => {
-    transcriptionCompleteHandlerRef.current = handler;
-  }, []);
+  const handleDeleteNote = (note: Note) => {
+    toast.info('Delete not implemented in this context');
+  };
 
-  const setRelatedFilesData = useCallback((noteId: string, files: NoteFileRelationshipWithType[]) => {
-    setRelatedFilesMap(prev => ({
-      ...prev,
-      [noteId]: files
-    }));
-  }, []);
+  const handleAnalyzeImages = (noteId: string) => {
+    toast.info('Analysis not implemented in this context');
+  };
 
-  const handleEditNote = useCallback(async (note: Note, values?: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => {
-    return editNoteHandlerRef.current(note, values);
-  }, []);
+  const handleTranscriptionComplete = (text: string) => {
+    // This will be implemented by the consuming component
+  };
 
-  const handleDeleteNote = useCallback((note: Note) => {
-    deleteNoteHandlerRef.current(note);
-  }, []);
+  const onFileAdded = (noteId: string) => {
+    fetchNoteRelatedFiles(noteId);
+  };
 
-  const handleAnalyzeImages = useCallback((noteId: string) => {
-    analyzeImagesHandlerRef.current(noteId);
-  }, []);
-
-  const onFileAdded = useCallback((noteId: string) => {
-    fileAddedHandlerRef.current(noteId);
-  }, []);
-
-  const handleTranscriptionComplete = useCallback((text: string) => {
-    transcriptionCompleteHandlerRef.current(text);
-  }, []);
+  const value = {
+    handleEditNote,
+    handleDeleteNote,
+    handleAnalyzeImages,
+    handleTranscriptionComplete,
+    relatedFiles,
+    onFileAdded,
+    fetchNoteRelatedFiles
+  };
 
   return (
-    <NotesContext.Provider 
-      value={{ 
-        handleEditNote, 
-        handleDeleteNote,
-        setEditNoteHandler,
-        setDeleteNoteHandler,
-        handleAnalyzeImages,
-        setAnalyzeImagesHandler,
-        relatedFiles: relatedFilesMap,
-        setRelatedFilesData,
-        onFileAdded,
-        setFileAddedHandler,
-        handleTranscriptionComplete,
-        setTranscriptionCompleteHandler
-      }}
-    >
+    <NotesContext.Provider value={value}>
       {children}
     </NotesContext.Provider>
   );
-};
-
-export const useNotesContext = (): NotesContextType => {
-  const context = useContext(NotesContext);
-  if (context === undefined) {
-    throw new Error('useNotesContext must be used within a NotesProvider');
-  }
-  return context;
 };

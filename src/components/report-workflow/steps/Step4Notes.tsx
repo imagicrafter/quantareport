@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -14,11 +15,12 @@ import NoteDialogsManager from './components/NoteDialogsManager';
 import { useNotesManagement } from '@/hooks/report-workflow/useNotesManagement';
 import { NotesProvider } from '@/hooks/report-workflow/NotesContext';
 import AddNoteDialog from '@/components/dashboard/notes/AddNoteDialog';
-import { Note } from '@/utils/noteUtils';
+import { Note, NoteFileRelationshipWithType } from '@/utils/noteUtils';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { formSchema } from '@/components/dashboard/notes/hooks/useNotesOperations';
+import { fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 
 const Step4Notes = () => {
   const navigate = useNavigate();
@@ -28,7 +30,7 @@ const Step4Notes = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [tempNoteId] = useState(uuidv4());
-  const [addNoteRelatedFiles, setAddNoteRelatedFiles] = useState<any[]>([]);
+  const [addNoteRelatedFiles, setAddNoteRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
   const [analyzingImages, setAnalyzingImages] = useState(false);
   
   const {
@@ -80,6 +82,29 @@ const Step4Notes = () => {
     getProjectId();
   }, [navigate, toast, fetchCurrentWorkflow]);
   
+  // Load related files for all notes initially
+  useEffect(() => {
+    if (projectId && notes.length > 0) {
+      const loadAllRelatedFiles = async () => {
+        const filesPromises = notes.map(async (note) => {
+          const files = await fetchRelatedFiles(note.id);
+          return { noteId: note.id, files };
+        });
+        
+        const results = await Promise.all(filesPromises);
+        const newRelatedFiles: Record<string, NoteFileRelationshipWithType[]> = {};
+        
+        results.forEach(({ noteId, files }) => {
+          newRelatedFiles[noteId] = files;
+        });
+        
+        setRelatedFiles(newRelatedFiles);
+      };
+      
+      loadAllRelatedFiles();
+    }
+  }, [projectId, notes]);
+  
   const handleBack = async () => {
     if (projectId) {
       await updateWorkflowState(projectId, 3);
@@ -94,9 +119,9 @@ const Step4Notes = () => {
     navigate('/dashboard/report-wizard/generate');
   };
   
-  const handleFileAdded = async () => {
+  const handleFileAdded = async (noteId: string) => {
     if (projectId) {
-      await refreshNotes();
+      await fetchNoteRelatedFiles(noteId);
     }
   };
 
@@ -181,6 +206,7 @@ const Step4Notes = () => {
   const handleAnalyzeImagesForNote = (noteId: string) => {
     setAnalyzingImages(true);
     // Logic would be handled through context
+    setTimeout(() => setAnalyzingImages(false), 2000); // Simulate analysis
   };
 
   const handleTranscriptionComplete = (text: string) => {
@@ -244,7 +270,10 @@ const Step4Notes = () => {
           relatedFiles={addNoteRelatedFiles}
           onAnalyzeImages={() => handleAnalyzeImagesForNote(tempNoteId)}
           onFileAdded={() => {
-            refreshNotes();
+            // Just refresh all notes when adding a new note
+            if (projectId) {
+              refreshNotes();
+            }
           }}
           projectId={projectId || ''}
           onTranscriptionComplete={handleTranscriptionComplete}

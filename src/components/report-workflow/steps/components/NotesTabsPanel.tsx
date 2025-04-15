@@ -29,7 +29,8 @@ const NotesTabsPanel = ({
     handleAnalyzeImages,
     relatedFiles,
     onFileAdded,
-    handleTranscriptionComplete
+    handleTranscriptionComplete,
+    fetchNoteRelatedFiles
   } = useNotesContext();
 
   return (
@@ -76,7 +77,11 @@ const NotesTabsPanel = ({
                                   analyzingImages={analyzingImages}
                                   projectId={projectId}
                                   relatedFiles={relatedFiles[note.id] || []}
-                                  onFileAdded={() => onFileAdded(note.id)}
+                                  onFileAdded={() => {
+                                    if (note.id && fetchNoteRelatedFiles) {
+                                      fetchNoteRelatedFiles(note.id);
+                                    }
+                                  }}
                                   isLocked={note.files_relationships_is_locked || false}
                                   onLockToggle={async (locked) => {
                                     return handleEditNote(note, {
