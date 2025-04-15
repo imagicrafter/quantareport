@@ -83,26 +83,41 @@ export const useReportGeneration = () => {
       const isCompleted = await checkInitialReportStatus(
         reportCreated.id,
         setProgressUpdate,
-        navigateToReport
+        async () => {
+          // When generation is complete, navigate to review step
+          const { data: session } = await supabase.auth.getSession();
+          if (session.session && reportCreated.id) {
+            //await updateWorkflowState(projectId, 6);
+            navigate('/dashboard/report-wizard/review');
+          }
+        }
       );
       
       if (isCompleted) return;
       
-      // If not completed, set up subscription
+      // If not completed, set up subscription and content checks
       cleanup = setupReportProgressSubscription(
         reportCreated.id,
         setProgressUpdate,
-        navigateToReport
+        async () => {
+          const { data: session } = await supabase.auth.getSession();
+          if (session.session && reportCreated.id) {
+            //await updateWorkflowState(projectId, 6);
+            navigate('/dashboard/report-wizard/review');
+          }
+        }
       );
       
       // Also set up periodic content checks
       contentCheckInterval = window.setInterval(() => {
         if (reportCreated) {
-          checkReportContent(
-            reportCreated.id,
-            reportCreated.content,
-            navigateToReport
-          );
+          checkReportContent(reportCreated.id, reportCreated.content, async () => {
+            const { data: session } = await supabase.auth.getSession();
+            if (session.session && reportCreated.id) {
+              //await updateWorkflowState(projectId, 6);
+              navigate('/dashboard/report-wizard/review');
+            }
+          });
         }
       }, 5000);
     };

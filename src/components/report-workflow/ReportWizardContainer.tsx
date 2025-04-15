@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Outlet, useLocation } from 'react-router-dom';
 import StepIndicator from './StepIndicator';
@@ -7,6 +6,7 @@ import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNaviga
 import { useProjectDetails } from '@/hooks/report-workflow/useProjectDetails';
 import ExitWorkflowDialog from './ExitWorkflowDialog';
 import WorkflowLoading from './WorkflowLoading';
+import { toast } from 'react-toastify';
 
 const ReportWizardContainer = () => {
   const { step } = useParams();
@@ -16,7 +16,6 @@ const ReportWizardContainer = () => {
   const [currentWorkflowState, setCurrentWorkflowState] = useState<number | null>(null);
   const initializationComplete = useRef(false);
   
-  // Get the current step index based on the URL path
   const getCurrentStepIndex = () => {
     if (!step) return 0;
     return workflowSteps.findIndex(s => s.path === step);
@@ -37,15 +36,12 @@ const ReportWizardContainer = () => {
   
   const { projectName, getPageTitle } = useProjectDetails(projectId);
   
-  // Handle navigation and determine the correct step based on workflow state
   useEffect(() => {
-    // Prevent multiple initializations
     if (initializationComplete.current) return;
     
     const initializeWorkflow = async () => {
       setIsLoading(true);
       
-      // Fetch the current workflow state
       const { workflowState, projectId: activeProjectId } = await fetchCurrentWorkflow();
       setCurrentWorkflowState(workflowState);
       setProjectId(activeProjectId);
@@ -64,11 +60,8 @@ const ReportWizardContainer = () => {
         return;
       }
       
-      // Get the step index from the URL path
       const pathStepIndex = getStepIndexFromPath(step);
       
-      // Special case: if user is navigating to Step 1, allow it always
-      // This enables users to restart the workflow
       if (pathStepIndex === 0) {
         console.log('User accessing Step 1, allowing access to restart workflow');
         setIsLoading(false);
@@ -76,7 +69,6 @@ const ReportWizardContainer = () => {
         return;
       }
       
-      // Validate navigation for steps beyond step 1
       if (pathStepIndex > 0) {
         if (!workflowState || !activeProjectId) {
           console.log('Trying to access a step beyond start but no active workflow found');
@@ -86,7 +78,6 @@ const ReportWizardContainer = () => {
           return;
         }
         
-        // If trying to access a step ahead of their workflow state
         if (pathStepIndex + 1 > workflowState) {
           console.log(`Trying to access step ${pathStepIndex + 1} but workflow state is ${workflowState}`);
           handleNavigation(`/dashboard/report-wizard/${workflowSteps[workflowState - 1].path}`, activeProjectId, projectName);
@@ -103,13 +94,10 @@ const ReportWizardContainer = () => {
     initializeWorkflow();
   }, [step, handleNavigation, fetchCurrentWorkflow, getStepIndexFromWorkflowState, getStepIndexFromPath, projectName]);
   
-  // Update currentWorkflowState based on the current URL path
   useEffect(() => {
     const updateCurrentWorkflowState = async () => {
       if (step) {
         const pathStepIndex = getStepIndexFromPath(step);
-        // Set the current workflow state based on the path
-        // +1 because workflow state is 1-indexed
         setCurrentWorkflowState(pathStepIndex + 1);
       }
     };
@@ -119,57 +107,55 @@ const ReportWizardContainer = () => {
     }
   }, [location.pathname, step, getStepIndexFromPath]);
   
-  // Reset the initialization flag when the step changes
   useEffect(() => {
     return () => {
-      // Only reset when navigating to a new step
       if (step) {
         initializationComplete.current = false;
       }
     };
   }, [step]);
   
-  // Add event listeners to intercept link clicks
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      // Check if the click is on an anchor element or its child
       let target = e.target as HTMLElement;
-      
-      // Find the closest anchor element
       const anchor = target.closest('a');
       
       if (anchor) {
         const href = anchor.getAttribute('href');
         
-        // Skip if it's an external link or doesn't have href
         if (!href || href.startsWith('http') || href.startsWith('mailto:') || href === '#') {
           return;
         }
         
-        // Skip for next step buttons within the workflow
         if (anchor.classList.contains('next-step-button')) {
           return;
         }
         
-        // Handle step banner clicks for step 2 in step 3
-        if (currentWorkflowState === 3 && href.includes('/dashboard/report-wizard/files')) {
+        if (currentWorkflowState === 6) {
+          e.preventDefault();
+          toast({
+            title: "Complete Report",
+            description: "Please use the Finish button at the bottom of the page to complete your report.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        if (href.includes('/dashboard/report-wizard/files')) {
           console.log('Clicking on step 2 banner from step 3, allowing navigation');
           return;
         }
         
-        // Skip for other links within the workflow
         if (href.includes('/dashboard/report-wizard/')) {
           return;
         }
         
-        // Skip specifically for the Wizard menu item
         if (href === '/dashboard/report-wizard' || href === '/dashboard/report-wizard/') {
           handleNavigation('/dashboard/report-wizard/start', projectId, projectName);
           e.preventDefault();
           return;
         }
         
-        // For any other internal link, show confirmation if we have a project
         if (projectId && currentWorkflowState && currentWorkflowState > 0) {
           e.preventDefault();
           setShowExitDialog(true);
@@ -179,10 +165,8 @@ const ReportWizardContainer = () => {
       }
     };
     
-    // Add the event listener to the document
-    document.addEventListener('click', handleClick, true); // Use capturing phase
+    document.addEventListener('click', handleClick, true);
     
-    // Clean up the event listener when component unmounts
     return () => {
       document.removeEventListener('click', handleClick, true);
     };
@@ -200,7 +184,6 @@ const ReportWizardContainer = () => {
         {getPageTitle(currentStepIndex)}
       </h1>
       
-      {/* Step Indicator */}
       <div className="mb-8">
         <StepIndicator 
           currentStep={currentWorkflowState || 1}
@@ -210,10 +193,8 @@ const ReportWizardContainer = () => {
         />
       </div>
       
-      {/* Step Content - rendered via Outlet */}
       <Outlet />
       
-      {/* Exit Workflow Confirmation Dialog */}
       <ExitWorkflowDialog
         isOpen={showExitDialog}
         setIsOpen={setShowExitDialog}

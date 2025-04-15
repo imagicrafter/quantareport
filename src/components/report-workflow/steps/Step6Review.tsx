@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -108,6 +108,57 @@ const Step6Review = () => {
     }
   };
   
+  const handleDownload = () => {
+    if (reportContent) {
+      const element = document.createElement('a');
+      const file = new Blob([reportContent.replace(/<[^>]*>/g, '')], { type: 'text/plain' });
+      element.href = URL.createObjectURL(file);
+      element.download = `${reportTitle}.txt`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+    }
+  };
+  
+  const handlePrint = () => {
+    if (reportContent) {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>${reportTitle}</title>
+            </head>
+            <body>
+              ${reportContent}
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+      }
+    }
+  };
+  
+  const handleShare = () => {
+    toast({
+      description: "Sharing options will be implemented in a future update."
+    });
+  };
+  
+  const handleEdit = async () => {
+    if (reportId && projectId) {
+      await updateWorkflowState(projectId, 0);
+      navigate(`/dashboard/reports/editor/${reportId}`);
+    } else {
+      toast({
+        title: "Error",
+        description: "Report ID not found. Cannot open editor.",
+        variant: "destructive"
+      });
+    }
+  };
+  
   const handleFinish = async () => {
     if (reportId && projectId) {
       try {
@@ -129,42 +180,6 @@ const Step6Review = () => {
           variant: "destructive"
         });
       }
-    }
-  };
-  
-  const handleShare = () => {
-    toast({
-      description: "Sharing options will be implemented in a future update."
-    });
-  };
-  
-  const handleDownload = () => {
-    toast({
-      description: "Download feature will be implemented in a future update."
-    });
-  };
-  
-  const handlePrint = () => {
-    toast({
-      description: "Print feature will be implemented in a future update."
-    });
-  };
-  
-  const handleEmail = () => {
-    toast({
-      description: "Email feature will be implemented in a future update."
-    });
-  };
-  
-  const handleEdit = () => {
-    if (reportId) {
-      navigate(`/dashboard/reports/editor/${reportId}`);
-    } else {
-      toast({
-        title: "Error",
-        description: "Report ID not found. Cannot open editor.",
-        variant: "destructive"
-      });
     }
   };
   
@@ -196,10 +211,6 @@ const Step6Review = () => {
             <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="h-4 w-4 mr-1" />
               Print
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleEmail}>
-              <Mail className="h-4 w-4 mr-1" />
-              Email
             </Button>
             <Button variant="outline" size="sm" onClick={handleEdit}>
               <Edit className="h-4 w-4 mr-1" />
