@@ -134,8 +134,7 @@ const ReportWizardContainer = () => {
         if (currentWorkflowState === 6) {
           e.preventDefault();
           toast("Please use the Finish button at the bottom of the page to complete your report.", {
-            description: "Complete Report",
-            variant: "destructive"
+            style: { backgroundColor: 'hsl(var(--destructive))' }
           });
           return;
         }
