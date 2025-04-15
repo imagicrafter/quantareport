@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import AudioRecorder from '../files/AudioRecorder';
 import FilePicker from './FilePicker';
 import RelatedFiles from './RelatedFiles';
+import { fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 
 interface ExpandableNoteProps {
   note: Note;
@@ -42,12 +43,40 @@ const ExpandableNote = ({
   const [content, setContent] = useState(note.content || '');
   const [analysis, setAnalysis] = useState(note.analysis || '');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [loadedFiles, setLoadedFiles] = useState<NoteFileRelationshipWithType[]>(relatedFiles);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setTitle(note.title);
     setContent(note.content || '');
     setAnalysis(note.analysis || '');
   }, [note]);
+
+  // Load related files when the note is expanded
+  useEffect(() => {
+    const loadFiles = async () => {
+      if (isExpanded && note.id && loadedFiles.length === 0) {
+        try {
+          setIsLoading(true);
+          const files = await fetchRelatedFiles(note.id);
+          setLoadedFiles(files);
+        } catch (error) {
+          console.error("Error loading related files:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    loadFiles();
+  }, [isExpanded, note.id, loadedFiles.length]);
+
+  // Update loaded files when relatedFiles prop changes
+  useEffect(() => {
+    if (relatedFiles.length > 0) {
+      setLoadedFiles(relatedFiles);
+    }
+  }, [relatedFiles]);
 
   const handleSave = () => {
     onUpdateNote(note, {
@@ -60,6 +89,20 @@ const ExpandableNote = ({
   // Wrapper function to ensure onLockToggle always returns a Promise
   const handleLockToggle = async (locked: boolean): Promise<void> => {
     return Promise.resolve(onLockToggle(locked));
+  };
+
+  // Handle file added/removed
+  const handleFileChange = async () => {
+    try {
+      setIsLoading(true);
+      const updatedFiles = await fetchRelatedFiles(note.id);
+      setLoadedFiles(updatedFiles);
+      onFileAdded(); // Notify parent component
+    } catch (error) {
+      console.error("Error refreshing files:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -148,7 +191,7 @@ const ExpandableNote = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Analysis</label>
-              {relatedFiles.some(file => file.file_type === 'image') && (
+              {loadedFiles.some(file => file.file_type === 'image') && (
                 <Button
                   type="button"
                   variant="outline"
@@ -175,20 +218,23 @@ const ExpandableNote = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">
-                Related Files ({relatedFiles.length})
+                Related Files ({isLoading ? '...' : loadedFiles.length})
               </label>
               <FilePicker
                 projectId={projectId}
                 noteId={note.id}
-                onFileAdded={onFileAdded}
-                relatedFiles={relatedFiles}
+                onFileAdded={handleFileChange}
+                relatedFiles={loadedFiles}
                 isLocked={isLocked}
                 onLockToggle={handleLockToggle}
                 buttonLabel="Manage Files"
               />
             </div>
             <RelatedFiles 
-              files={relatedFiles}
+              files={loadedFiles}
+              noteId={note.id}
+              projectId={projectId}
+              onRelationshipsChanged={handleFileChange}
             />
           </div>
         </div>

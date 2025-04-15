@@ -12,11 +12,26 @@ export interface NoteFileRelationship {
   file?: ProjectFile;
 }
 
+// Simple in-memory cache to reduce redundant queries
+const relatedFilesCache: Record<string, { timestamp: number, data: NoteFileRelationshipWithType[] }> = {};
+const CACHE_TTL = 30000; // 30 seconds cache time-to-live
+
 /**
  * Fetches all files related to a specific note
  */
 export const fetchRelatedFiles = async (noteId: string): Promise<NoteFileRelationshipWithType[]> => {
   try {
+    // Check cache first
+    const now = Date.now();
+    const cachedResult = relatedFilesCache[noteId];
+    
+    if (cachedResult && (now - cachedResult.timestamp < CACHE_TTL)) {
+      console.log(`Using cached related files for note ${noteId}`);
+      return cachedResult.data;
+    }
+    
+    console.log(`Fetching related files for note ${noteId} from database`);
+    
     const { data: relationships, error } = await supabase
       .from('note_file_relationships')
       .select(`
@@ -40,7 +55,7 @@ export const fetchRelatedFiles = async (noteId: string): Promise<NoteFileRelatio
     if (error) throw error;
 
     // Transform the data to include the file details
-    return relationships.map(item => ({
+    const result = relationships.map(item => ({
       id: item.id,
       note_id: item.note_id,
       file_id: item.file_id,
@@ -49,11 +64,23 @@ export const fetchRelatedFiles = async (noteId: string): Promise<NoteFileRelatio
       file_type: item.files?.type || '',
       file_path: item.files?.file_path || ''
     }));
+    
+    // Update cache
+    relatedFilesCache[noteId] = { timestamp: now, data: result };
+    
+    return result;
   } catch (error) {
     console.error('Error fetching related files:', error);
     toast.error('Failed to load related files');
     return [];
   }
+};
+
+/**
+ * Clears the cache for a specific note
+ */
+export const clearRelatedFilesCache = (noteId: string): void => {
+  delete relatedFilesCache[noteId];
 };
 
 /**
@@ -110,6 +137,9 @@ export const addFileToNote = async (noteId: string, fileId: string): Promise<boo
 
     if (error) throw error;
     
+    // Clear cache after modifying relationships
+    clearRelatedFilesCache(noteId);
+    
     toast.success('File added to note');
     return true;
   } catch (error) {
@@ -124,12 +154,26 @@ export const addFileToNote = async (noteId: string, fileId: string): Promise<boo
  */
 export const removeFileFromNote = async (relationshipId: string): Promise<boolean> => {
   try {
+    // Get the note_id first so we know which cache to clear
+    const { data: relationship, error: fetchError } = await supabase
+      .from('note_file_relationships')
+      .select('note_id')
+      .eq('id', relationshipId)
+      .single();
+      
+    if (fetchError) throw fetchError;
+    
     const { error } = await supabase
       .from('note_file_relationships')
       .delete()
       .eq('id', relationshipId);
 
     if (error) throw error;
+    
+    // Clear cache after modifying relationships
+    if (relationship && relationship.note_id) {
+      clearRelatedFilesCache(relationship.note_id);
+    }
     
     toast.success('File removed from note');
     return true;
