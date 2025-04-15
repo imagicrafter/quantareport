@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,7 +33,14 @@ const NoteDialogsManager = ({
   const [saving, setSaving] = useState(false);
   const [analyzingImages, setAnalyzingImages] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<number | null>(null);
-  const { setEditNoteHandler, setDeleteNoteHandler } = useNotesContext();
+  const { 
+    setEditNoteHandler, 
+    setDeleteNoteHandler, 
+    setAnalyzeImagesHandler,
+    setRelatedFilesData,
+    setFileAddedHandler,
+    setTranscriptionCompleteHandler
+  } = useNotesContext();
   
   const editForm = useForm<NoteFormValues>({
     resolver: zodResolver(formSchema),
@@ -45,7 +51,18 @@ const NoteDialogsManager = ({
     },
   });
   
-  const handleEditNote = (note: Note) => {
+  const handleEditNote = async (note: Note, values?: any) => {
+    if (values) {
+      // If values are provided, this is a direct edit
+      try {
+        await onEditNote(note, values);
+      } catch (error) {
+        console.error('Error updating note:', error);
+      }
+      return;
+    }
+    
+    // Otherwise, open the edit dialog
     setSelectedNote(note);
     editForm.reset({
       title: note.title,
@@ -64,11 +81,77 @@ const NoteDialogsManager = ({
     setIsDeleteDialogOpen(true);
   };
   
+  const handleAnalyzeImages = async (noteId: string) => {
+    if (!projectId) return;
+    
+    setAnalyzingImages(true);
+    
+    try {
+      // Find the note
+      const note = selectedNote || null;
+      if (!note) return;
+      
+      // Filter image files
+      const imageRelationships = relatedFiles.filter(rel => 
+        rel.file_type === 'image'
+      );
+      
+      if (imageRelationships.length === 0) {
+        toast.warning('No images available for analysis. Add some images to analyze first.');
+        setAnalyzingImages(false);
+        return;
+      }
+      
+      const imageUrls = imageRelationships.map(rel => rel.file_path);
+      
+      // Determine test mode based on project name
+      const isTestMode = note.title?.toLowerCase().includes('test') || false;
+      console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for analysis`);
+      
+      // Submit analysis request
+      const success = await submitImageAnalysis(
+        noteId,
+        projectId,
+        imageUrls,
+        isTestMode
+      );
+      
+      if (success) {
+        toast.success('Image analysis started');
+        startPollingForAnalysisCompletion(noteId);
+      } else {
+        throw new Error('Failed to submit image analysis request');
+      }
+    } catch (error) {
+      console.error('Error analyzing images:', error);
+      toast.error('Failed to analyze images');
+      setAnalyzingImages(false);
+    }
+  };
+  
+  const handleFileAdded = async (noteId: string) => {
+    if (noteId) {
+      // Fetch the related files for this note
+      const files = await fetchRelatedFiles(noteId);
+      setRelatedFilesData(noteId, files);
+    }
+    
+    // Notify parent component to refresh notes
+    onFileAdded();
+  };
+  
+  const handleTranscriptionComplete = (text: string) => {
+    editForm.setValue('content', text);
+  };
+  
   // Register the handlers with the context
   useEffect(() => {
     setEditNoteHandler(handleEditNote);
     setDeleteNoteHandler(handleDeleteNote);
-  }, [setEditNoteHandler, setDeleteNoteHandler]);
+    setAnalyzeImagesHandler(handleAnalyzeImages);
+    setFileAddedHandler(handleFileAdded);
+    setTranscriptionCompleteHandler(handleTranscriptionComplete);
+  }, []);
   
   const handleEditNoteSubmit = async () => {
     if (!selectedNote) return;
@@ -146,67 +229,6 @@ const NoteDialogsManager = ({
     
     setPollingInterval(intervalId);
   };
-  
-  const handleAnalyzeImages = async () => {
-    if (!selectedNote || !selectedNote.id || !projectId) {
-      toast.error('Cannot analyze images: Missing note or project information');
-      return;
-    }
-    
-    setAnalyzingImages(true);
-    
-    try {
-      // Filter image files
-      const imageRelationships = relatedFiles.filter(rel => 
-        rel.file_type === 'image'
-      );
-      
-      if (imageRelationships.length === 0) {
-        toast.warning('No images available for analysis. Add some images to analyze first.');
-        setAnalyzingImages(false);
-        return;
-      }
-      
-      const imageUrls = imageRelationships.map(rel => rel.file_path);
-      
-      // Determine test mode based on project name
-      const isTestMode = selectedNote.title?.toLowerCase().includes('test') || false;
-      console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for analysis`);
-      
-      // Submit analysis request
-      const success = await submitImageAnalysis(
-        selectedNote.id,
-        projectId,
-        imageUrls,
-        isTestMode
-      );
-      
-      if (success) {
-        toast.success('Image analysis started');
-        startPollingForAnalysisCompletion(selectedNote.id);
-      } else {
-        throw new Error('Failed to submit image analysis request');
-      }
-    } catch (error) {
-      console.error('Error analyzing images:', error);
-      toast.error('Failed to analyze images');
-      setAnalyzingImages(false);
-    }
-  };
-  
-  const handleTranscriptionComplete = (text: string) => {
-    editForm.setValue('content', text);
-  };
-
-  const handleFileRelationshipChanged = () => {
-    // Refresh the related files for the current note
-    if (selectedNote?.id) {
-      fetchNoteRelatedFiles(selectedNote.id);
-    }
-    
-    // Notify parent component to refresh notes
-    onFileAdded();
-  };
 
   useEffect(() => {
     return () => {
@@ -227,8 +249,8 @@ const NoteDialogsManager = ({
         selectedNote={selectedNote}
         analyzingImages={analyzingImages}
         relatedFiles={relatedFiles}
-        onAnalyzeImages={handleAnalyzeImages}
-        onFileAdded={handleFileRelationshipChanged}
+        onAnalyzeImages={() => selectedNote && handleAnalyzeImages(selectedNote.id)}
+        onFileAdded={() => selectedNote && handleFileAdded(selectedNote.id)}
         projectId={projectId || ''}
         onTranscriptionComplete={handleTranscriptionComplete}
       />

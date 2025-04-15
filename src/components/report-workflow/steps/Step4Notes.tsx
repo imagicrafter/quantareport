@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -168,8 +169,9 @@ const Step4Notes = () => {
     }
   };
 
-  const handleAnalyzeImages = () => {
+  const handleAnalyzeImages = (noteId: string) => {
     setAnalyzingImages(true);
+    // Logic is now handled by the context provider
   };
 
   const handleTranscriptionComplete = (text: string) => {
@@ -231,7 +233,7 @@ const Step4Notes = () => {
           tempNoteId={tempNoteId}
           analyzingImages={analyzingImages}
           relatedFiles={addNoteRelatedFiles}
-          onAnalyzeImages={() => handleAnalyzeImages()}
+          onAnalyzeImages={() => handleAnalyzeImages(tempNoteId)}
           onFileAdded={() => {
             refreshNotes();
           }}

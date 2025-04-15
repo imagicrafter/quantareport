@@ -13,7 +13,7 @@ import RelatedFiles from './RelatedFiles';
 interface ExpandableNoteProps {
   note: Note;
   onDelete: (note: Note) => void;
-  onUpdateNote: (note: Note, values: { title: string; content: string; analysis: string }) => void;
+  onUpdateNote: (note: Note, values: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => void;
   onAnalyzeImages: () => void;
   onTranscriptionComplete: (text: string) => void;
   analyzingImages: boolean;
@@ -21,7 +21,7 @@ interface ExpandableNoteProps {
   relatedFiles: NoteFileRelationshipWithType[];
   onFileAdded: () => void;
   isLocked: boolean;
-  onLockToggle: (locked: boolean) => void;
+  onLockToggle: (locked: boolean) => Promise<void> | void;
 }
 
 const ExpandableNote = ({
