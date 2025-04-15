@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Plus, Lock, Unlock, X } from 'lucide-react';
+import { Plus, Lock, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { fetchAvailableFiles, addFileToNote, removeFileFromNote } from '@/utils/noteFileRelationshipUtils';
+import { fetchAvailableFiles, addFileToNote } from '@/utils/noteFileRelationshipUtils';
 import { ProjectFile } from '@/components/dashboard/files/FileItem';
 import { Switch } from '@/components/ui/switch';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
@@ -39,7 +39,6 @@ const FilePicker = ({
   const [availableFiles, setAvailableFiles] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [addingFileId, setAddingFileId] = useState<string | null>(null);
-  const [removingFileId, setRemovingFileId] = useState<string | null>(null);
   const [locked, setLocked] = useState(isLocked);
   
   useEffect(() => {
@@ -75,16 +74,6 @@ const FilePicker = ({
     }
   };
   
-  const handleRemoveFile = async (relationshipId: string) => {
-    try {
-      setRemovingFileId(relationshipId);
-      await removeFileFromNote(relationshipId);
-      onFileAdded();
-    } finally {
-      setRemovingFileId(null);
-    }
-  };
-  
   const handleLockToggle = async () => {
     try {
       if (onLockToggle) {
@@ -109,7 +98,7 @@ const FilePicker = ({
           <span className="text-xs">{buttonLabel}</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg max-h-[80vh] p-0 flex flex-col">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] p-0 flex flex-col">
         <DialogHeader className="px-6 py-4 border-b flex-shrink-0 flex justify-between items-center">
           <DialogTitle>Manage Related Files</DialogTitle>
           {onLockToggle && (
@@ -130,95 +119,81 @@ const FilePicker = ({
           )}
         </DialogHeader>
         
-        <ScrollArea className="flex-1 overflow-y-auto max-h-[calc(80vh-130px)]">
-          <div className="p-6 space-y-4">
-            <h3 className="text-sm font-medium mb-2">Current Files ({relatedFiles.length})</h3>
-            {relatedFiles.length > 0 ? (
-              <div className="space-y-2">
-                {relatedFiles.map((rel) => (
-                  <div 
-                    key={rel.id} 
-                    className="bg-secondary/30 rounded-md p-3 flex items-center justify-between"
-                  >
-                    <div>
-                      <span className="text-sm font-medium">
-                        {rel.file?.name || 'Unknown file'}
-                      </span>
-                      <div className="text-xs text-muted-foreground capitalize">
-                        {rel.file_type || 'file'}
-                      </div>
-                    </div>
-                    {!locked && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveFile(rel.id)}
-                        disabled={removingFileId === rel.id}
-                        className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                      >
-                        {removingFileId === rel.id ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
-                        ) : (
-                          <X size={16} />
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-muted-foreground text-sm italic">
-                No files associated with this note
-              </div>
-            )}
-            
-            <div className="pt-4 border-t mt-6">
-              <h3 className="text-sm font-medium mb-2">Available Files</h3>
-              {loading ? (
-                <div className="py-4 text-center">
-                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
-                </div>
-              ) : availableFiles.length > 0 ? (
+        <div className="flex-1 overflow-y-auto">
+          <ScrollArea className="h-full max-h-[60vh]">
+            <div className="p-6 space-y-4">
+              <h3 className="text-sm font-medium mb-2">Current Files ({relatedFiles.length})</h3>
+              {relatedFiles.length > 0 ? (
                 <div className="space-y-2">
-                  {availableFiles.map((file) => (
+                  {relatedFiles.map((rel) => (
                     <div 
-                      key={file.id} 
-                      className="bg-muted/50 rounded-md p-3 flex items-center justify-between"
+                      key={rel.id} 
+                      className="bg-secondary/30 rounded-md p-3 flex items-center"
                     >
                       <div>
                         <span className="text-sm font-medium">
-                        {file.name}
+                          {rel.file?.name || 'Unknown file'}
                         </span>
                         <div className="text-xs text-muted-foreground capitalize">
-                        {file.type || 'file'}
+                          {rel.file_type || 'file'}
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleAddFile(file.id)}
-                        disabled={locked || addingFileId === file.id}
-                        className="h-8 px-2"
-                      >
-                        {addingFileId === file.id ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
-                        ) : (
-                          <Plus size={16} />
-                        )}
-                      </Button>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-muted-foreground text-sm italic">
-                  No additional files available
+                  No files associated with this note
                 </div>
               )}
+              
+              <div className="pt-4 border-t mt-6">
+                <h3 className="text-sm font-medium mb-2">Available Files</h3>
+                {loading ? (
+                  <div className="py-4 text-center">
+                    <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
+                  </div>
+                ) : availableFiles.length > 0 ? (
+                  <div className="space-y-2">
+                    {availableFiles.map((file) => (
+                      <div 
+                        key={file.id} 
+                        className="bg-muted/50 rounded-md p-3 flex items-center justify-between"
+                      >
+                        <div>
+                          <span className="text-sm font-medium">
+                            {file.name}
+                          </span>
+                          <div className="text-xs text-muted-foreground capitalize">
+                            {file.type || 'file'}
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleAddFile(file.id)}
+                          disabled={locked || addingFileId === file.id}
+                          className="h-8 px-2"
+                        >
+                          {addingFileId === file.id ? (
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
+                          ) : (
+                            <Plus size={16} />
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground text-sm italic">
+                    No additional files available
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </ScrollArea>
+          </ScrollArea>
+        </div>
         
         <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
           <Button onClick={() => setOpen(false)}>
