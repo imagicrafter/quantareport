@@ -121,7 +121,11 @@ const NotesTabsPanel = ({
                     }
                   })}
                   loading={loading}
-                  onEditNote={handleEditNote}
+                  onEditNote={(note) => {
+                    if (handleEditNote) {
+                      handleEditNote(note, undefined);
+                    }
+                  }}
                   onDeleteNote={handleDeleteNote}
                   onDragEnd={onDragEnd}
                 />
