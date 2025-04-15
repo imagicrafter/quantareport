@@ -170,7 +170,7 @@ const Step5Generate = () => {
       try {
         // Update workflow state to 6
         await updateWorkflowState(projectId, 6);
-        await navigateToReportEditor(reportCreated.id, navigate);
+        //await navigateToReportEditor(reportCreated.id, navigate);
         navigate('/dashboard/report-wizard/review');
       } catch (error) {
         console.error('Error navigating to next step:', error);

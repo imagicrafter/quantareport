@@ -104,6 +104,7 @@ export const fetchAvailableFiles = async (projectId: string, noteId: string): Pr
       .from('files')
       .select('*')
       .eq('project_id', projectId)
+      .eq('type', 'image')
       .order('position', { ascending: true });
     
     // If there are related files, filter them out

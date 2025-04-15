@@ -35,9 +35,9 @@ const NotesTabsPanel = ({
   return (
     <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
       <TabsList className="grid w-full grid-cols-4 mb-6 flex-none">
-        <TabsTrigger value="all">All Notes</TabsTrigger>
-        <TabsTrigger value="observation">Observations</TabsTrigger>
         <TabsTrigger value="finding">Findings</TabsTrigger>
+        <TabsTrigger value="all">Analysis</TabsTrigger>
+        <TabsTrigger value="observation">Observations</TabsTrigger>
         <TabsTrigger value="recommendation">Recommendations</TabsTrigger>
       </TabsList>
 

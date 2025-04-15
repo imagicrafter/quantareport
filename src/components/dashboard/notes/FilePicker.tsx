@@ -145,7 +145,7 @@ const FilePicker = ({
                         {rel.file?.name || 'Unknown file'}
                       </span>
                       <div className="text-xs text-muted-foreground capitalize">
-                        {rel.file_type || 'file'}
+                        {/*{rel.file_type || 'file'}*/}
                       </div>
                     </div>
                     {!locked && (
@@ -191,7 +191,7 @@ const FilePicker = ({
                         {file.name}
                         </span>
                         <div className="text-xs text-muted-foreground capitalize">
-                        {file.type || 'file'}
+                        {/*{file.type || 'file'}*/}
                         </div>
                       </div>
                       <Button

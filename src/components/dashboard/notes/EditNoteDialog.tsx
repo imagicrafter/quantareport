@@ -97,7 +97,7 @@ const EditNoteDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 flex flex-col">
         <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
-          <DialogTitle>Edit Note Y</DialogTitle>
+          <DialogTitle>Edit Note</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto">

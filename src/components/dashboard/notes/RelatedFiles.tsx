@@ -71,7 +71,7 @@ const RelatedFiles = ({ files, onRelationshipsChanged, compact = false }: Relate
         <div className="flex flex-wrap gap-2">
           {imageFiles.map((rel) => (
             <div key={rel.id} className="relative group">
-              <div className="h-16 w-16 rounded-md overflow-hidden border border-border">
+              <div className="h-32 w-32 rounded-md overflow-hidden border border-border">
                 <img
                   src={rel.file_path}
                   alt={rel.file?.name || 'Image preview'}

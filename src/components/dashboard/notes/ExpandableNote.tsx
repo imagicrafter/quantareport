@@ -186,6 +186,7 @@ const ExpandableNote = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Analysis</label>
+              {/*
               {loadedFiles.some(file => file.file_type === 'image') && (
                 <Button
                   type="button"
@@ -201,6 +202,7 @@ const ExpandableNote = ({
                   </span>
                 </Button>
               )}
+              */}
             </div>
             <Textarea
               value={analysis}
