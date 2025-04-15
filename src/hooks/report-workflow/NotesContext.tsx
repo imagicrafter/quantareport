@@ -53,6 +53,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [transcriptionCompleteHandler, setTranscriptionCompleteHandler] = useState<(text: string) => void>(() => {});
   const [fileAddedHandler, setFileAddedHandler] = useState<(noteId: string) => void>(() => {});
 
+  // Use the cached version from the utility file
   const fetchNoteRelatedFiles = async (noteId: string): Promise<NoteFileRelationshipWithType[]> => {
     try {
       const filesWithTypes = await fetchRelatedFiles(noteId);
@@ -106,8 +107,11 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // This will be implemented by the consuming component
   };
 
+  // Simplified file added handler that just updates the relatedFiles state
   const onFileAdded = (noteId: string) => {
-    fetchNoteRelatedFiles(noteId);
+    if (noteId) {
+      fetchNoteRelatedFiles(noteId);
+    }
   };
 
   const setRelatedFilesData = (noteId: string, files: NoteFileRelationshipWithType[]) => {

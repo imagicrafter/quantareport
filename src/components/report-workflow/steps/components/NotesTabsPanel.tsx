@@ -27,24 +27,24 @@ const NotesTabsPanel = ({
     handleEditNote,
     handleDeleteNote,
     handleAnalyzeImages,
+    handleTranscriptionComplete,
     relatedFiles,
     onFileAdded,
-    handleTranscriptionComplete,
     fetchNoteRelatedFiles
   } = useNotesContext();
 
-  // Load related files for all notes only once when the component mounts
+  // Prefetch related files for findings tab only when that tab is selected
   useEffect(() => {
-    if (notes.length > 0) {
-      // Prefetch files only for the first few notes (to avoid timeout)
-      const notesToPrefetch = notes.slice(0, 3);
-      notesToPrefetch.forEach(note => {
+    if (activeTab === 'finding' && notes.length > 0) {
+      // Only load files for visible notes (first few) to avoid performance issues
+      const visibleNotes = notes.slice(0, 5);
+      visibleNotes.forEach(note => {
         if (note.id) {
           fetchNoteRelatedFiles(note.id);
         }
       });
     }
-  }, [notes.length, fetchNoteRelatedFiles]);
+  }, [activeTab, notes, fetchNoteRelatedFiles]);
 
   return (
     <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">

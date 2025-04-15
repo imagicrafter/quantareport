@@ -42,21 +42,12 @@ const ExpandableNote = ({
   const [content, setContent] = useState(note.content || '');
   const [analysis, setAnalysis] = useState(note.analysis || '');
   const [isExpanded, setIsExpanded] = useState(false);
-  const [hasLoadedFiles, setHasLoadedFiles] = useState(false);
 
   useEffect(() => {
     setTitle(note.title);
     setContent(note.content || '');
     setAnalysis(note.analysis || '');
   }, [note]);
-
-  // Load related files only once when the note is first expanded
-  useEffect(() => {
-    if (isExpanded && !hasLoadedFiles) {
-      onFileAdded();
-      setHasLoadedFiles(true);
-    }
-  }, [isExpanded, hasLoadedFiles, onFileAdded]);
 
   const handleSave = () => {
     onUpdateNote(note, {
@@ -182,11 +173,23 @@ const ExpandableNote = ({
           </div>
 
           <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium">Related Files ({relatedFiles.length})</h3>
+              <FilePicker
+                projectId={projectId}
+                noteId={note.id}
+                onFileAdded={onFileAdded}
+                relatedFiles={relatedFiles}
+                isLocked={isLocked}
+                onLockToggle={handleLockToggle}
+              />
+            </div>
             <RelatedFiles 
               files={relatedFiles}
               noteId={note.id}
               projectId={projectId}
               onRelationshipsChanged={onFileAdded}
+              compact={true}
             />
           </div>
         </div>
