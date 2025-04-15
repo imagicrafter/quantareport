@@ -183,34 +183,34 @@ const ExpandableNote = ({
             )}
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Analysis</label>
-              {/*
-              {loadedFiles.some(file => file.file_type === 'image') && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-1"
-                  onClick={onAnalyzeImages}
-                  disabled={analyzingImages}
-                >
-                  <Sparkles size={16} />
-                  <span>
-                    {analyzingImages ? 'Analyzing...' : 'Analyze'}
-                  </span>
-                </Button>
-              )}
-              */}
+          {analysis && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Analysis</label>
+                {loadedFiles.some(file => file.file_type === 'image') && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={onAnalyzeImages}
+                    disabled={analyzingImages}
+                  >
+                    <Sparkles size={16} />
+                    <span>
+                      {analyzingImages ? 'Analyzing...' : 'Analyze'}
+                    </span>
+                  </Button>
+                )}
+              </div>
+              <Textarea
+                value={analysis}
+                onChange={(e) => setAnalysis(e.target.value)}
+                onBlur={handleSave}
+                className="min-h-[100px]"
+              />
             </div>
-            <Textarea
-              value={analysis}
-              onChange={(e) => setAnalysis(e.target.value)}
-              onBlur={handleSave}
-              className="min-h-[100px]"
-            />
-          </div>
+          )}
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
