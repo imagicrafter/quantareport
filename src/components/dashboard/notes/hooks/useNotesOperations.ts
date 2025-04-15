@@ -3,6 +3,8 @@ import { useNoteForm } from './useNoteForm';
 import { useNoteDialogs } from './useNoteDialogs';
 import { useNoteAnalysis } from './useNoteAnalysis';
 import { useNoteRelationships } from './useNoteRelationships';
+import { Note } from '@/utils/noteUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 export { formSchema } from './useNoteForm';
 export type { NoteFormValues } from './useNoteForm';
@@ -45,6 +47,7 @@ export const useNotesOperations = ({
   const {
     analyzingImages,
     handleAnalyzeImages,
+    tempNoteId,
   } = useNoteAnalysis(projectName);
 
   const {
@@ -61,6 +64,44 @@ export const useNotesOperations = ({
 
   const handleEditTranscriptionComplete = (text: string) => {
     editForm.setValue('content', text);
+  };
+
+  // Add the missing functions needed in NotesSection.tsx
+  const handleOnDragEnd = async (result: any) => {
+    // Placeholder for drag-and-drop functionality
+    if (!result.destination) return;
+    
+    const reorderedNotes = [...notes];
+    const [removed] = reorderedNotes.splice(result.source.index, 1);
+    reorderedNotes.splice(result.destination.index, 0, removed);
+    
+    setNotes(reorderedNotes.map((note, index) => ({
+      ...note,
+      position: index + 1
+    })));
+    
+    try {
+      const updates = reorderedNotes.map((note, index) => ({
+        id: note.id,
+        position: index + 1,
+        name: note.name,
+        title: note.title,
+        project_id: note.project_id,
+        user_id: note.user_id
+      }));
+      
+      const { error } = await supabase
+        .from('notes')
+        .upsert(updates);
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating note positions:', error);
+    }
+  };
+
+  const handleAddDialogOpenChange = (open: boolean) => {
+    setIsAddDialogOpen(open);
   };
 
   return {
@@ -85,6 +126,7 @@ export const useNotesOperations = ({
     // Analysis state and handlers
     analyzingImages,
     handleAnalyzeImages,
+    tempNoteId,
 
     // File relationships
     relatedFiles,
@@ -96,6 +138,9 @@ export const useNotesOperations = ({
     // Transcription handlers
     handleTranscriptionComplete,
     handleEditTranscriptionComplete,
+    
+    // Additional handlers needed in NotesSection
+    handleOnDragEnd,
+    handleAddDialogOpenChange,
   };
 };
-

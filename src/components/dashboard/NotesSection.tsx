@@ -4,6 +4,7 @@ import { useNotes } from './notes/hooks/useNotes';
 import { useNotesOperations } from './notes/hooks/useNotesOperations';
 import { useNoteFileRelationships } from './notes/hooks/useNoteFileRelationships';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
+import { supabase } from '@/integrations/supabase/client';
 import NotesSectionHeader from './notes/NotesSectionHeader';
 import NotesContainer from './notes/NotesContainer';
 import AddNoteDialog from './notes/AddNoteDialog';
@@ -42,6 +43,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     setSelectedNote,
     setRelatedFiles,
     setAddNoteRelatedFiles,
+    fetchFileRelationships
   } = useNotesOperations({
     projectId,
     projectName,
@@ -50,7 +52,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     refreshNotes
   });
 
-  const { fetchFileRelationships, handleAddNoteRelationshipChange } = useNoteFileRelationships();
+  const { handleAddNoteRelationshipChange } = useNoteFileRelationships();
 
   // Fetch related files when editing a note
   const handleEditNoteClick = async (note: any) => {
@@ -86,11 +88,13 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
 
   // Function to wrap the form submission handlers to match expected signatures
   const handleAddNoteSubmit = () => {
-    form.handleSubmit(handleAddNote)();
+    form.handleSubmit((values) => handleAddNote(values))();
   };
 
   const handleEditNoteSubmit = () => {
-    editForm.handleSubmit(handleEditNote)();
+    if (selectedNote) {
+      editForm.handleSubmit((values) => handleEditNote(selectedNote, values))();
+    }
   };
 
   return (
@@ -134,7 +138,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
         selectedNote={selectedNote}
         analyzingImages={analyzingImages}
         relatedFiles={relatedFiles}
-        onAnalyzeImages={() => handleAnalyzeImages()}
+        onAnalyzeImages={handleAnalyzeImages}
         onFileAdded={handleEditNoteFileRelationship}
         projectId={projectId}
         onTranscriptionComplete={handleEditTranscriptionComplete}
