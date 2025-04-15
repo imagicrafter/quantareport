@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -87,9 +88,31 @@ const NoteDialogsManager = ({
     setAnalyzingImages(true);
     
     try {
-      // Find the note
-      const note = selectedNote || null;
-      if (!note) return;
+      // Find the note - either use the selectedNote or fetch it if noteId is provided directly
+      let noteToAnalyze = selectedNote;
+      
+      // If we don't have the selectedNote but we have noteId (from expandable note)
+      if (!noteToAnalyze && noteId) {
+        const { data, error } = await supabase
+          .from('notes')
+          .select('*')
+          .eq('id', noteId)
+          .single();
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          noteToAnalyze = data as Note;
+        }
+      }
+      
+      if (!noteToAnalyze) {
+        toast.error('Unable to find note for analysis');
+        setAnalyzingImages(false);
+        return;
+      }
       
       // Filter image files
       const imageRelationships = relatedFiles.filter(rel => 
@@ -105,7 +128,7 @@ const NoteDialogsManager = ({
       const imageUrls = imageRelationships.map(rel => rel.file_path);
       
       // Determine test mode based on project name
-      const isTestMode = note.title?.toLowerCase().includes('test') || false;
+      const isTestMode = noteToAnalyze.title?.toLowerCase().includes('test') || false;
       console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for analysis`);
       
       // Submit analysis request

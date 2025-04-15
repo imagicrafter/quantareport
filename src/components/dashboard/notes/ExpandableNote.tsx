@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Expand, Trash, Sparkles } from 'lucide-react';
 import { Note, NoteFileRelationshipWithType } from '@/utils/noteUtils';
@@ -14,7 +15,7 @@ interface ExpandableNoteProps {
   note: Note;
   onDelete: (note: Note) => void;
   onUpdateNote: (note: Note, values: { title: string; content: string; analysis: string; files_relationships_is_locked?: boolean }) => void;
-  onAnalyzeImages: () => void;
+  onAnalyzeImages: (noteId: string) => void;
   onTranscriptionComplete: (text: string) => void;
   analyzingImages: boolean;
   projectId: string;
@@ -97,6 +98,14 @@ const ExpandableNote = ({
       console.error("Error refreshing files:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAnalyzeClick = () => {
+    if (note.id) {
+      onAnalyzeImages(note.id);
+    } else {
+      console.error("Cannot analyze images: Note ID is missing");
     }
   };
 
@@ -192,7 +201,7 @@ const ExpandableNote = ({
                   variant="outline"
                   size="sm"
                   className="flex items-center gap-1"
-                  onClick={onAnalyzeImages}
+                  onClick={handleAnalyzeClick}
                   disabled={analyzingImages}
                 >
                   <Sparkles size={16} />
