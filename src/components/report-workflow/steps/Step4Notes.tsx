@@ -20,7 +20,6 @@ import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { formSchema } from '@/components/dashboard/notes/hooks/useNotesOperations';
-import { fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
 
 const Step4Notes = () => {
   const navigate = useNavigate();
@@ -86,24 +85,14 @@ const Step4Notes = () => {
   useEffect(() => {
     if (projectId && notes.length > 0) {
       const loadAllRelatedFiles = async () => {
-        const filesPromises = notes.map(async (note) => {
-          const files = await fetchRelatedFiles(note.id);
-          return { noteId: note.id, files };
-        });
-        
-        const results = await Promise.all(filesPromises);
-        const newRelatedFiles: Record<string, NoteFileRelationshipWithType[]> = {};
-        
-        results.forEach(({ noteId, files }) => {
-          newRelatedFiles[noteId] = files;
-        });
-        
-        setRelatedFiles(newRelatedFiles);
+        for (const note of notes) {
+          await fetchNoteRelatedFiles(note.id);
+        }
       };
       
       loadAllRelatedFiles();
     }
-  }, [projectId, notes]);
+  }, [projectId, notes, fetchNoteRelatedFiles]);
   
   const handleBack = async () => {
     if (projectId) {
@@ -256,7 +245,7 @@ const Step4Notes = () => {
           fetchNoteRelatedFiles={fetchNoteRelatedFiles}
           relatedFiles={relatedFiles[tempNoteId] || []}
           projectId={projectId}
-          onFileAdded={() => handleFileAdded}
+          onFileAdded={() => projectId ? fetchNoteRelatedFiles(tempNoteId) : Promise.resolve([])}
         />
         
         <AddNoteDialog

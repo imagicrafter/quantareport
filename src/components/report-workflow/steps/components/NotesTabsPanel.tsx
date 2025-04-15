@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import NotesList from '@/components/dashboard/notes/NotesList';
@@ -32,6 +32,17 @@ const NotesTabsPanel = ({
     handleTranscriptionComplete,
     fetchNoteRelatedFiles
   } = useNotesContext();
+
+  // Load related files for all notes when the component mounts or when notes change
+  useEffect(() => {
+    if (notes.length > 0) {
+      notes.forEach(note => {
+        if (note.id) {
+          fetchNoteRelatedFiles(note.id);
+        }
+      });
+    }
+  }, [notes, fetchNoteRelatedFiles]);
 
   return (
     <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">

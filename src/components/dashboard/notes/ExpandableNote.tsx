@@ -49,6 +49,13 @@ const ExpandableNote = ({
     setAnalysis(note.analysis || '');
   }, [note]);
 
+  // Fetch related files when the note is expanded
+  useEffect(() => {
+    if (isExpanded) {
+      onFileAdded();
+    }
+  }, [isExpanded, onFileAdded]);
+
   const handleSave = () => {
     onUpdateNote(note, {
       title,
