@@ -41,7 +41,7 @@ export const useNotesManagement = (projectId: string | null) => {
     }
   }, [projectId]);
 
-  const fetchNoteRelatedFiles = async (noteId: string) => {
+  const fetchNoteRelatedFiles = async (noteId: string): Promise<NoteFileRelationshipWithType[]> => {
     try {
       const filesWithTypes = await fetchRelatedFiles(noteId);
       

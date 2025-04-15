@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface NoteDialogsManagerProps {
   onEditNote: (note: Note, values: NoteFormValues) => Promise<void>;
   onDeleteNote: (note: Note) => Promise<void>;
-  fetchNoteRelatedFiles: (noteId: string) => Promise<void>;
+  fetchNoteRelatedFiles: (noteId: string) => Promise<NoteFileRelationshipWithType[]>;
   relatedFiles: NoteFileRelationshipWithType[];
   projectId: string | null;
   onFileAdded: () => void;

@@ -70,7 +70,7 @@ const NotesTabsPanel = ({
                                 <ExpandableNote
                                   key={note.id}
                                   note={note}
-                                  onDelete={handleDeleteNote}
+                                  onDelete={() => handleDeleteNote(note)}
                                   onUpdateNote={(n, values) => handleEditNote(n, values)}
                                   onAnalyzeImages={() => handleAnalyzeImages(note.id)}
                                   onTranscriptionComplete={handleTranscriptionComplete}
@@ -84,12 +84,13 @@ const NotesTabsPanel = ({
                                   }}
                                   isLocked={note.files_relationships_is_locked || false}
                                   onLockToggle={async (locked) => {
-                                    return handleEditNote(note, {
+                                    await handleEditNote(note, {
                                       title: note.title,
                                       content: note.content || '',
                                       analysis: note.analysis || '',
                                       files_relationships_is_locked: locked
                                     });
+                                    return Promise.resolve();
                                   }}
                                 />
                               </div>

@@ -254,9 +254,9 @@ const Step4Notes = () => {
           onEditNote={wrappedHandleEditNote}
           onDeleteNote={handleDeleteNote}
           fetchNoteRelatedFiles={fetchNoteRelatedFiles}
-          relatedFiles={relatedFiles}
+          relatedFiles={relatedFiles[tempNoteId] || []}
           projectId={projectId}
-          onFileAdded={handleFileAdded}
+          onFileAdded={() => handleFileAdded}
         />
         
         <AddNoteDialog
