@@ -128,14 +128,32 @@ const FilePicker = ({
                   {relatedFiles.map((rel) => (
                     <div 
                       key={rel.id} 
-                      className="bg-secondary/30 rounded-md p-3 flex items-center"
+                      className="bg-secondary/30 rounded-md p-3 flex items-center justify-between"
                     >
-                      <div>
-                        <span className="text-sm font-medium">
-                          {rel.file?.name || 'Unknown file'}
-                        </span>
-                        <div className="text-xs text-muted-foreground capitalize">
-                          {rel.file_type || 'file'}
+                      <div className="flex items-center gap-3">
+                        {rel.file_type === 'image' ? (
+                          <div className="h-12 w-12 rounded-md overflow-hidden bg-secondary flex-shrink-0">
+                            <img 
+                              src={rel.file_path} 
+                              alt={rel.file?.name || 'Preview'} 
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder.svg";
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-12 w-12 flex items-center justify-center bg-secondary rounded-md">
+                            {getFileIcon(rel.file_type || 'file')}
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-sm font-medium">
+                            {rel.file?.name || 'Unknown file'}
+                          </span>
+                          <div className="text-xs text-muted-foreground capitalize">
+                            {rel.file_type || 'file'}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -160,12 +178,30 @@ const FilePicker = ({
                         key={file.id} 
                         className="bg-muted/50 rounded-md p-3 flex items-center justify-between"
                       >
-                        <div>
-                          <span className="text-sm font-medium">
-                            {file.name}
-                          </span>
-                          <div className="text-xs text-muted-foreground capitalize">
-                            {file.type || 'file'}
+                        <div className="flex items-center gap-3">
+                          {file.type === 'image' ? (
+                            <div className="h-12 w-12 rounded-md overflow-hidden bg-secondary flex-shrink-0">
+                              <img 
+                                src={file.file_path} 
+                                alt={file.name} 
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src = "/placeholder.svg";
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-12 w-12 flex items-center justify-center bg-secondary rounded-md">
+                              {getFileIcon(file.type || 'file')}
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-sm font-medium">
+                              {file.name}
+                            </span>
+                            <div className="text-xs text-muted-foreground capitalize">
+                              {file.type || 'file'}
+                            </div>
                           </div>
                         </div>
                         <Button

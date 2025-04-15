@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Expand, Trash, Sparkles } from 'lucide-react';
 import { Note, NoteFileRelationshipWithType } from '@/utils/noteUtils';
@@ -52,7 +51,6 @@ const ExpandableNote = ({
     setAnalysis(note.analysis || '');
   }, [note]);
 
-  // Load related files when the note is expanded
   useEffect(() => {
     const loadFiles = async () => {
       if (isExpanded && note.id && loadedFiles.length === 0) {
@@ -71,7 +69,6 @@ const ExpandableNote = ({
     loadFiles();
   }, [isExpanded, note.id, loadedFiles.length]);
 
-  // Update loaded files when relatedFiles prop changes
   useEffect(() => {
     if (relatedFiles.length > 0) {
       setLoadedFiles(relatedFiles);
@@ -86,18 +83,16 @@ const ExpandableNote = ({
     });
   };
 
-  // Wrapper function to ensure onLockToggle always returns a Promise
   const handleLockToggle = async (locked: boolean): Promise<void> => {
     return Promise.resolve(onLockToggle(locked));
   };
 
-  // Handle file added/removed
   const handleFileChange = async () => {
     try {
       setIsLoading(true);
       const updatedFiles = await fetchRelatedFiles(note.id);
       setLoadedFiles(updatedFiles);
-      onFileAdded(); // Notify parent component
+      onFileAdded();
     } catch (error) {
       console.error("Error refreshing files:", error);
     } finally {
@@ -232,8 +227,6 @@ const ExpandableNote = ({
             </div>
             <RelatedFiles 
               files={loadedFiles}
-              noteId={note.id}
-              projectId={projectId}
               onRelationshipsChanged={handleFileChange}
             />
           </div>
