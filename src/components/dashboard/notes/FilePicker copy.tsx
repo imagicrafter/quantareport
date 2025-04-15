@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Plus, Lock, Unlock } from 'lucide-react';
+import { Plus, Lock, Unlock, File, Music, Folder, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,6 +25,19 @@ interface FilePickerProps {
   onLockToggle?: (locked: boolean) => Promise<void>;
   buttonLabel?: string;
 }
+
+const getFileIcon = (type: string) => {
+  switch (type) {
+    case 'image':
+      return <File size={18} className="text-blue-500" />;
+    case 'audio':
+      return <Music size={18} className="text-purple-500" />;
+    case 'folder':
+      return <Folder size={18} className="text-yellow-600" />;
+    default:
+      return <FileText size={18} className="text-gray-500" />;
+  }
+};
 
 const FilePicker = ({ 
   projectId, 
