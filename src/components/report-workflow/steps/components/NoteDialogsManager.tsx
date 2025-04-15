@@ -40,7 +40,8 @@ const NoteDialogsManager = ({
     setAnalyzeImagesHandler,
     setRelatedFilesData,
     setFileAddedHandler,
-    setTranscriptionCompleteHandler
+    setTranscriptionCompleteHandler,
+    relatedFiles: noteRelatedFilesMap
   } = useNotesContext();
   
   const editForm = useForm<NoteFormValues>({
@@ -86,13 +87,14 @@ const NoteDialogsManager = ({
     if (!projectId) return;
     
     setAnalyzingImages(true);
+    console.log(`Analyzing images for note: ${noteId}`);
     
     try {
       // Find the note - either use the selectedNote or fetch it if noteId is provided directly
       let noteToAnalyze = selectedNote;
       
       // If we don't have the selectedNote but we have noteId (from expandable note)
-      if (!noteToAnalyze && noteId) {
+      if (!noteToAnalyze || noteToAnalyze.id !== noteId) {
         const { data, error } = await supabase
           .from('notes')
           .select('*')
@@ -114,8 +116,19 @@ const NoteDialogsManager = ({
         return;
       }
       
+      // Get related files for this specific note - either from context or fetch if needed
+      let noteImages = noteRelatedFilesMap[noteId] || [];
+      
+      // If we don't have the related files for this note yet, fetch them
+      if (noteImages.length === 0) {
+        console.log(`Fetching related files for note: ${noteId}`);
+        noteImages = await fetchRelatedFiles(noteId);
+        // Save to context for future use
+        setRelatedFilesData(noteId, noteImages);
+      }
+      
       // Filter image files
-      const imageRelationships = relatedFiles.filter(rel => 
+      const imageRelationships = noteImages.filter(rel => 
         rel.file_type === 'image'
       );
       
@@ -235,10 +248,14 @@ const NoteDialogsManager = ({
           setPollingInterval(null);
           setAnalyzingImages(false);
           
-          // Update form values with the new analysis
-          editForm.setValue('analysis', data.analysis);
-          
-          toast.success('Image analysis completed');
+          // Update form values with the new analysis if the edit dialog is open
+          if (isEditDialogOpen && selectedNote && selectedNote.id === noteId) {
+            editForm.setValue('analysis', data.analysis);
+          } else {
+            // For ExpandableNote, we need to update the note in the database
+            // The note will be refreshed on the next render
+            toast.success('Image analysis completed');
+          }
         } else if (attempts >= maxAttempts) {
           clearInterval(intervalId);
           setPollingInterval(null);

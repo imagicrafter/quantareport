@@ -10,6 +10,7 @@ import AudioRecorder from '../files/AudioRecorder';
 import FilePicker from './FilePicker';
 import RelatedFiles from './RelatedFiles';
 import { fetchRelatedFiles } from '@/utils/noteFileRelationshipUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ExpandableNoteProps {
   note: Note;
@@ -45,6 +46,7 @@ const ExpandableNote = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [loadedFiles, setLoadedFiles] = useState<NoteFileRelationshipWithType[]>(relatedFiles);
   const [isLoading, setIsLoading] = useState(false);
+  const [polling, setPolling] = useState(false);
 
   useEffect(() => {
     setTitle(note.title);
@@ -76,6 +78,45 @@ const ExpandableNote = ({
     }
   }, [relatedFiles]);
 
+  // Poll for analysis updates if analysis is triggered from this component
+  useEffect(() => {
+    let intervalId: number | null = null;
+    
+    if (polling && note.id) {
+      const checkAnalysis = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('notes')
+            .select('analysis')
+            .eq('id', note.id)
+            .single();
+          
+          if (error) {
+            console.error('Error checking analysis:', error);
+            return;
+          }
+          
+          if (data && data.analysis && data.analysis !== analysis) {
+            setAnalysis(data.analysis);
+            // Update the note in the state
+            onUpdateNote(note, { title, content, analysis: data.analysis });
+            setPolling(false);
+          }
+        } catch (error) {
+          console.error('Error polling for analysis:', error);
+        }
+      };
+      
+      intervalId = window.setInterval(checkAnalysis, 2000);
+    }
+    
+    return () => {
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [polling, note.id, analysis, title, content, onUpdateNote, note]);
+
   const handleSave = () => {
     onUpdateNote(note, {
       title,
@@ -104,6 +145,7 @@ const ExpandableNote = ({
   const handleAnalyzeClick = () => {
     if (note.id) {
       onAnalyzeImages(note.id);
+      setPolling(true); // Start polling for updates
     } else {
       console.error("Cannot analyze images: Note ID is missing");
     }
@@ -202,11 +244,11 @@ const ExpandableNote = ({
                   size="sm"
                   className="flex items-center gap-1"
                   onClick={handleAnalyzeClick}
-                  disabled={analyzingImages}
+                  disabled={analyzingImages || polling}
                 >
                   <Sparkles size={16} />
                   <span>
-                    {analyzingImages ? 'Analyzing...' : 'Analyze'}
+                    {analyzingImages || polling ? 'Analyzing...' : 'Analyze'}
                   </span>
                 </Button>
               )}
