@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -22,43 +21,31 @@ const NotesTabsPanel = ({
 }: NotesTabsPanelProps) => {
   const [activeTab, setActiveTab] = useState('all');
   const [analyzingImages, setAnalyzingImages] = useState(false);
-  const { 
-    handleEditNote, 
+  const {
+    handleEditNote,
     handleDeleteNote,
     handleAnalyzeImages,
     relatedFiles,
     onFileAdded,
-    handleTranscriptionComplete 
+    handleTranscriptionComplete
   } = useNotesContext();
 
-  const filteredNotes = () => {
-    if (activeTab === 'all') return notes;
-    
-    return notes.filter(note => {
-      if (!note.metadata) return false;
-      
-      try {
-        const metadata = typeof note.metadata === 'string' 
-          ? JSON.parse(note.metadata) 
-          : note.metadata;
-          
-        // Debug the metadata structure to verify category values
-        console.log('Note metadata for filtering:', note.id, metadata);
-        
-        // Check if category exists and matches activeTab
-        return metadata.category === activeTab;
-      } catch (e) {
-        console.error('Error parsing note metadata:', e, note.metadata);
-        return false;
-      }
-    });
-  };
-
-  // Get the filtered notes for the current tab
-  const notesToDisplay = filteredNotes();
-  
-  // Debug the filtering results
-  console.log(`Tab: ${activeTab}, Total Notes: ${notes.length}, Filtered Notes: ${notesToDisplay.length}`);
+  // We no longer need this function as per the updated requirement for the Findings tab
+  // const filteredNotes = () => {
+  //   if (activeTab === 'all') return notes;
+  //
+  //   return notes.filter(note => {
+  //     if (!note.metadata) return false;
+  //     try {
+  //       const metadata = typeof note.metadata === 'string'
+  //         ? JSON.parse(note.metadata)
+  //         : note.metadata;
+  //       return metadata.category === activeTab;
+  //     } catch (e) {
+  //       return false;
+  //     }
+  //   });
+  // };
 
   return (
     <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
@@ -68,19 +55,19 @@ const NotesTabsPanel = ({
         <TabsTrigger value="finding">Findings</TabsTrigger>
         <TabsTrigger value="recommendation">Recommendations</TabsTrigger>
       </TabsList>
-      
+
       <div className="flex-1 min-h-0 overflow-hidden">
         <ScrollArea className="h-full">
           {activeTab && (
             <TabsContent value={activeTab} className="mt-0 h-full">
               {activeTab === 'finding' ? (
                 <div className="space-y-4">
-                  {notesToDisplay.length === 0 ? (
+                  {notes.length === 0 ? ( // Check the original 'notes' array
                     <div className="py-8 text-center text-muted-foreground border rounded-lg">
-                      No findings added yet. Add a note with category "finding" to get started.
+                      No notes added yet.
                     </div>
                   ) : (
-                    notesToDisplay.map((note) => (
+                    notes.map((note) => ( // Map over the original 'notes' array
                       <ExpandableNote
                         key={note.id}
                         note={note}
@@ -94,11 +81,11 @@ const NotesTabsPanel = ({
                         onFileAdded={() => onFileAdded(note.id)}
                         isLocked={note.files_relationships_is_locked || false}
                         onLockToggle={async (locked) => {
-                          return handleEditNote(note, { 
-                            title: note.title, 
-                            content: note.content || '', 
+                          return handleEditNote(note, {
+                            title: note.title,
+                            content: note.content || '',
                             analysis: note.analysis || '',
-                            files_relationships_is_locked: locked 
+                            files_relationships_is_locked: locked
                           });
                         }}
                       />
@@ -106,8 +93,18 @@ const NotesTabsPanel = ({
                   )}
                 </div>
               ) : (
-                <NotesList 
-                  notes={notesToDisplay}
+                <NotesList
+                  notes={activeTab === 'all' ? notes : notes.filter(note => { // Apply filter for other tabs
+                    if (!note.metadata) return false;
+                    try {
+                      const metadata = typeof note.metadata === 'string'
+                        ? JSON.parse(note.metadata)
+                        : note.metadata;
+                      return metadata.category === activeTab;
+                    } catch (e) {
+                      return false;
+                    }
+                  })}
                   loading={loading}
                   onEditNote={handleEditNote}
                   onDeleteNote={handleDeleteNote}
