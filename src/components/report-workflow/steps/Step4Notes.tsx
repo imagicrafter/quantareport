@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -15,7 +14,7 @@ import NoteDialogsManager from './components/NoteDialogsManager';
 import { useNotesManagement } from '@/hooks/report-workflow/useNotesManagement';
 import { NotesProvider } from '@/hooks/report-workflow/NotesContext';
 import AddNoteDialog from '@/components/dashboard/notes/AddNoteDialog';
-import { Note, NoteFileRelationshipWithType } from '@/utils/noteUtils';
+import { Note } from '@/utils/noteUtils';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,7 +28,7 @@ const Step4Notes = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [tempNoteId] = useState(uuidv4());
-  const [addNoteRelatedFiles, setAddNoteRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
+  const [addNoteRelatedFiles, setAddNoteRelatedFiles] = useState<any[]>([]);
   const [analyzingImages, setAnalyzingImages] = useState(false);
   
   const {
@@ -81,19 +80,6 @@ const Step4Notes = () => {
     getProjectId();
   }, [navigate, toast, fetchCurrentWorkflow]);
   
-  // Load related files for all notes initially
-  useEffect(() => {
-    if (projectId && notes.length > 0) {
-      const loadAllRelatedFiles = async () => {
-        for (const note of notes) {
-          await fetchNoteRelatedFiles(note.id);
-        }
-      };
-      
-      loadAllRelatedFiles();
-    }
-  }, [projectId, notes, fetchNoteRelatedFiles]);
-  
   const handleBack = async () => {
     if (projectId) {
       await updateWorkflowState(projectId, 3);
@@ -108,9 +94,9 @@ const Step4Notes = () => {
     navigate('/dashboard/report-wizard/generate');
   };
   
-  const handleFileAdded = async (noteId: string) => {
+  const handleFileAdded = async () => {
     if (projectId) {
-      await fetchNoteRelatedFiles(noteId);
+      await refreshNotes();
     }
   };
 
@@ -195,7 +181,6 @@ const Step4Notes = () => {
   const handleAnalyzeImagesForNote = (noteId: string) => {
     setAnalyzingImages(true);
     // Logic would be handled through context
-    setTimeout(() => setAnalyzingImages(false), 2000); // Simulate analysis
   };
 
   const handleTranscriptionComplete = (text: string) => {
@@ -243,9 +228,9 @@ const Step4Notes = () => {
           onEditNote={wrappedHandleEditNote}
           onDeleteNote={handleDeleteNote}
           fetchNoteRelatedFiles={fetchNoteRelatedFiles}
-          relatedFiles={relatedFiles[tempNoteId] || []}
+          relatedFiles={relatedFiles}
           projectId={projectId}
-          onFileAdded={() => projectId ? fetchNoteRelatedFiles(tempNoteId) : Promise.resolve([])}
+          onFileAdded={handleFileAdded}
         />
         
         <AddNoteDialog
@@ -259,10 +244,7 @@ const Step4Notes = () => {
           relatedFiles={addNoteRelatedFiles}
           onAnalyzeImages={() => handleAnalyzeImagesForNote(tempNoteId)}
           onFileAdded={() => {
-            // Just refresh all notes when adding a new note
-            if (projectId) {
-              refreshNotes();
-            }
+            refreshNotes();
           }}
           projectId={projectId || ''}
           onTranscriptionComplete={handleTranscriptionComplete}

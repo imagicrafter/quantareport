@@ -1,13 +1,17 @@
 
-import { useNoteForm } from './useNoteForm';
-import { useNoteDialogs } from './useNoteDialogs';
-import { useNoteAnalysis } from './useNoteAnalysis';
-import { useNoteRelationships } from './useNoteRelationships';
-import { Note } from '@/utils/noteUtils';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-
-export { formSchema } from './useNoteForm';
-export type { NoteFormValues } from './useNoteForm';
+import { 
+  Note, 
+  reorderNotes, 
+  titleToCamelCase, 
+  submitImageAnalysis,
+  NoteFileRelationshipWithType 
+} from '@/utils/noteUtils';
 
 interface UseNotesOperationsProps {
   projectId: string;
@@ -17,6 +21,15 @@ interface UseNotesOperationsProps {
   refreshNotes: () => Promise<void>;
 }
 
+// Update the schema to ensure title is required, matching Step4Notes
+export const formSchema = z.object({
+  title: z.string().min(2, 'Title must be at least 2 characters.'),
+  content: z.string().optional(),
+  analysis: z.string().optional(),
+});
+
+export type NoteFormValues = z.infer<typeof formSchema>;
+
 export const useNotesOperations = ({
   projectId,
   projectName,
@@ -24,39 +37,377 @@ export const useNotesOperations = ({
   setNotes,
   refreshNotes
 }: UseNotesOperationsProps) => {
-  const {
-    form,
-    editForm,
-    saving,
-    handleAddNote,
-    handleEditNote,
-  } = useNoteForm(projectId, refreshNotes);
+  const { toast } = useToast();
+  
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [relatedFiles, setRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
+  const [addNoteRelatedFiles, setAddNoteRelatedFiles] = useState<NoteFileRelationshipWithType[]>([]);
+  const [analyzingImages, setAnalyzingImages] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
+  const [tempNoteId, setTempNoteId] = useState<string | null>(null);
 
-  const {
-    isAddDialogOpen,
-    isEditDialogOpen,
-    isDeleteDialogOpen,
-    selectedNote,
-    setIsAddDialogOpen,
-    setIsEditDialogOpen,
-    setIsDeleteDialogOpen,
-    setSelectedNote,
-    handleDeleteNote,
-  } = useNoteDialogs(refreshNotes);
+  const form = useForm<NoteFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: '',
+      content: '',
+      analysis: '',
+    },
+  });
 
-  const {
-    analyzingImages,
-    handleAnalyzeImages,
-    tempNoteId,
-  } = useNoteAnalysis(projectName);
+  const editForm = useForm<NoteFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: '',
+      content: '',
+      analysis: '',
+    },
+  });
 
-  const {
-    relatedFiles,
-    addNoteRelatedFiles,
-    setRelatedFiles,
-    setAddNoteRelatedFiles,
-    fetchFileRelationships,
-  } = useNoteRelationships();
+  const createTemporaryNote = async () => {
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (!session.session) {
+        toast({
+          title: 'Error',
+          description: 'You must be logged in to add notes.',
+          variant: 'destructive',
+        });
+        return null;
+      }
+
+      const nextPosition = notes.length > 0 
+        ? Math.max(...notes.map(note => note.position || 0)) + 1 
+        : 1;
+
+      const { data, error } = await supabase
+        .from('notes')
+        .insert({
+          title: 'Temporary Note',
+          name: 'temporaryNote',
+          content: '',
+          project_id: projectId,
+          user_id: session.session.user.id,
+          position: nextPosition
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data.id;
+    } catch (error) {
+      console.error('Error creating temporary note:', error);
+      return null;
+    }
+  };
+
+  const deleteTemporaryNote = async (noteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting temporary note:', error);
+    }
+  };
+
+  const handleAddDialogOpenChange = async (open: boolean) => {
+    if (open) {
+      form.reset();
+      setAddNoteRelatedFiles([]);
+      const newTempNoteId = await createTemporaryNote();
+      if (newTempNoteId) {
+        setTempNoteId(newTempNoteId);
+      } else {
+        return;
+      }
+    } else if (tempNoteId && !saving) {
+      await deleteTemporaryNote(tempNoteId);
+      setTempNoteId(null);
+      setAddNoteRelatedFiles([]);
+    }
+    setIsAddDialogOpen(open);
+  };
+
+  const handleAddNote = async (values: NoteFormValues) => {
+    try {
+      setSaving(true);
+      
+      if (!tempNoteId) {
+        toast({
+          title: 'Error',
+          description: 'No temporary note ID available.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const name = titleToCamelCase(values.title);
+
+      const { error } = await supabase
+        .from('notes')
+        .update({
+          title: values.title,
+          name: name,
+          content: values.content || '',
+          analysis: values.analysis || null,
+        })
+        .eq('id', tempNoteId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Note added successfully!',
+      });
+
+      form.reset();
+      setAddNoteRelatedFiles([]);
+      setIsAddDialogOpen(false);
+      refreshNotes();
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add note. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+      setTempNoteId(null);
+    }
+  };
+
+  const handleEditNote = async (values: NoteFormValues) => {
+    if (!selectedNote) return;
+
+    try {
+      setSaving(true);
+      const { error } = await supabase
+        .from('notes')
+        .update({
+          title: values.title,
+          content: values.content || '',
+          analysis: values.analysis || null,
+        })
+        .eq('id', selectedNote.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Note updated successfully!',
+      });
+
+      editForm.reset();
+      setIsEditDialogOpen(false);
+      refreshNotes();
+    } catch (error) {
+      console.error('Error updating note:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update note. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteNote = async () => {
+    if (!selectedNote) return;
+
+    try {
+      setSaving(true);
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', selectedNote.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Note deleted successfully!',
+      });
+
+      setIsDeleteDialogOpen(false);
+      refreshNotes();
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete note. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleOnDragEnd = async (result: any) => {
+    if (!result.destination) return;
+    
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    
+    if (sourceIndex === destinationIndex) return;
+    
+    try {
+      const updatedNotes = await reorderNotes(notes, sourceIndex, destinationIndex);
+      setNotes(updatedNotes);
+      
+      toast({
+        description: "Note order updated",
+      });
+    } catch (error) {
+      console.error('Error reordering notes:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update note order',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const checkAnalysisStatus = async (noteId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('analysis')
+        .eq('id', noteId)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching note status:', error);
+        return { completed: false, analysis: null };
+      }
+      
+      if (data && data.analysis) {
+        console.log('Analysis completed:', data.analysis.substring(0, 50) + '...');
+        return { completed: true, analysis: data.analysis };
+      }
+      
+      return { completed: false, analysis: null };
+    } catch (error) {
+      console.error('Error checking analysis status:', error);
+      return { completed: false, analysis: null };
+    }
+  };
+
+  const startPollingForAnalysisCompletion = (noteId: string, isAdd: boolean = false) => {
+    if (pollingInterval !== null) {
+      clearInterval(pollingInterval);
+    }
+    
+    const maxAttempts = 30;
+    let attempts = 0;
+    
+    const intervalId = window.setInterval(async () => {
+      attempts++;
+      console.log(`Checking analysis status: attempt ${attempts}/${maxAttempts}`);
+      
+      const { completed, analysis } = await checkAnalysisStatus(noteId);
+      
+      if (completed && analysis) {
+        clearInterval(intervalId);
+        setPollingInterval(null);
+        setAnalyzingImages(false);
+        
+        // Update form values immediately with the new analysis
+        if (isAdd) {
+          form.setValue('analysis', analysis);
+        } else {
+          editForm.setValue('analysis', analysis);
+        }
+        
+        // Update the selectedNote state
+        if (!isAdd) {
+          setSelectedNote(prevNote => {
+            if (!prevNote) return null;
+            return { ...prevNote, analysis: analysis };
+          });
+        }
+        
+        toast({
+          title: 'Success',
+          description: 'Image analysis completed',
+        });
+      } else if (attempts >= maxAttempts) {
+        clearInterval(intervalId);
+        setPollingInterval(null);
+        setAnalyzingImages(false);
+        toast({
+          title: 'Warning',
+          description: 'Analysis is taking longer than expected. Please check back later.',
+          variant: 'destructive',
+        });
+      }
+    }, 2000);
+    
+    setPollingInterval(intervalId);
+  };
+
+  const handleAnalyzeImages = async (isAdd: boolean = false) => {
+    const noteId = isAdd ? tempNoteId : selectedNote?.id;
+    if (!noteId) return;
+    
+    setAnalyzingImages(true);
+    
+    try {
+      const imageRelationships = (isAdd ? addNoteRelatedFiles : relatedFiles).filter(rel => 
+        rel.file_type === 'image'
+      );
+      
+      if (imageRelationships.length === 0) {
+        toast({
+          title: 'Info',
+          description: 'No images available for analysis. Add some images to analyze first.',
+        });
+        setAnalyzingImages(false);
+        return;
+      }
+      
+      const imageUrls = imageRelationships.map(rel => rel.file_path);
+      
+      const isTestMode = projectName.toLowerCase().includes('test');
+      console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project: ${projectName}`);
+      
+      const success = await submitImageAnalysis(
+        noteId,
+        projectId,
+        imageUrls,
+        isTestMode
+      );
+      
+      if (!success) {
+        throw new Error('Failed to submit image analysis request');
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Image analysis started',
+      });
+      startPollingForAnalysisCompletion(noteId, isAdd);
+      
+    } catch (error) {
+      console.error('Error analyzing images:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to analyze images',
+        variant: 'destructive',
+      });
+      setAnalyzingImages(false);
+    }
+  };
 
   const handleTranscriptionComplete = (text: string) => {
     form.setValue('content', text);
@@ -66,81 +417,38 @@ export const useNotesOperations = ({
     editForm.setValue('content', text);
   };
 
-  // Add the missing functions needed in NotesSection.tsx
-  const handleOnDragEnd = async (result: any) => {
-    // Placeholder for drag-and-drop functionality
-    if (!result.destination) return;
-    
-    const reorderedNotes = [...notes];
-    const [removed] = reorderedNotes.splice(result.source.index, 1);
-    reorderedNotes.splice(result.destination.index, 0, removed);
-    
-    setNotes(reorderedNotes.map((note, index) => ({
-      ...note,
-      position: index + 1
-    })));
-    
-    try {
-      const updates = reorderedNotes.map((note, index) => ({
-        id: note.id,
-        position: index + 1,
-        name: note.name,
-        title: note.title,
-        project_id: note.project_id,
-        user_id: note.user_id
-      }));
-      
-      const { error } = await supabase
-        .from('notes')
-        .upsert(updates);
-      
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error updating note positions:', error);
-    }
-  };
-
-  const handleAddDialogOpenChange = (open: boolean) => {
-    setIsAddDialogOpen(open);
-  };
+  useEffect(() => {
+    return () => {
+      if (pollingInterval !== null) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
 
   return {
-    // Form state and handlers
     form,
     editForm,
-    saving,
-    handleAddNote,
-    handleEditNote,
-
-    // Dialog state and handlers
     isAddDialogOpen,
     isEditDialogOpen,
     isDeleteDialogOpen,
     selectedNote,
-    setIsAddDialogOpen,
+    saving,
+    relatedFiles,
+    addNoteRelatedFiles,
+    analyzingImages,
+    tempNoteId,
+    handleAddDialogOpenChange,
+    handleAddNote,
+    handleEditNote,
+    handleDeleteNote,
+    handleOnDragEnd,
+    handleAnalyzeImages,
+    handleTranscriptionComplete,
+    handleEditTranscriptionComplete,
     setIsEditDialogOpen,
     setIsDeleteDialogOpen,
     setSelectedNote,
-    handleDeleteNote,
-
-    // Analysis state and handlers
-    analyzingImages,
-    handleAnalyzeImages,
-    tempNoteId,
-
-    // File relationships
-    relatedFiles,
-    addNoteRelatedFiles,
     setRelatedFiles,
     setAddNoteRelatedFiles,
-    fetchFileRelationships,
-
-    // Transcription handlers
-    handleTranscriptionComplete,
-    handleEditTranscriptionComplete,
-    
-    // Additional handlers needed in NotesSection
-    handleOnDragEnd,
-    handleAddDialogOpenChange,
   };
 };

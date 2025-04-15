@@ -12,26 +12,11 @@ export interface NoteFileRelationship {
   file?: ProjectFile;
 }
 
-// Simple in-memory cache for related files
-const relatedFilesCache: Record<string, { data: NoteFileRelationshipWithType[], timestamp: number }> = {};
-const CACHE_DURATION = 60 * 1000; // 1 minute cache duration
-
 /**
  * Fetches all files related to a specific note
  */
 export const fetchRelatedFiles = async (noteId: string): Promise<NoteFileRelationshipWithType[]> => {
   try {
-    // Check cache first
-    const now = Date.now();
-    const cachedData = relatedFilesCache[noteId];
-    
-    if (cachedData && (now - cachedData.timestamp < CACHE_DURATION)) {
-      console.log(`Using cached related files for note ${noteId}`);
-      return cachedData.data;
-    }
-    
-    console.log(`Fetching related files for note ${noteId} from database`);
-    
     const { data: relationships, error } = await supabase
       .from('note_file_relationships')
       .select(`
@@ -55,7 +40,7 @@ export const fetchRelatedFiles = async (noteId: string): Promise<NoteFileRelatio
     if (error) throw error;
 
     // Transform the data to include the file details
-    const transformedData = relationships.map(item => ({
+    return relationships.map(item => ({
       id: item.id,
       note_id: item.note_id,
       file_id: item.file_id,
@@ -64,20 +49,9 @@ export const fetchRelatedFiles = async (noteId: string): Promise<NoteFileRelatio
       file_type: item.files?.type || '',
       file_path: item.files?.file_path || ''
     }));
-    
-    // Store in cache
-    relatedFilesCache[noteId] = {
-      data: transformedData,
-      timestamp: now
-    };
-    
-    return transformedData;
   } catch (error) {
     console.error('Error fetching related files:', error);
-    // Only show toast for non-network errors to avoid spamming the user
-    if (!(error instanceof TypeError && error.message.includes('Failed to fetch'))) {
-      toast.error('Failed to load related files');
-    }
+    toast.error('Failed to load related files');
     return [];
   }
 };
@@ -136,9 +110,6 @@ export const addFileToNote = async (noteId: string, fileId: string): Promise<boo
 
     if (error) throw error;
     
-    // Invalidate cache for this note
-    delete relatedFilesCache[noteId];
-    
     toast.success('File added to note');
     return true;
   } catch (error) {
@@ -153,28 +124,12 @@ export const addFileToNote = async (noteId: string, fileId: string): Promise<boo
  */
 export const removeFileFromNote = async (relationshipId: string): Promise<boolean> => {
   try {
-    // First, get the note_id to invalidate the cache later
-    const { data, error: fetchError } = await supabase
-      .from('note_file_relationships')
-      .select('note_id')
-      .eq('id', relationshipId)
-      .single();
-      
-    if (fetchError) throw fetchError;
-    
-    const noteId = data.note_id;
-    
     const { error } = await supabase
       .from('note_file_relationships')
       .delete()
       .eq('id', relationshipId);
 
     if (error) throw error;
-    
-    // Invalidate cache
-    if (noteId) {
-      delete relatedFilesCache[noteId];
-    }
     
     toast.success('File removed from note');
     return true;

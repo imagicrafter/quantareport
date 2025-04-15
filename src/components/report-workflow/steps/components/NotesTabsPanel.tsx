@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import NotesList from '@/components/dashboard/notes/NotesList';
@@ -27,24 +27,10 @@ const NotesTabsPanel = ({
     handleEditNote,
     handleDeleteNote,
     handleAnalyzeImages,
-    handleTranscriptionComplete,
     relatedFiles,
     onFileAdded,
-    fetchNoteRelatedFiles
+    handleTranscriptionComplete
   } = useNotesContext();
-
-  // Prefetch related files for findings tab only when that tab is selected
-  useEffect(() => {
-    if (activeTab === 'finding' && notes.length > 0) {
-      // Only load files for visible notes (first few) to avoid performance issues
-      const visibleNotes = notes.slice(0, 5);
-      visibleNotes.forEach(note => {
-        if (note.id) {
-          fetchNoteRelatedFiles(note.id);
-        }
-      });
-    }
-  }, [activeTab, notes, fetchNoteRelatedFiles]);
 
   return (
     <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
@@ -83,32 +69,22 @@ const NotesTabsPanel = ({
                                 <ExpandableNote
                                   key={note.id}
                                   note={note}
-                                  onDelete={() => handleDeleteNote(note)}
-                                  onUpdateNote={(n, values) => {
-                                    if (values) {
-                                      return handleEditNote(n, values);
-                                    }
-                                    return Promise.resolve();
-                                  }}
+                                  onDelete={handleDeleteNote}
+                                  onUpdateNote={(n, values) => handleEditNote(n, values)}
                                   onAnalyzeImages={() => handleAnalyzeImages(note.id)}
                                   onTranscriptionComplete={handleTranscriptionComplete}
                                   analyzingImages={analyzingImages}
                                   projectId={projectId}
                                   relatedFiles={relatedFiles[note.id] || []}
-                                  onFileAdded={() => {
-                                    if (note.id && fetchNoteRelatedFiles) {
-                                      fetchNoteRelatedFiles(note.id);
-                                    }
-                                  }}
+                                  onFileAdded={() => onFileAdded(note.id)}
                                   isLocked={note.files_relationships_is_locked || false}
                                   onLockToggle={async (locked) => {
-                                    await handleEditNote(note, {
+                                    return handleEditNote(note, {
                                       title: note.title,
                                       content: note.content || '',
                                       analysis: note.analysis || '',
                                       files_relationships_is_locked: locked
                                     });
-                                    return Promise.resolve();
                                   }}
                                 />
                               </div>
@@ -134,11 +110,7 @@ const NotesTabsPanel = ({
                     }
                   })}
                   loading={loading}
-                  onEditNote={(note) => {
-                    if (handleEditNote) {
-                      handleEditNote(note, undefined);
-                    }
-                  }}
+                  onEditNote={handleEditNote}
                   onDeleteNote={handleDeleteNote}
                   onDragEnd={onDragEnd}
                 />

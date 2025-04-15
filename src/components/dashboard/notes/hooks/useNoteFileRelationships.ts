@@ -15,7 +15,7 @@ export const useNoteFileRelationships = () => {
     addNoteRelatedFiles: NoteFileRelationshipWithType[],
     setAddNoteRelatedFiles: React.Dispatch<React.SetStateAction<NoteFileRelationshipWithType[]>>,
     tempNoteId: string | null,
-    fetchFileRelationshipsFn: (noteId: string) => Promise<NoteFileRelationshipWithType[]>
+    fetchFileRelationshipsFn: (noteId: string) => Promise<void>
   ) => (newRelationship?: NoteFileRelationshipWithType) => {
     if (newRelationship) {
       setAddNoteRelatedFiles(prev => {
@@ -27,9 +27,7 @@ export const useNoteFileRelationships = () => {
       });
     } else {
       if (tempNoteId) {
-        fetchFileRelationshipsFn(tempNoteId).then(files => {
-          setAddNoteRelatedFiles(files);
-        });
+        fetchFileRelationshipsFn(tempNoteId);
       }
     }
   };
