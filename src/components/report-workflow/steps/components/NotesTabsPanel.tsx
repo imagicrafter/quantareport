@@ -71,7 +71,12 @@ const NotesTabsPanel = ({
                                   key={note.id}
                                   note={note}
                                   onDelete={() => handleDeleteNote(note)}
-                                  onUpdateNote={(n, values) => handleEditNote(n, values)}
+                                  onUpdateNote={(n, values) => {
+                                    if (values) {
+                                      return handleEditNote(n, values);
+                                    }
+                                    return Promise.resolve();
+                                  }}
                                   onAnalyzeImages={() => handleAnalyzeImages(note.id)}
                                   onTranscriptionComplete={handleTranscriptionComplete}
                                   analyzingImages={analyzingImages}
