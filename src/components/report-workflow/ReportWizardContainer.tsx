@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Outlet, useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
 import StepIndicator from './StepIndicator';
 import { workflowSteps } from './constants/workflowSteps';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import { useProjectDetails } from '@/hooks/report-workflow/useProjectDetails';
 import ExitWorkflowDialog from './ExitWorkflowDialog';
 import WorkflowLoading from './WorkflowLoading';
-import { toast } from 'react-toastify';
 
 const ReportWizardContainer = () => {
   const { step } = useParams();
