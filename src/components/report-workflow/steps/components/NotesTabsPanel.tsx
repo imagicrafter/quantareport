@@ -21,7 +21,7 @@ const NotesTabsPanel = ({
   onDragEnd,
   projectId
 }: NotesTabsPanelProps) => {
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState('finding');
   const [analyzingImages, setAnalyzingImages] = useState(false);
   const {
     handleEditNote,
@@ -33,7 +33,7 @@ const NotesTabsPanel = ({
   } = useNotesContext();
 
   return (
-    <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+    <Tabs defaultValue="finding" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
       <TabsList className="grid w-full grid-cols-4 mb-6 flex-none">
         <TabsTrigger value="finding">Findings</TabsTrigger>
         <TabsTrigger value="all">Analysis</TabsTrigger>

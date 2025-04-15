@@ -215,7 +215,7 @@ const FilePicker = ({
                         <div>
                           <span className="text-sm font-medium">{file.name}</span>
                           <div className="text-xs text-muted-foreground capitalize">
-                            {file.type || 'file'}
+                            {/* Do not display file type {file.type || 'file'} */}
                           </div>
                         </div>
                       </div>
