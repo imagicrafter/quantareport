@@ -120,7 +120,13 @@ export const useNotesManagement = (projectId: string | null) => {
     }
   }, []);
 
-  const handleEditNote = async (note: Note, values: NoteFormValues) => {
+  // Fix: Update the parameter type to include files_relationships_is_locked
+  const handleEditNote = async (note: Note, values: { 
+    title: string; 
+    content: string; 
+    analysis: string | null; 
+    files_relationships_is_locked?: boolean 
+  }) => {
     try {
       const { error } = await supabase
         .from('notes')
