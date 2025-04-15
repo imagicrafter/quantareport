@@ -33,16 +33,18 @@ const NotesTabsPanel = ({
     fetchNoteRelatedFiles
   } = useNotesContext();
 
-  // Load related files for all notes when the component mounts or when notes change
+  // Load related files for all notes only once when the component mounts
   useEffect(() => {
     if (notes.length > 0) {
-      notes.forEach(note => {
+      // Prefetch files only for the first few notes (to avoid timeout)
+      const notesToPrefetch = notes.slice(0, 3);
+      notesToPrefetch.forEach(note => {
         if (note.id) {
           fetchNoteRelatedFiles(note.id);
         }
       });
     }
-  }, [notes, fetchNoteRelatedFiles]);
+  }, [notes.length, fetchNoteRelatedFiles]);
 
   return (
     <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">

@@ -42,6 +42,7 @@ const ExpandableNote = ({
   const [content, setContent] = useState(note.content || '');
   const [analysis, setAnalysis] = useState(note.analysis || '');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [hasLoadedFiles, setHasLoadedFiles] = useState(false);
 
   useEffect(() => {
     setTitle(note.title);
@@ -49,12 +50,13 @@ const ExpandableNote = ({
     setAnalysis(note.analysis || '');
   }, [note]);
 
-  // Fetch related files when the note is expanded
+  // Load related files only once when the note is first expanded
   useEffect(() => {
-    if (isExpanded) {
+    if (isExpanded && !hasLoadedFiles) {
       onFileAdded();
+      setHasLoadedFiles(true);
     }
-  }, [isExpanded, onFileAdded]);
+  }, [isExpanded, hasLoadedFiles, onFileAdded]);
 
   const handleSave = () => {
     onUpdateNote(note, {
