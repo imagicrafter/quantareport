@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useNotes } from './notes/hooks/useNotes';
 import { useNotesOperations } from './notes/hooks/useNotesOperations';
@@ -72,10 +71,7 @@ const NotesSection = ({ projectId }: NotesSectionProps) => {
     addNoteRelatedFiles,
     setAddNoteRelatedFiles,
     tempNoteId,
-    async (noteId) => {
-      const files = await fetchFileRelationships(noteId);
-      setRelatedFiles(files);
-    }
+    fetchFileRelationships
   );
 
   // Handle file relationships for the edit note dialog
