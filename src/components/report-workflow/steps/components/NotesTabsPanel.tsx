@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -5,6 +6,7 @@ import NotesList from '@/components/dashboard/notes/NotesList';
 import ExpandableNote from '@/components/dashboard/notes/ExpandableNote';
 import { Note } from '@/utils/noteUtils';
 import { useNotesContext } from '@/hooks/report-workflow/NotesContext';
+import { Droppable, Draggable } from 'react-beautiful-dnd';
 
 interface NotesTabsPanelProps {
   notes: Note[];
@@ -30,23 +32,6 @@ const NotesTabsPanel = ({
     handleTranscriptionComplete
   } = useNotesContext();
 
-  // We no longer need this function as per the updated requirement for the Findings tab
-  // const filteredNotes = () => {
-  //   if (activeTab === 'all') return notes;
-  //
-  //   return notes.filter(note => {
-  //     if (!note.metadata) return false;
-  //     try {
-  //       const metadata = typeof note.metadata === 'string'
-  //         ? JSON.parse(note.metadata)
-  //         : note.metadata;
-  //       return metadata.category === activeTab;
-  //     } catch (e) {
-  //       return false;
-  //     }
-  //   });
-  // };
-
   return (
     <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
       <TabsList className="grid w-full grid-cols-4 mb-6 flex-none">
@@ -61,40 +46,59 @@ const NotesTabsPanel = ({
           {activeTab && (
             <TabsContent value={activeTab} className="mt-0 h-full">
               {activeTab === 'finding' ? (
-                <div className="space-y-4">
-                  {notes.length === 0 ? ( // Check the original 'notes' array
-                    <div className="py-8 text-center text-muted-foreground border rounded-lg">
-                      No notes added yet.
+                <Droppable droppableId="findings-list">
+                  {(provided) => (
+                    <div 
+                      className="space-y-4" 
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                    >
+                      {notes.length === 0 ? (
+                        <div className="py-8 text-center text-muted-foreground border rounded-lg">
+                          No notes added yet.
+                        </div>
+                      ) : (
+                        notes.map((note, index) => (
+                          <Draggable key={note.id} draggableId={note.id} index={index}>
+                            {(provided) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                              >
+                                <ExpandableNote
+                                  key={note.id}
+                                  note={note}
+                                  onDelete={handleDeleteNote}
+                                  onUpdateNote={(n, values) => handleEditNote(n, values)}
+                                  onAnalyzeImages={() => handleAnalyzeImages(note.id)}
+                                  onTranscriptionComplete={handleTranscriptionComplete}
+                                  analyzingImages={analyzingImages}
+                                  projectId={projectId}
+                                  relatedFiles={relatedFiles[note.id] || []}
+                                  onFileAdded={() => onFileAdded(note.id)}
+                                  isLocked={note.files_relationships_is_locked || false}
+                                  onLockToggle={async (locked) => {
+                                    return handleEditNote(note, {
+                                      title: note.title,
+                                      content: note.content || '',
+                                      analysis: note.analysis || '',
+                                      files_relationships_is_locked: locked
+                                    });
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))
+                      )}
+                      {provided.placeholder}
                     </div>
-                  ) : (
-                    notes.map((note) => ( // Map over the original 'notes' array
-                      <ExpandableNote
-                        key={note.id}
-                        note={note}
-                        onDelete={handleDeleteNote}
-                        onUpdateNote={(n, values) => handleEditNote(n, values)}
-                        onAnalyzeImages={() => handleAnalyzeImages(note.id)}
-                        onTranscriptionComplete={handleTranscriptionComplete}
-                        analyzingImages={analyzingImages}
-                        projectId={projectId}
-                        relatedFiles={relatedFiles[note.id] || []}
-                        onFileAdded={() => onFileAdded(note.id)}
-                        isLocked={note.files_relationships_is_locked || false}
-                        onLockToggle={async (locked) => {
-                          return handleEditNote(note, {
-                            title: note.title,
-                            content: note.content || '',
-                            analysis: note.analysis || '',
-                            files_relationships_is_locked: locked
-                          });
-                        }}
-                      />
-                    ))
                   )}
-                </div>
+                </Droppable>
               ) : (
                 <NotesList
-                  notes={activeTab === 'all' ? notes : notes.filter(note => { // Apply filter for other tabs
+                  notes={activeTab === 'all' ? notes : notes.filter(note => {
                     if (!note.metadata) return false;
                     try {
                       const metadata = typeof note.metadata === 'string'

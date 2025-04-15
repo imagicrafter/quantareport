@@ -64,6 +64,7 @@ const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged, compac
               noteId={noteId}
               onFileAdded={onRelationshipsChanged}
               relatedFiles={files}
+              buttonLabel="Manage Files"
             />
           </div>
         )}
@@ -89,6 +90,7 @@ const RelatedFiles = ({ files, noteId, projectId, onRelationshipsChanged, compac
             noteId={noteId}
             onFileAdded={onRelationshipsChanged}
             relatedFiles={files}
+            buttonLabel="Manage Files"
           />
         </div>
       )}

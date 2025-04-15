@@ -184,11 +184,11 @@ const ExpandableNote = ({
                 relatedFiles={relatedFiles}
                 isLocked={isLocked}
                 onLockToggle={handleLockToggle}
+                buttonLabel="Manage Files"
               />
             </div>
             <RelatedFiles 
               files={relatedFiles}
-              compact={true}
             />
           </div>
         </div>
