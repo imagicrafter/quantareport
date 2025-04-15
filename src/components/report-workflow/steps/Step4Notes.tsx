@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -9,7 +8,6 @@ import { DragDropContext } from 'react-beautiful-dnd';
 import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// Import our components
 import StepNavigationButtons from './components/StepNavigationButtons';
 import NotesTabsPanel from './components/NotesTabsPanel';
 import NoteDialogsManager from './components/NoteDialogsManager';
@@ -33,7 +31,6 @@ const Step4Notes = () => {
   const [addNoteRelatedFiles, setAddNoteRelatedFiles] = useState<any[]>([]);
   const [analyzingImages, setAnalyzingImages] = useState(false);
   
-  // Use our custom hook for notes management
   const {
     notes,
     loading,
@@ -46,7 +43,6 @@ const Step4Notes = () => {
     setRelatedFiles
   } = useNotesManagement(projectId);
   
-  // Add Note form setup with proper validation schema
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -99,7 +95,6 @@ const Step4Notes = () => {
   };
   
   const handleFileAdded = async () => {
-    // Function to handle file relationship changes - refresh notes data
     if (projectId) {
       await refreshNotes();
     }
@@ -121,7 +116,6 @@ const Step4Notes = () => {
         return;
       }
       
-      // Get max position for ordering
       const { data: positionData } = await supabase
         .from('notes')
         .select('position')
@@ -133,7 +127,6 @@ const Step4Notes = () => {
         ? (positionData[0].position || 0) + 1 
         : 1;
       
-      // Add the new note
       const { data: newNote, error } = await supabase
         .from('notes')
         .insert({
@@ -154,11 +147,9 @@ const Step4Notes = () => {
       
       if (error) throw error;
       
-      // Clear form and close dialog
       form.reset();
       setIsAddDialogOpen(false);
       
-      // Refresh notes
       await refreshNotes();
       
       toast({
@@ -179,7 +170,6 @@ const Step4Notes = () => {
 
   const handleAnalyzeImages = () => {
     setAnalyzingImages(true);
-    // This will be enhanced in NoteDialogsManager
   };
 
   const handleTranscriptionComplete = (text: string) => {
@@ -211,6 +201,7 @@ const Step4Notes = () => {
                 notes={notes}
                 loading={loading}
                 onDragEnd={handleOnDragEnd}
+                projectId={projectId || ''}
               />
             </DragDropContext>
           </div>
