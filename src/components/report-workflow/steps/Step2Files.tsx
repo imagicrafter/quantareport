@@ -198,8 +198,13 @@ const Step2Files = () => {
     }
 
     try {
-      const timestamp = new Date().toISOString().split('T')[0];
-      const fileName = `${projectName}_${timestamp}.txt`;
+      const now = new Date();
+      const datePart = now.toISOString().split('T')[0];
+      const randomNumber = Math.floor(Math.random() * 100)
+        .toString()
+        .padStart(2, '0');
+      
+      const fileName = `${projectName}_${datePart}_${randomNumber}.txt`;
       const filePath = `${projectId}/${fileName}`;
 
       const file = new File([pastedText], fileName, { type: 'text/plain' });
