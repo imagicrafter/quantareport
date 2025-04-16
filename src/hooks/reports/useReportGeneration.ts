@@ -141,8 +141,9 @@ export const useReportGeneration = () => {
     creatingReport,
     generationInProgress,
     reportCreated,
-    setReportCreated,  // Ensure setReportCreated is properly exported
+    setReportCreated,
     progressUpdate,
+    setProgressUpdate,  // Make sure to include setProgressUpdate in the return object
     handleCreateReport,
     navigateToReport
   };
