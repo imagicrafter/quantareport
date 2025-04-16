@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import { fetchReportById, updateReport } from '@/components/reports/ReportService';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const Step6Review = () => {
   const navigate = useNavigate();
@@ -23,6 +24,8 @@ const Step6Review = () => {
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [exitTarget, setExitTarget] = useState('');
   
   const initializeComponent = useCallback(async () => {
     try {
@@ -190,6 +193,100 @@ const Step6Review = () => {
       setCurrentPage(currentPage + 1);
     }
   };
+
+  // Add new function to handle navigation attempts
+  const handleNavigationAttempt = async (target: string) => {
+    // Skip dialog for Edit, Print, and Finish actions
+    if (target === 'edit' || target === 'print' || target === 'finish') {
+      return false;
+    }
+
+    setExitTarget(target);
+    setShowExitDialog(true);
+    return true;
+  };
+
+  // Add function to handle exit confirmation
+  const handleExitConfirm = async () => {
+    if (reportId && projectId) {
+      try {
+        // Update report status to completed
+        await updateReport(reportId, { status: 'completed' });
+        
+        // Reset workflow state to 0
+        await updateWorkflowState(projectId, 0);
+        
+        // Navigate to dashboard reports
+        navigate('/dashboard/reports');
+      } catch (error) {
+        console.error('Error updating report status:', error);
+        toast({
+          description: "Failed to update report status. Please try again.",
+        });
+      }
+    }
+    setShowExitDialog(false);
+  };
+
+  // Add click handler to document
+  useEffect(() => {
+    const handleClick = async (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest('a');
+      
+      if (anchor) {
+        const href = anchor.getAttribute('href');
+        
+        if (!href || href.startsWith('http') || href.startsWith('mailto:')) {
+          return;
+        }
+
+        // Allow normal operation for edit and print actions
+        if (
+          anchor.classList.contains('edit-action') ||
+          anchor.classList.contains('print-action')
+        ) {
+          return;
+        }
+
+        e.preventDefault();
+        const shouldShowDialog = await handleNavigationAttempt(href);
+        if (!shouldShowDialog) {
+          navigate(href);
+        }
+      }
+    };
+
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, [navigate, reportId, projectId]);
+
+  // Add ExitDialog component
+  const ExitDialog = () => (
+    <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Exit Report Creation?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will mark your report as completed. Are you sure you want to proceed?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleExitConfirm}>Yes, Exit</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
+  // Update the button click handlers to include navigation checks
+  const handleShare = async () => {
+    await handleNavigationAttempt('share');
+  };
+
+  const handleDownload = async () => {
+    await handleNavigationAttempt('download');
+  };
   
   return (
     <div>
@@ -208,11 +305,11 @@ const Step6Review = () => {
               <Share2 className="h-4 w-4 mr-1" />
               Share
             </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint}>
+            <Button variant="outline" size="sm" onClick={handlePrint} className="print-action">
               <Printer className="h-4 w-4 mr-1" />
               Print
             </Button>
-            <Button variant="outline" size="sm" onClick={handleEdit}>
+            <Button variant="outline" size="sm" onClick={handleEdit} className="edit-action">
               <Edit className="h-4 w-4 mr-1" />
               Edit
             </Button>
@@ -347,6 +444,8 @@ const Step6Review = () => {
           Finish Report
         </Button>
       </div>
+      
+      <ExitDialog />
     </div>
   );
 };
