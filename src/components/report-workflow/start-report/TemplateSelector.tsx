@@ -25,17 +25,11 @@ const TemplateSelector = ({ selectedTemplateId, onTemplateChange }: TemplateSele
         const { data: session } = await supabase.auth.getSession();
         if (!session.session) return;
 
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('domain_id')
-          .eq('id', session.session.user.id)
-          .single();
-
-        // Fetch templates for user's domain and public templates
+        // Fetch templates for current user only
         const { data: templatesData, error } = await supabase
           .from('templates')
           .select('*')
-          .or(`domain_id.eq.${profileData?.domain_id},is_public.eq.true`);
+          .eq('user_id', session.session.user.id);
 
         if (error) throw error;
         setTemplates(templatesData || []);
