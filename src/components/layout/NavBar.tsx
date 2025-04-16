@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Logo from '../ui-elements/Logo';
@@ -64,7 +65,7 @@ const NavBar = () => {
                   </Button>
                 </Link>
                 <Link to="/signup">
-                  <Button variant="default" size="sm">
+                  <Button variant="default" size="sm" className="bg-quanta-orange hover:bg-quanta-orange/90 text-white">
                     Get Started
                   </Button>
                 </Link>

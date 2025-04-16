@@ -1,8 +1,9 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
+import { isDevelopmentEnvironment } from '@/utils/webhookConfig';
 
 export const useImageAnalysis = (projectId?: string, projectName?: string) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -11,6 +12,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
   const [unprocessedFileCount, setUnprocessedFileCount] = useState(0);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [analysisInProgress, setAnalysisInProgress] = useState(false);
+  const refreshInProgressRef = useRef(false);
 
   const checkUnprocessedFiles = useCallback(async () => {
     if (!projectId) return false;
@@ -46,26 +48,68 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       setIsAnalyzing(true);
       setAnalysisInProgress(true);
       
-      // Determine if this is a test project
+      // Get the current user to include the user_id in the payload
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error getting current user:', userError);
+        toast.error('Unable to authenticate user for file analysis');
+        setIsAnalyzing(false);
+        setAnalysisInProgress(false);
+        return;
+      }
+      
+      const userId = userData.user?.id;
+      
+      if (!userId) {
+        console.error('No user ID found');
+        toast.error('User authentication required for file analysis');
+        setIsAnalyzing(false);
+        setAnalysisInProgress(false);
+        return;
+      }
+      
+      // Determine if this is a test project based on name
       const isTestMode = projectName.toLowerCase().includes('test');
-      console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project: ${projectName}`);
+      
+      // Only apply test mode in development environment
+      const shouldUseTestMode = isDevelopmentEnvironment() && isTestMode;
+      
+      console.log(`Using ${shouldUseTestMode ? 'TEST' : 'REGULAR'} mode for project: ${projectName} (App Environment: ${isDevelopmentEnvironment() ? 'Development' : 'Production/Staging'})`);
       
       // Generate a new job ID using uuid package
       const jobId = uuidv4();
+      setAnalysisJobId(jobId);
       
-      console.log(`Starting file analysis for project ${projectId} with job ${jobId}`);
+      console.log(`Starting file analysis for project ${projectId} with job ${jobId} for user ${userId}`);
+      
+      // Create initial progress record for better UX
+      const { error: progressError } = await supabase
+        .from('report_progress')
+        .insert({
+          job: jobId,
+          status: 'generating',
+          message: 'Starting file analysis...',
+          progress: 5
+        });
+      
+      if (progressError) {
+        console.error('Error creating initial progress record:', progressError);
+      }
       
       // Call the file-analysis edge function using the new consolidated proxy
       const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
         body: {
           project_id: projectId,
-          isTestMode,
+          user_id: userId, // Include the user_id in the payload
+          isTestMode: shouldUseTestMode,
           job: jobId,
           type: 'file-analysis',
-          env: isTestMode ? 'development' : 'production',
+          env: shouldUseTestMode ? 'development' : isDevelopmentEnvironment() ? 'development' : 'production',
           payload: {
             project_id: projectId,
-            isTestMode,
+            user_id: userId, // Include the user_id in the payload
+            isTestMode: shouldUseTestMode,
             job: jobId
           }
         }
@@ -82,7 +126,6 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       console.log('File analysis response:', data);
       
       if (data.success) {
-        setAnalysisJobId(data.jobId || jobId);
         setIsProgressModalOpen(true);
         toast.success('File analysis started');
       } else {
@@ -108,16 +151,37 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
     try {
       setAnalysisInProgress(true);
       
+      // Get the current user to include the user_id in the payload
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error getting current user:', userError);
+        toast.error('Unable to authenticate user for image analysis');
+        setAnalysisInProgress(false);
+        return;
+      }
+      
+      const userId = userData.user?.id;
+      
+      if (!userId) {
+        console.error('No user ID found');
+        toast.error('User authentication required for image analysis');
+        setAnalysisInProgress(false);
+        return;
+      }
+      
       // Call the image-analysis edge function using the new consolidated proxy
       const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
         body: {
           file_id: fileId,
           project_id: projectId,
+          user_id: userId, // Include the user_id in the payload
           type: 'file-analysis', // Using file-analysis webhook type
-          env: 'production',
+          env: isDevelopmentEnvironment() ? 'development' : 'production',
           payload: {
             file_id: fileId,
-            project_id: projectId
+            project_id: projectId,
+            user_id: userId // Include the user_id in the payload
           }
         }
       });
@@ -145,8 +209,19 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
 
   const closeProgressModal = useCallback(() => {
     setIsProgressModalOpen(false);
-    checkUnprocessedFiles();
-  }, [checkUnprocessedFiles]);
+    refreshInProgressRef.current = false;
+  }, []);
+  
+  const handleAnalysisComplete = useCallback(() => {
+    if (refreshInProgressRef.current) {
+      return; // Prevent multiple refreshes
+    }
+    
+    console.log("Analysis complete, refreshing files list (once)");
+    refreshInProgressRef.current = true;
+    
+    // This will be called by FilesSection.tsx
+  }, []);
 
   return {
     isAnalyzing,
@@ -158,6 +233,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
     checkUnprocessedFiles,
     analyzeFiles,
     analyzeImage,
-    closeProgressModal
+    closeProgressModal,
+    handleAnalysisComplete
   };
 };

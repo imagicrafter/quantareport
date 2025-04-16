@@ -38,11 +38,14 @@ export const getCurrentEnvironment = (): Environment => {
   }
 };
 
+// Check if we're in development environment
+export const isDevelopmentEnvironment = (): boolean => {
+  return getCurrentEnvironment() === 'development';
+};
+
 // Get the Supabase project URL from config
 const getSupabaseProjectUrl = () => {
-  // This can be overridden by an environment variable if needed
-  return import.meta.env.VITE_SUPABASE_URL || 
-    "https://vtaufnxworztolfdwlll.supabase.co";
+  return "https://vtaufnxworztolfdwlll.supabase.co";
 };
 
 // Base URL for the proxy function
@@ -50,10 +53,40 @@ const getProxyBaseUrl = () => {
   return `${getSupabaseProjectUrl()}/functions/v1/n8n-webhook-proxy`;
 };
 
+// Get test-specific webhook URL for development environment
+export const getTestWebhookUrl = (type: WebhookType): string | null => {
+  // Only return test webhooks in development environment
+  if (!isDevelopmentEnvironment()) {
+    return null;
+  }
+  
+  switch (type) {
+    case 'note':
+      return import.meta.env.VITE_DEV_NOTE_TEST_WEBHOOK_URL || null;
+    case 'file-analysis':
+      return import.meta.env.VITE_DEV_FILE_ANALYSIS_TEST_WEBHOOK_URL || null;
+    case 'report':
+      return import.meta.env.VITE_DEV_REPORT_TEST_WEBHOOK_URL || null;
+    default:
+      return null;
+  }
+};
+
 // Get webhook URL for specified type and environment
-export const getWebhookUrl = (type: WebhookType, env?: Environment): string => {
+export const getWebhookUrl = (type: WebhookType, env?: Environment, isTestMode: boolean = false): string => {
   const environment = env || getCurrentEnvironment();
-  return `${getProxyBaseUrl()}/proxy?env=${environment}&type=${type}`;
+  
+  // Check if we should use test-specific webhook URLs (only in development environment)
+  if (isTestMode && environment === 'development') {
+    const testWebhookUrl = getTestWebhookUrl(type);
+    if (testWebhookUrl) {
+      console.log(`Using test-specific webhook URL for ${type} in development environment`);
+      return testWebhookUrl;
+    }
+    console.log(`No test-specific webhook URL found for ${type}, falling back to regular development webhook`);
+  }
+  
+  return `${getProxyBaseUrl()}/proxy?env=${environment}&type=${type}${isTestMode ? '&isTestMode=true' : ''}`;
 };
 
 // Get all webhook URLs for current environment
@@ -71,16 +104,25 @@ export const isProxyUrl = (url: string): boolean => {
   return url.includes(getProxyBaseUrl());
 };
 
-// Fetch webhook configuration from the edge function
+// Fetch webhook configuration from the edge function with timeout
 export const fetchWebhookConfig = async (env?: Environment): Promise<any> => {
   const environment = env || getCurrentEnvironment();
+  
+  // Set a timeout for the fetch request (5 seconds)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  
   try {
+    console.log(`Fetching webhook config for ${environment} environment`);
     const response = await fetch(`${getProxyBaseUrl()}/config?env=${environment}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
@@ -88,6 +130,7 @@ export const fetchWebhookConfig = async (env?: Environment): Promise<any> => {
     
     return await response.json();
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error('Error fetching webhook config:', error);
     throw error;
   }

@@ -1,6 +1,6 @@
 
 import { Progress } from "@/components/ui/progress";
-import { Loader2 } from "lucide-react";
+import { CheckCircle, Loader2, AlertCircle } from "lucide-react";
 
 interface ReportGenerationProgressProps {
   progress: number;
@@ -16,15 +16,25 @@ const ReportGenerationProgress = ({
   return (
     <div className="space-y-4 w-full">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-sm font-medium">
+        <span className="text-sm font-medium flex items-center">
           {status === 'generating' && (
             <div className="flex items-center">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating report...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin text-amber-500" />
+              <span>Analyzing...</span>
             </div>
           )}
-          {status === 'completed' && "Report generated successfully!"}
-          {status === 'error' && "Error generating report"}
+          {status === 'completed' && (
+            <div className="flex items-center">
+              <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+              <span>Report generated successfully!</span>
+            </div>
+          )}
+          {status === 'error' && (
+            <div className="flex items-center">
+              <AlertCircle className="mr-2 h-4 w-4 text-red-500" />
+              <span>Error generating report</span>
+            </div>
+          )}
         </span>
         <span className="text-sm font-medium">{progress}%</span>
       </div>

@@ -148,7 +148,6 @@ const ProjectsTable = ({ onRefresh }: ProjectsTableProps) => {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[25%]">Name</TableHead>
-                <TableHead>Project ID</TableHead>
                 <TableHead>Date Created</TableHead>
                 <TableHead className="w-[20%]">Template</TableHead>
                 <TableHead>Images</TableHead>

@@ -1,10 +1,9 @@
-
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { X, FolderPlus, Image, FileText, FileCheck, FileArchive, Settings, LogOut, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import Logo from '../ui-elements/Logo';
+import { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { ArrowLeft, LayoutDashboard, FileText, Image, FileEdit, Settings, Users, FilePlus, ChevronDown, ChevronRight, Menu, Wand2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import UserAvatar from './UserAvatar';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -14,168 +13,225 @@ interface SidebarProps {
 
 const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarProps) => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const currentPath = location.pathname;
+  const [reportsExpanded, setReportsExpanded] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    // Get collapsed state from localStorage
-    const storedCollapsedState = localStorage.getItem('sidebarCollapsed');
-    if (storedCollapsedState) {
-      setCollapsed(storedCollapsedState === 'true');
-    }
-  }, []);
-
-  // Update collapsed state and save to localStorage
-  const handleCollapseToggle = () => {
-    const newState = !collapsed;
-    setCollapsed(newState);
-    localStorage.setItem('sidebarCollapsed', String(newState));
+  
+  const isActive = (path: string) => {
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
+  
+  const isReportsActive = () => {
+    return location.pathname.includes('/reports') || 
+           location.pathname.includes('/report-wizard') ||
+           location.pathname.includes('/dashboard/projects');
   };
 
   useEffect(() => {
-    const checkUserRole = async () => {
-      const { data: session } = await supabase.auth.getSession();
-      if (session.session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.session.user.id)
-          .single();
-        
-        if (profile && profile.role === 'admin') {
-          setIsAdmin(true);
+    const checkAdminRole = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+          
+          setIsAdmin(profile?.role === 'admin');
         }
+      } catch (error) {
+        console.error('Error checking admin role:', error);
       }
     };
-    
-    checkUserRole();
+
+    checkAdminRole();
   }, []);
-
-  // Updated menu items with Reports moved between Projects and Notes
-  const menuItems = [
-    { name: 'Templates', icon: <FileCheck size={20} />, path: '/dashboard/templates' },
-    { name: 'Projects', icon: <FolderPlus size={20} />, path: '/dashboard/projects' },
-    { name: 'Reports', icon: <FileArchive size={20} />, path: '/dashboard/reports' },
-    { name: 'Notes', icon: <FileText size={20} />, path: '/dashboard/notes' },
-    { name: 'Images', icon: <Image size={20} />, path: '/dashboard/images' },
-  ];
-
-  const handleSignOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      toast.success('Successfully signed out');
-      navigate('/signin');
-    } catch (error) {
-      console.error('Error signing out:', error);
-      toast.error('Failed to sign out. Please try again.');
-    }
-  };
-
-  // Handle navigation without changing sidebar state
-  const handleNavigation = (path: string) => {
-    navigate(path);
-  };
-
+  
   return (
     <aside 
-      className={`fixed inset-y-0 left-0 z-50 bg-sidebar border-r border-sidebar-border transform transition-all duration-300 ease-in-out ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } md:relative md:translate-x-0 ${
-        collapsed ? 'w-16' : 'w-64'
-      }`}
+      className={cn(
+        "h-screen bg-white border-r border-gray-200 transition-all duration-300 flex flex-col",
+        sidebarOpen ? "w-64" : "w-20"
+      )}
     >
-      <div className="h-full flex flex-col relative">
-        {/* Collapse toggle button */}
-        <button
-          onClick={handleCollapseToggle}
-          className="absolute -right-3 top-1/2 transform -translate-y-1/2 bg-sidebar border border-sidebar-border rounded-full p-1 text-sidebar-foreground hover:bg-sidebar-accent z-10 hidden md:flex"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+      {/* Sidebar Header */}
+      <div className="p-4 border-b flex items-center justify-between">
+        <Link to="/dashboard" className="flex items-center">
+          {sidebarOpen ? (
+            <span className="text-xl font-bold text-quanta-blue">QuantaReport</span>
+          ) : (
+            <span className="text-xl font-bold text-quanta-blue">QR</span>
+          )}
+        </Link>
+        <button onClick={toggleSidebar} className="text-gray-500 hover:text-gray-700">
+          {sidebarOpen ? (
+            <ArrowLeft size={20} />
+          ) : (
+            <Menu size={20} />
+          )}
         </button>
+      </div>
+      
+      {/* Sidebar Content */}
+      <div className="flex-1 flex flex-col justify-between py-4 overflow-y-auto">
+        <div className="px-4 space-y-1">
+          {/* Reports Section with Submenu */}
+          <div>
+            <button
+              onClick={() => setReportsExpanded(!reportsExpanded)}
+              className={cn(
+                "w-full flex items-center justify-between rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+                isReportsActive()
+                  ? "bg-quanta-blue text-white"
+                  : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+              )}
+            >
+              <div className="flex items-center">
+                <FileText 
+                  size={20} 
+                  className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+                />
+                {sidebarOpen && <span>Reports</span>}
+              </div>
+              {sidebarOpen && (
+                reportsExpanded ? 
+                <ChevronDown size={16} /> : 
+                <ChevronRight size={16} />
+              )}
+            </button>
 
-        <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-          <div className="transition-all duration-300">
-            <Logo variant={collapsed ? "minimal" : "default"} />
+            {/* Reports Submenu */}
+            {(sidebarOpen && reportsExpanded) && (
+              <div className="ml-8 mt-1 space-y-1">
+                <Link
+                  to="/dashboard/report-wizard/start"
+                  className={cn(
+                    "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
+                    location.pathname.includes('/dashboard/report-wizard')
+                      ? "bg-accent text-quanta-blue"
+                      : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+                  )}
+                >
+                  <Wand2 size={16} className="mr-2" />
+                  <span>Report Wizard</span>
+                </Link>
+                <Link
+                  to="/dashboard/reports"
+                  className={cn(
+                    "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
+                    isActive('/dashboard/reports')
+                      ? "bg-accent text-quanta-blue"
+                      : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+                  )}
+                >
+                  <FileText size={16} className="mr-2" />
+                  <span>View Reports</span>
+                </Link>
+                <Link
+                  to="/dashboard/projects"
+                  className={cn(
+                    "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
+                    isActive('/dashboard/projects')
+                      ? "bg-accent text-quanta-blue"
+                      : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+                  )}
+                >
+                  <LayoutDashboard size={16} className="mr-2" />
+                  <span>View Projects</span>
+                </Link>
+              </div>
+            )}
           </div>
-          <button 
-            onClick={toggleSidebar}
-            className="p-1 rounded-md hover:bg-sidebar-accent md:hidden"
-            aria-label="Close sidebar"
+
+          <Link
+            to="/dashboard/templates"
+            className={cn(
+              "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+              isActive('/dashboard/templates')
+                ? "bg-quanta-blue text-white"
+                : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+            )}
           >
-            <X size={20} />
-          </button>
+            <FileEdit 
+              size={20} 
+              className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+            />
+            {sidebarOpen && <span>Templates</span>}
+          </Link>
+          
+          <Link
+            to="/dashboard/images"
+            className={cn(
+              "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+              isActive('/dashboard/images')
+                ? "bg-quanta-blue text-white"
+                : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+            )}
+          >
+            <Image 
+              size={20} 
+              className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+            />
+            {sidebarOpen && <span>Images</span>}
+          </Link>
+          
+          <Link
+            to="/dashboard/notes"
+            className={cn(
+              "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+              isActive('/dashboard/notes')
+                ? "bg-quanta-blue text-white"
+                : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+            )}
+          >
+            <FileText 
+              size={20} 
+              className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+            />
+            {sidebarOpen && <span>Notes</span>}
+          </Link>
+          
+          <Link
+            to="/dashboard/settings"
+            className={cn(
+              "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+              isActive('/dashboard/settings')
+                ? "bg-quanta-blue text-white"
+                : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+            )}
+          >
+            <Settings 
+              size={20} 
+              className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+            />
+            {sidebarOpen && <span>Settings</span>}
+          </Link>
+          
+          {isAdmin && (
+            <Link
+              to="/dashboard/admin"
+              className={cn(
+                "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+                isActive('/dashboard/admin')
+                  ? "bg-quanta-blue text-white"
+                  : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+              )}
+            >
+              <Users 
+                size={20} 
+                className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+              />
+              {sidebarOpen && <span>Admin</span>}
+            </Link>
+          )}
         </div>
         
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          <div className="space-y-1">
-            {menuItems.map((item) => (
-              <button
-                key={item.name}
-                onClick={() => handleNavigation(item.path)}
-                className={`flex w-full items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
-                  currentPath.includes(item.path) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                } ${collapsed ? 'justify-center px-0' : ''}`}
-                title={collapsed ? item.name : ''}
-              >
-                <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
-                  {item.icon}
-                </span>
-                <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
-                  {item.name}
-                </span>
-              </button>
-            ))}
-          </div>
-        </nav>
-        
-        <div className="border-t border-sidebar-border p-4 space-y-2">
-          {isAdmin && (
-            <button
-              onClick={() => handleNavigation('/dashboard/admin')}
-              className={`flex w-full items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
-                currentPath.includes('/dashboard/admin') ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-              } ${collapsed ? 'justify-center px-0' : ''}`}
-              title={collapsed ? 'Admin' : ''}
-            >
-              <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
-                <Shield size={20} />
-              </span>
-              <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
-                Admin
-              </span>
-            </button>
-          )}
-          <button
-            onClick={() => handleNavigation('/dashboard/settings')}
-            className={`flex w-full items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
-              currentPath === '/dashboard/settings' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-            } ${collapsed ? 'justify-center px-0' : ''}`}
-            title={collapsed ? 'Settings' : ''}
-          >
-            <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
-              <Settings size={20} />
-            </span>
-            <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
-              Settings
-            </span>
-          </button>
-          <button 
-            onClick={handleSignOut}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${collapsed ? 'justify-center px-0' : ''}`}
-            title={collapsed ? 'Sign out' : ''}
-          >
-            <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
-              <LogOut size={20} />
-            </span>
-            <span className={`transition-opacity duration-200 ${collapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
-              Sign out
-            </span>
-          </button>
+        {/* User Profile */}
+        <div className={cn(
+          "mt-auto px-4 py-2",
+          sidebarOpen ? "text-left" : "text-center"
+        )}>
+          <UserAvatar showName={sidebarOpen} />
         </div>
       </div>
     </aside>

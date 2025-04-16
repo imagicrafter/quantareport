@@ -11,9 +11,9 @@ const corsHeaders = {
 // Get n8n webhook URLs from environment variables with fallbacks
 // We'll keep these but enhance with a more flexible system
 const DEV_FILE_ANALYSIS_WEBHOOK_URL = Deno.env.get("DEV_FILE_ANALYSIS_WEBHOOK_URL") || 
-  "https://n8n-01.imagicrafterai.com/webhook-test/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0";
+  "https://n8n-01.imagicrafterai.com/webhook-test/d42cb7ac-c4e1-4f0e-a084-0f6f85807b65";
 const PROD_FILE_ANALYSIS_WEBHOOK_URL = Deno.env.get("PROD_FILE_ANALYSIS_WEBHOOK_URL") || 
-  "https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0";
+  "https://n8n-01.imagicrafterai.com/webhook/d42cb7ac-c4e1-4f0e-a084-0f6f85807b65";
 
 // New function to get webhook URL based on environment
 const getWebhookUrl = async (env: string): Promise<string> => {
@@ -59,7 +59,7 @@ serve(async (req) => {
     }
     
     // Otherwise, treat it as a file analysis request
-    const { project_id, isTestMode = false, job = null } = requestData;
+    const { project_id, user_id, isTestMode = false, job = null } = requestData;
     
     if (!project_id) {
       console.error("No project_id provided in request body");
@@ -72,7 +72,18 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Starting file analysis for project: ${project_id}`);
+    if (!user_id) {
+      console.error("No user_id provided in request body");
+      return new Response(
+        JSON.stringify({ error: "user_id is required" }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400 
+        }
+      );
+    }
+    
+    console.log(`Starting file analysis for project: ${project_id}, user: ${user_id}`);
     console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode`);
     
     // Create Supabase client
@@ -112,8 +123,29 @@ serve(async (req) => {
     
     if (!unprocessedFiles || unprocessedFiles.length === 0) {
       console.log("No unprocessed files found for this project");
+      
+      // Create a completed progress update to close the dialog
+      if (job) {
+        const { error: progressError } = await supabase
+          .from("report_progress")
+          .insert({
+            job: job,
+            status: "completed",
+            message: "No files to process",
+            progress: 100
+          });
+          
+        if (progressError) {
+          console.error("Error creating completion progress record:", progressError);
+        }
+      }
+      
       return new Response(
-        JSON.stringify({ message: "No unprocessed files found for this project" }),
+        JSON.stringify({ 
+          success: true,
+          message: "No unprocessed files found for this project",
+          jobId: job
+        }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200 
@@ -159,17 +191,46 @@ serve(async (req) => {
     const webhookUrl = await getWebhookUrl(environment);
     console.log(`Using webhook URL for ${environment} environment: ${webhookUrl}`);
     
+    // Create initial progress record if not already created by client
+    if (jobId) {
+      const { data: existingProgress, error: checkError } = await supabase
+        .from("report_progress")
+        .select("*")
+        .eq("job", jobId)
+        .limit(1);
+        
+      if (!checkError && (!existingProgress || existingProgress.length === 0)) {
+        const { error: progressError } = await supabase
+          .from("report_progress")
+          .insert({
+            job: jobId,
+            status: "generating",
+            message: "Preparing files for analysis...",
+            progress: 10
+          });
+          
+        if (progressError) {
+          console.error("Error creating initial progress record:", progressError);
+        } else {
+          console.log("Created initial progress record for job:", jobId);
+        }
+      }
+    }
+    
     // Prepare webhook payload
     const payload = {
       project_id,
+      user_id,
       files: fileDetails,
       job: jobId,
       timestamp: new Date().toISOString(),
-      callback_url: callbackUrl, // Include callback URL in the payload
-      environment: environment // Include environment in payload
+      callback_url: callbackUrl,
+      environment: environment,
+      total_files: unprocessedFiles.length
     };
     
     console.log(`Sending request to webhook: ${webhookUrl}`);
+    console.log("Webhook payload:", JSON.stringify(payload));
     
     // Send request to n8n webhook
     const webhookResponse = await fetch(webhookUrl, {
@@ -183,6 +244,23 @@ serve(async (req) => {
     if (!webhookResponse.ok) {
       const errorText = await webhookResponse.text();
       console.error(`Webhook error (${webhookResponse.status}): ${errorText}`);
+      
+      // Update progress to show error
+      if (jobId) {
+        const { error: progressError } = await supabase
+          .from("report_progress")
+          .insert({
+            job: jobId,
+            status: "error",
+            message: "Failed to start analysis process",
+            progress: 0
+          });
+          
+        if (progressError) {
+          console.error("Error creating error progress record:", progressError);
+        }
+      }
+      
       return new Response(
         JSON.stringify({ 
           error: "Error calling file analysis webhook", 
@@ -199,18 +277,20 @@ serve(async (req) => {
     const webhookData = await webhookResponse.json();
     console.log("Webhook response:", JSON.stringify(webhookData));
     
-    // Create initial progress record
-    const { error: progressError } = await supabase
-      .from("report_progress")
-      .insert({
-        job: jobId,
-        status: "generating",
-        message: "Starting file analysis...",
-        progress: 5
-      });
-      
-    if (progressError) {
-      console.error("Error creating initial progress record:", progressError);
+    // Update progress after successful webhook call
+    if (jobId) {
+      const { error: progressError } = await supabase
+        .from("report_progress")
+        .insert({
+          job: jobId,
+          status: "generating",
+          message: "Analysis started",
+          progress: 15
+        });
+        
+      if (progressError) {
+        console.error("Error creating progress record after webhook:", progressError);
+      }
     }
     
     return new Response(
@@ -313,6 +393,22 @@ async function handleProgressUpdate(data: any) {
     // If status is completed, remove processed files from files_not_processed
     if (appStatus === "completed" && data.project_id) {
       try {
+        console.log(`Completing file analysis for project ${data.project_id}`);
+        
+        // Create a final progress update with 100%
+        const { error: finalUpdateError } = await supabase
+          .from("report_progress")
+          .insert({
+            status: "completed",
+            message: "Analysis completed successfully",
+            progress: 100,
+            job: data.job
+          });
+          
+        if (finalUpdateError) {
+          console.error("Error creating final progress update:", finalUpdateError);
+        }
+        
         const { error: cleanupError } = await supabase
           .from("files_not_processed")
           .delete()

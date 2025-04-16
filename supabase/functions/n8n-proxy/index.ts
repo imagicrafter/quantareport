@@ -8,8 +8,8 @@ const CORS_HEADERS = {
 };
 
 // The actual webhook URLs
-const DEV_WEBHOOK_URL = "https://n8n-01.imagicrafterai.com/webhook-test/62d6d438-48ae-47db-850e-5fc52f54e843";
-const PROD_WEBHOOK_URL = "https://n8n-01.imagicrafterai.com/webhook/62d6d438-48ae-47db-850e-5fc52f54e843";
+const DEV_WEBHOOK_URL = "https://n8n-01.imagicrafterai.com/webhook-test/fee2fa15-4df5-49e2-a274-c88b2540c20a";
+const PROD_WEBHOOK_URL = "https://n8n-01.imagicrafterai.com/webhook/fee2fa15-4df5-49e2-a274-c88b2540c20a";
 
 // All Supabase Edge Functions need to handle OPTIONS request for CORS preflight
 function handleCors() {

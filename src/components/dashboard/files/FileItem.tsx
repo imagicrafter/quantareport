@@ -1,4 +1,5 @@
-import { Grip, FileImage, Music, File, Folder, FileText, MoreVertical } from 'lucide-react';
+
+import { Grip, FileImage, Music, File, Folder, FileText, MoreVertical, FileSearch } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export type FileType = 'image' | 'audio' | 'text' | 'folder' | 'transcription' | 'other';
@@ -16,6 +17,7 @@ export interface ProjectFile {
   user_id: string;
   position?: number;
   metadata?: any;
+  isAnalyzed?: boolean;
 }
 
 export interface FileItemProps {
@@ -68,8 +70,15 @@ const FileItem = ({ file, onEdit, onDelete, dragHandleProps, index }: FileItemPr
           </div>
         )}
         
-        <div>
-          <div className="font-medium truncate max-w-[200px]">{file.name}</div>
+        <div className="flex-1">
+          <div className="font-medium truncate max-w-[200px] flex items-center gap-1">
+            {file.name}
+            {file.isAnalyzed && (
+              <span className="ml-1 text-emerald-600" title="File has been analyzed">
+                <FileSearch size={16} />
+              </span>
+            )}
+          </div>
           <div className="text-xs text-muted-foreground flex items-center space-x-1">
             <span className="capitalize">{file.type}</span>
             {file.size && <span>• {formatFileSize(file.size)}</span>}
