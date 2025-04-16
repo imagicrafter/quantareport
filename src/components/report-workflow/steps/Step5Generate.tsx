@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import ReportGenerationProgress from '@/components/reports/ReportGenerationProgress';
-import { useReportGeneration } from '@/hooks/reports/useReportGeneration';
+import useReportGeneration from '@/hooks/reports/useReportGeneration';
 import { navigateToReportEditor, generateReport } from '@/components/reports/services/ReportGenerationService';
 import StepNavigationButtons from './components/StepNavigationButtons';
 
@@ -26,6 +27,7 @@ const Step5Generate = () => {
     reportCreated,
     setReportCreated,
     progressUpdate,
+    setProgressUpdate,
     handleCreateReport,
     navigateToReport
   } = useReportGeneration();
