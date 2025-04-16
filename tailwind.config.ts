@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -62,6 +61,12 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				quanta: {
+					blue: '#2E5B96',   // Primary
+					teal: '#00ABB3',   // Secondary
+					gray: '#F0F0F0',   // Accent
+					orange: '#FF9933', // Accent 2
 				}
 			},
 			borderRadius: {
@@ -122,6 +127,10 @@ export default {
 			},
 			backdropBlur: {
 				'glass': 'blur(16px)'
+			},
+			fontFamily: {
+				'sans': ['Montserrat', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				'body': ['Open Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
 			}
 		}
 	},

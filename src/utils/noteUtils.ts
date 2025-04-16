@@ -1,7 +1,6 @@
-
 import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
-import { getWebhookUrl } from './webhookConfig';
+import { getWebhookUrl, isDevelopmentEnvironment } from './webhookConfig';
 
 export interface NoteFileRelationshipWithType extends NoteFileRelationship {
   file_type: string;
@@ -20,6 +19,7 @@ export interface Note {
   project_id: string;
   position: number | null;
   files_relationships_is_locked?: boolean;
+  metadata?: any | null; // Using 'any' to accommodate both string and object formats
 }
 
 // Title to camelCase conversion utility function
@@ -84,7 +84,9 @@ export const submitImageAnalysis = async (
   isTestMode: boolean
 ): Promise<boolean> => {
   try {
-    console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode for project`);
+    // Only consider isTestMode when in development environment
+    const shouldUseTestMode = isDevelopmentEnvironment() && isTestMode;
+    console.log(`Using ${shouldUseTestMode ? 'TEST' : 'REGULAR'} mode for project (App Environment: ${isDevelopmentEnvironment() ? 'Development' : 'Production/Staging'})`);
     
     const payload = {
       note_id: noteId,
@@ -96,9 +98,10 @@ export const submitImageAnalysis = async (
     // Use the consolidated n8n-webhook-proxy function directly
     const { error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
       body: {
-        env: isTestMode ? 'development' : 'production',
+        env: shouldUseTestMode ? 'development' : isDevelopmentEnvironment() ? 'development' : 'production',
         payload,
-        type: 'note'
+        type: 'note',
+        isTestMode: shouldUseTestMode
       }
     });
     
@@ -112,4 +115,21 @@ export const submitImageAnalysis = async (
     console.error('Error submitting image analysis:', error);
     return false;
   }
+};
+
+// Helper to parse metadata safely
+export const parseNoteMetadata = (note: any): Note => {
+  try {
+    if (note.metadata && typeof note.metadata === 'string') {
+      const parsedMetadata = JSON.parse(note.metadata);
+      console.log('Parsed note metadata:', note.id, parsedMetadata);
+      return {
+        ...note,
+        metadata: parsedMetadata
+      };
+    }
+  } catch (e) {
+    console.error('Error parsing note metadata:', e, note.metadata);
+  }
+  return note;
 };

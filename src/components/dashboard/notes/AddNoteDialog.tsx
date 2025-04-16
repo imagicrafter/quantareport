@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { NoteFormValues } from '@/components/dashboard/notes/hooks/useNotesOperations';
@@ -28,10 +29,11 @@ import RelatedFiles from '@/components/dashboard/notes/RelatedFiles';
 import AudioRecorder from '../files/AudioRecorder';
 import { supabase } from '@/integrations/supabase/client';
 
+// Support both strict and optional form values to work with different form implementations
 interface AddNoteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  form: UseFormReturn<NoteFormValues>;
+  form: UseFormReturn<any>; // Using any to accommodate both form types
   onSubmit: () => void;
   saving: boolean;
   tempNoteId: string | null;

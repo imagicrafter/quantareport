@@ -16,14 +16,14 @@ const Logo: FC<LogoProps> = ({ size = 'md', variant = 'default' }) => {
   return (
     <div className="flex items-center gap-2">
       <div className="relative">
-        <div className="absolute -inset-0.5 rounded-full bg-primary/20 blur-sm"></div>
-        <div className="relative h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-sm">
-          <span className="text-white font-semibold text-sm">I</span>
+        <div className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-quanta-blue to-quanta-teal/70 blur-sm"></div>
+        <div className="relative h-8 w-8 rounded-full bg-gradient-to-br from-quanta-blue to-quanta-teal flex items-center justify-center shadow-sm">
+          <span className="text-white font-semibold text-sm">Q</span>
         </div>
       </div>
       {variant === 'default' && (
-        <span className={`font-semibold ${sizeClass} bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/80`}>
-          Inovy
+        <span className={`font-semibold ${sizeClass} bg-clip-text text-transparent bg-gradient-to-r from-quanta-blue to-quanta-teal`}>
+          QuantaReport
         </span>
       )}
     </div>

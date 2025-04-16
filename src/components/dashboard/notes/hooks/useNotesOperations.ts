@@ -21,6 +21,7 @@ interface UseNotesOperationsProps {
   refreshNotes: () => Promise<void>;
 }
 
+// Update the schema to ensure title is required, matching Step4Notes
 export const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters.'),
   content: z.string().optional(),

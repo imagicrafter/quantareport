@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SignupCodesTab from '@/components/admin/SignupCodesTab';
 import TemplatesTab from '@/components/admin/TemplatesTab';
 import AdminProjectsTab from '@/components/admin/AdminProjectsTab';
+import AdminReportsTab from '@/components/admin/AdminReportsTab';
 import ConfigurationTab from '@/components/admin/ConfigurationTab';
 
 const Admin = () => {
@@ -73,6 +74,7 @@ const Admin = () => {
         <Tabs defaultValue="projects" className="w-full">
           <TabsList className="mb-6">
             <TabsTrigger value="projects">Projects</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="signup-codes">Signup Codes</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
             <TabsTrigger value="configuration">Configuration</TabsTrigger>
@@ -80,6 +82,10 @@ const Admin = () => {
           
           <TabsContent value="projects" className="bg-card border rounded-lg p-6">
             <AdminProjectsTab />
+          </TabsContent>
+          
+          <TabsContent value="reports" className="bg-card border rounded-lg p-6">
+            <AdminReportsTab />
           </TabsContent>
           
           <TabsContent value="signup-codes" className="bg-card border rounded-lg p-6">

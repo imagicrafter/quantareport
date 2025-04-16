@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 
@@ -60,7 +59,7 @@ serve(async (req) => {
     }
     
     // Otherwise, treat it as a file analysis request
-    const { project_id, isTestMode = false, job = null } = requestData;
+    const { project_id, user_id, isTestMode = false, job = null } = requestData;
     
     if (!project_id) {
       console.error("No project_id provided in request body");
@@ -73,7 +72,18 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Starting file analysis for project: ${project_id}`);
+    if (!user_id) {
+      console.error("No user_id provided in request body");
+      return new Response(
+        JSON.stringify({ error: "user_id is required" }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400 
+        }
+      );
+    }
+    
+    console.log(`Starting file analysis for project: ${project_id}, user: ${user_id}`);
     console.log(`Using ${isTestMode ? 'TEST' : 'PRODUCTION'} mode`);
     
     // Create Supabase client
@@ -210,12 +220,13 @@ serve(async (req) => {
     // Prepare webhook payload
     const payload = {
       project_id,
+      user_id,
       files: fileDetails,
       job: jobId,
       timestamp: new Date().toISOString(),
-      callback_url: callbackUrl, // Include callback URL in the payload
-      environment: environment, // Include environment in payload
-      total_files: unprocessedFiles.length // Include total file count for progress calculation
+      callback_url: callbackUrl,
+      environment: environment,
+      total_files: unprocessedFiles.length
     };
     
     console.log(`Sending request to webhook: ${webhookUrl}`);
