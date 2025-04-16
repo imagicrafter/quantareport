@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -111,8 +112,23 @@ const Step6Review = () => {
     }
   };
   
-  const handleDownload = () => {
-    if (reportContent) {
+  // Handle navigation attempts for any action that would navigate away
+  const handleNavigationAttempt = async (target: string) => {
+    // Skip dialog for Edit, Print, and Finish actions
+    if (target === 'edit' || target === 'print' || target === 'finish') {
+      return false;
+    }
+
+    setExitTarget(target);
+    setShowExitDialog(true);
+    return true;
+  };
+  
+  // Handle download with navigation check
+  const handleDownload = async () => {
+    const shouldShowDialog = await handleNavigationAttempt('download');
+    
+    if (!shouldShowDialog && reportContent) {
       const element = document.createElement('a');
       const file = new Blob([reportContent.replace(/<[^>]*>/g, '')], { type: 'text/plain' });
       element.href = URL.createObjectURL(file);
@@ -143,10 +159,15 @@ const Step6Review = () => {
     }
   };
   
-  const handleShare = () => {
-    toast({
-      description: "Sharing options will be implemented in a future update."
-    });
+  // Handle share with navigation check
+  const handleShare = async () => {
+    const shouldShowDialog = await handleNavigationAttempt('share');
+    
+    if (!shouldShowDialog) {
+      toast({
+        description: "Sharing options will be implemented in a future update."
+      });
+    }
   };
   
   const handleEdit = async () => {
@@ -194,19 +215,7 @@ const Step6Review = () => {
     }
   };
 
-  // Add new function to handle navigation attempts
-  const handleNavigationAttempt = async (target: string) => {
-    // Skip dialog for Edit, Print, and Finish actions
-    if (target === 'edit' || target === 'print' || target === 'finish') {
-      return false;
-    }
-
-    setExitTarget(target);
-    setShowExitDialog(true);
-    return true;
-  };
-
-  // Add function to handle exit confirmation
+  // Handle exit confirmation
   const handleExitConfirm = async () => {
     if (reportId && projectId) {
       try {
@@ -261,7 +270,7 @@ const Step6Review = () => {
     return () => document.removeEventListener('click', handleClick, true);
   }, [navigate, reportId, projectId]);
 
-  // Add ExitDialog component
+  // Exit Dialog component
   const ExitDialog = () => (
     <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
       <AlertDialogContent>
@@ -278,15 +287,6 @@ const Step6Review = () => {
       </AlertDialogContent>
     </AlertDialog>
   );
-
-  // Update the button click handlers to include navigation checks
-  const handleShare = async () => {
-    await handleNavigationAttempt('share');
-  };
-
-  const handleDownload = async () => {
-    await handleNavigationAttempt('download');
-  };
   
   return (
     <div>
