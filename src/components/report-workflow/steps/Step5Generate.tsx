@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,6 @@ const Step5Generate = () => {
   const [existingReport, setExistingReport] = useState<{ id: string, status: string, content?: string } | null>(null);
   const [isStaleReport, setIsStaleReport] = useState(false);
   
-  // Use the report generation hook for consistent functionality
   const {
     creatingReport,
     generationInProgress,
@@ -35,14 +33,11 @@ const Step5Generate = () => {
   useEffect(() => {
     const initializeComponent = async () => {
       try {
-        // Get current workflow state and project ID
         const { projectId: currentProjectId } = await fetchCurrentWorkflow();
         
         if (!currentProjectId) {
           toast({
-            title: "Error",
             description: "No active project found. Please start a new report.",
-            variant: "destructive"
           });
           navigate('/dashboard/report-wizard/start');
           return;
@@ -50,10 +45,8 @@ const Step5Generate = () => {
         
         setProjectId(currentProjectId);
         
-        // Update workflow state to 5
         await updateWorkflowState(currentProjectId, 5);
         
-        // Check if a report already exists for this project
         const { data: existingReports, error: reportsError } = await supabase
           .from('reports')
           .select('id, content, status')
@@ -65,36 +58,42 @@ const Step5Generate = () => {
           console.error('Error checking for existing reports:', reportsError);
         }
         
-        // If we have an existing report, set it to display its status
         if (existingReports && existingReports.length > 0) {
           console.log('Found existing report:', existingReports[0]);
           const latestReport = existingReports[0];
           
-          // Set existing report
           setExistingReport(latestReport);
           
-          // Check if report is in processing status
-          if (latestReport.status === 'processing') {
+          if (latestReport.status === 'completed') {
+            setReportCreated({
+              id: latestReport.id,
+              content: latestReport.content || ''
+            });
+            setProgressUpdate({
+              report_id: latestReport.id,
+              status: 'completed',
+              message: 'Report is ready for review.',
+              progress: 100,
+              created_at: new Date().toISOString(),
+              job: ''
+            });
+          } else if (latestReport.status === 'processing') {
             await checkReportProgressStatus(latestReport.id);
           }
         }
       } catch (error) {
         console.error('Error initializing Step5Generate:', error);
         toast({
-          title: "Error",
           description: "Failed to initialize report generation. Please try again.",
-          variant: "destructive"
         });
       }
     };
     
     initializeComponent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   const checkReportProgressStatus = async (reportId: string) => {
     try {
-      // Get the latest progress update for this report
       const { data: progressData, error: progressError } = await supabase
         .from('report_progress')
         .select('*')
@@ -116,7 +115,6 @@ const Step5Generate = () => {
       const latestProgress = progressData[0];
       console.log('Latest progress data:', latestProgress);
 
-      // Check if the latest update is more than 15 minutes old
       const latestUpdateTime = new Date(latestProgress.created_at);
       const currentTime = new Date();
       const timeDifferenceMinutes = (currentTime.getTime() - latestUpdateTime.getTime()) / (1000 * 60);
@@ -125,7 +123,6 @@ const Step5Generate = () => {
         console.log('Report progress is stale (over 15 minutes old)');
         setIsStaleReport(true);
         
-        // Archive the stale report
         await supabase
           .from('reports')
           .update({ status: 'archived' })
@@ -136,7 +133,6 @@ const Step5Generate = () => {
           description: "Previous report generation timed out. Starting a new report.",
         });
       } else {
-        // Use the latest progress update
         if (latestProgress) {
           const progressUpdateData = {
             report_id: latestProgress.report_id,
@@ -147,7 +143,6 @@ const Step5Generate = () => {
             job: latestProgress.job
           };
           
-          // Use the report generation hook to update progress
           if (setReportCreated) {
             setReportCreated({
               id: reportId,
@@ -166,23 +161,20 @@ const Step5Generate = () => {
   };
   
   const handleNext = async () => {
-    if (reportCreated?.id && projectId) {
+    if ((reportCreated?.id || existingReport?.id) && projectId) {
       try {
-        // Update workflow state to 6
+        const reportIdToUse = reportCreated?.id || existingReport?.id;
+        
         await updateWorkflowState(projectId, 6);
-        //await navigateToReportEditor(reportCreated.id, navigate);
         navigate('/dashboard/report-wizard/review');
       } catch (error) {
         console.error('Error navigating to next step:', error);
         toast({
-          title: "Error",
           description: "Failed to proceed to the next step. Please try again.",
-          variant: "destructive"
         });
       }
     } else {
       toast({
-        title: "Report Not Ready",
         description: "Please generate the report before proceeding.",
       });
     }
@@ -191,7 +183,6 @@ const Step5Generate = () => {
   const handleGenerateReport = async () => {
     if (!projectId) return;
     
-    // Prevent duplicate generations
     if (generationInProgress[projectId]) {
       toast({
         title: "Already in Progress",
@@ -200,17 +191,13 @@ const Step5Generate = () => {
       return;
     }
     
-    // Check if we have a stale report that was marked for archiving
     if (isStaleReport && existingReport) {
       console.log('Using archived report, generating a new one');
       await handleCreateReport(projectId);
       return;
     }
     
-    // Check if we already have a completed report
     if (existingReport?.status === 'processing') {
-      // This report is already being processed
-      // We've already checked if it's stale in the useEffect
       toast({
         title: "Report Processing",
         description: "A report is already being processed. Please wait for it to complete.",
@@ -218,14 +205,12 @@ const Step5Generate = () => {
       return;
     }
     
-    // If we have a completed report, ask if they want to regenerate
     if (existingReport?.status !== 'draft' && existingReport?.content) {
       toast({
         title: "Using Existing Report",
         description: "Your report has already been generated. Proceeding to review.",
       });
       
-      // Go to the next step with the existing report
       if (setReportCreated) {
         setReportCreated({
           id: existingReport.id,
@@ -236,16 +221,13 @@ const Step5Generate = () => {
       return;
     }
     
-    // Otherwise, generate a new report
     console.log('Starting new report generation for project:', projectId);
     await handleCreateReport(projectId);
   };
   
-  // Determine component status based on report generation state
   const getStatus = () => {
     if (progressUpdate) return progressUpdate.status;
     
-    // If we have a valid existing report that's not stale or draft, show it as completed
     if (existingReport?.status === 'completed' || 
        (existingReport?.status !== 'draft' && 
         existingReport?.content && 
@@ -315,7 +297,7 @@ const Step5Generate = () => {
                   <div className="bg-muted p-4 rounded-md">
                     <h4 className="font-medium mb-2">Report Details:</h4>
                     <ul className="list-disc list-inside space-y-1 text-sm">
-                      <li>Report generated successfully</li>
+                      <li>Report {existingReport?.status === 'completed' ? 'is ready' : 'generated successfully'}</li>
                       <li>Images included: {(reportCreated?.content || existingReport?.content || "").match(/<img/g)?.length || 0}</li>
                       <li>Generated on {new Date().toLocaleDateString()}</li>
                     </ul>
