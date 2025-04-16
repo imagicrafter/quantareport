@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -9,13 +8,13 @@ import { useReportSave } from '@/hooks/report-workflow/useReportSave';
 import {
   ReportModeSelector,
   ReportNameInput,
-  TemplateDisplay,
   ProjectSelector,
   ActionButtons,
   LoadingSpinner,
-  InstructionsPanel
+  InstructionsPanel,
+  TemplateSelector,
 } from '@/components/report-workflow/start-report';
-import TemplateNotesForm from '../TemplateNotesForm';
+import TemplateNotesColumns from '../TemplateNotesColumns';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -33,7 +32,6 @@ const Step1Start = () => {
   const navigate = useNavigate();
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   
-  // Custom hooks for data and operations
   const {
     defaultTemplate,
     isLoading,
@@ -58,18 +56,15 @@ const Step1Start = () => {
   
   const { isSaving, saveReport } = useReportSave();
   
-  // Initialize the form when first loading the component
   useEffect(() => {
     const initializeForm = async () => {
       try {
         const { workflowState } = await fetchCurrentWorkflow();
         setWorkflowState(workflowState);
         
-        // Always start with a clean form when arriving at Step 1
         resetForm();
         resetTemplateNoteValues();
         
-        // If we have a default template, fetch it
         if (defaultTemplate?.id) {
           fetchDefaultTemplate();
         }
@@ -79,11 +74,9 @@ const Step1Start = () => {
     };
     
     initializeForm();
-    // Only run this effect once when the component mounts
   }, []);
-  
+
   const handleReportModeChange = (mode: 'new' | 'update') => {
-    // If we're in workflow state 1 and changing mode, show the exit dialog
     if (workflowState === 1 && selectedProjectId && mode !== reportMode) {
       setExitAction({
         type: 'mode-change',
@@ -95,12 +88,10 @@ const Step1Start = () => {
     
     setReportMode(mode);
     
-    // Reset form when switching to new mode
     if (mode === 'new') {
       resetForm();
       resetTemplateNoteValues();
       
-      // If we have a default template, fetch it
       if (defaultTemplate?.id) {
         fetchDefaultTemplate();
       }
@@ -108,7 +99,6 @@ const Step1Start = () => {
   };
 
   const handleProjectChange = (projectId: string) => {
-    // If we're in workflow state 1 and changing projects, show the exit dialog
     if (workflowState === 1 && selectedProjectId && projectId !== selectedProjectId) {
       setExitAction({
         type: 'project-change',
@@ -118,10 +108,8 @@ const Step1Start = () => {
       return;
     }
     
-    // First set the project ID directly to update the select component
     setSelectedProjectId(projectId);
     
-    // Then load the project details (handle all the async operations)
     handleProjectSelect(
       projectId, 
       () => isLoading, 
@@ -131,18 +119,16 @@ const Step1Start = () => {
     );
   };
 
-  // Function to reset workflow state to step 1
   const resetWorkflowToStartStep = async () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
       
-      // If there's a selected project, update its workflow state to 0
       if (selectedProjectId) {
         await supabase
           .from('project_workflow')
           .update({ 
-            workflow_state: 1, // Reset to Step 1
+            workflow_state: 1, 
             last_edited_at: new Date().toISOString()
           })
           .eq('project_id', selectedProjectId)
@@ -153,18 +139,15 @@ const Step1Start = () => {
     }
   };
 
-  // Handle exit dialog confirmation
   const handleExitConfirm = async () => {
     try {
       if (selectedProjectId) {
-        // Reset workflow state to 0
         await updateWorkflowState(selectedProjectId, 0);
         console.log(`Workflow state reset to 0 for project ${selectedProjectId}`);
       }
       
       setShowExitDialog(false);
       
-      // Apply the change that was requested
       if (exitAction) {
         if (exitAction.type === 'mode-change') {
           setReportMode(exitAction.value as 'new' | 'update');
@@ -172,7 +155,6 @@ const Step1Start = () => {
             resetForm();
             resetTemplateNoteValues();
             
-            // If defaultTemplate exists and template has id, fetch template notes
             if (defaultTemplate?.id) {
               fetchDefaultTemplate();
             }
@@ -193,7 +175,6 @@ const Step1Start = () => {
     }
   };
 
-  // Handle exit dialog cancellation
   const handleExitCancel = () => {
     setShowExitDialog(false);
     setExitAction(null);
@@ -209,7 +190,6 @@ const Step1Start = () => {
       return;
     }
     
-    // Reset workflow state before saving in case there was a previous state
     resetWorkflowToStartStep();
     
     saveReport({
@@ -228,7 +208,6 @@ const Step1Start = () => {
   };
 
   const handleStepClick = (step: number) => {
-    // In future implementations, this will navigate to the appropriate step
     toast({
       description: `Step ${step} will be implemented in a future update.`,
     });
@@ -247,10 +226,8 @@ const Step1Start = () => {
         <p className="text-muted-foreground">Configure your report details to get started.</p>
       </div>
       
-      {/* Instructions Panel */}
       <InstructionsPanel stepNumber={1} />
       
-      {/* Report Mode Selection */}
       <ReportModeSelector 
         value={reportMode}
         onChange={handleReportModeChange}
@@ -260,7 +237,6 @@ const Step1Start = () => {
         <LoadingSpinner />
       ) : (
         <>
-          {/* Report Name and Template Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-3xl mx-auto">
             <div>
               {reportMode === 'new' ? (
@@ -276,14 +252,20 @@ const Step1Start = () => {
                 />
               )}
             </div>
-            <TemplateDisplay templateName={defaultTemplate?.name} />
+            <TemplateSelector
+              selectedTemplateId={defaultTemplate?.id || null}
+              onTemplateChange={(templateId) => {
+                if (templateId) {
+                  fetchDefaultTemplate();
+                }
+              }}
+            />
           </div>
           
-          {/* Template Notes Form - shown for both modes when data is available */}
           {(reportMode === 'new' || (reportMode === 'update' && selectedProjectId)) && (
             <>
               {templateNotes.length > 0 ? (
-                <TemplateNotesForm
+                <TemplateNotesColumns
                   templateNotes={templateNotes}
                   values={templateNoteValues}
                   onChange={handleInputChange}
@@ -296,7 +278,6 @@ const Step1Start = () => {
             </>
           )}
           
-          {/* Action Buttons */}
           <ActionButtons
             onSave={handleSave}
             onCancel={handleCancel}
@@ -306,7 +287,6 @@ const Step1Start = () => {
         </>
       )}
 
-      {/* Exit Confirmation Dialog */}
       <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
         <DialogContent>
           <DialogHeader>
