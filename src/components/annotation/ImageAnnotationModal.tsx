@@ -132,9 +132,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         fabricCanvas.setWidth(canvasWidth);
         fabricCanvas.setHeight(canvasHeight);
         
-        FabricImage.fromURL(
-          imageUrlWithCache, 
-          (fabricImg) => {
+        FabricImage.fromURL(imageUrlWithCache, (fabricImg) => {
             console.log("FabricImage created from URL:", fabricImg ? "success" : "failed");
             
             if (!fabricImg) {
@@ -152,13 +150,11 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
             console.log("Background image set successfully");
             setIsLoading(false);
             clearHistory();
-          },
-          {
+        }, {
             crossOrigin: 'anonymous',
             width: canvasWidth,
             height: canvasHeight
-          }
-        );
+        });
       } catch (error) {
         console.error("Error creating Fabric image:", error);
         setImgLoadError(`Error setting up the canvas: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -341,9 +337,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         
         console.log("Attempting to reload image:", refreshedUrl);
         
-        FabricImage.fromURL(
-          refreshedUrl, 
-          (fabricImg) => {
+        FabricImage.fromURL(refreshedUrl, (fabricImg) => {
             if (fabricImg) {
               const canvasWidth = fabricCanvas.getWidth();
               const canvasHeight = fabricCanvas.getHeight();
@@ -356,11 +350,9 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
               console.log("Image reload successful");
             }
             setIsLoading(false);
-          },
-          {
+        }, {
             crossOrigin: 'anonymous'
-          }
-        );
+        });
       }
     }, 500);
   };
