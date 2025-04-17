@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,17 +35,13 @@ const RelatedFiles: React.FC<RelatedFilesProps> = ({ files, onRelationshipsChang
         id: file.file_id,
         path: file.file_path,
         name: file.file?.name,
-        file_full: file
+        projectId: file.file?.project_id
       });
       
-      fetch(file.file_path, { method: 'HEAD' })
-        .then(response => {
-          console.log("Image URL status:", response.status, response.ok ? "OK" : "Failed");
-          console.log("Content type:", response.headers.get('Content-Type'));
-        })
-        .catch(error => {
-          console.error("Error checking image URL:", error);
-        });
+      if (!file.file_id || !file.file_path || !file.file?.name || !file.file?.project_id) {
+        console.error('Missing required file information for annotation:', file);
+        return;
+      }
       
       setSelectedImage({
         url: file.file_path,
@@ -77,6 +74,11 @@ const RelatedFiles: React.FC<RelatedFilesProps> = ({ files, onRelationshipsChang
                     src={file.file_path}
                     alt={file.file?.name || 'File preview'}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error(`Image failed to load: ${file.file_path}`);
+                      (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTAgMi41QTEuNSAxLjUgMCAwMDguNSAxSDIuNUExLjUgMS41IDAgMDAxIDIuNXY4QTEuNSAxLjUgMCAwMDIuNSAxMkg0djEuNUgyLjVBMyAzIDAgMDEtLjUgMTAuNXYtOEEzIDMgMCAwMTIuNS0uNWg2QTMgMyAwIDAxMTEuNSAyLjVWNEgxMFYyLjVaIiBmaWxsPSJjdXJyZW50Q29sb3IiPjwvcGF0aD48cGF0aCBkPSJNNi41IDRINi41QTIuNSAyLjUgMCAwMDQgNi41VjEzLjVBMi41IDIuNSAwIDAwNi41IDE2SDEzLjVBMi41IDIuNSAwIDAwMTYgMTMuNVY2LjVBMi41IDIuNSAwIDAwMTMuNSA0SDEzLjVINi41Wk02LjUgNS41SDEzLjVBMSAxIDAgMDExNC41IDYuNVYxMEgxMS43OTNMMTAuODk3IDguNjkzQTEuNSAxLjUgMCAwMDkuNjUgOEg1LjVWNi41QTEgMSAwIDAxNi41IDUuNVpNMTMuNSAxNC41SDYuNUExIDEgMCAwMTUuNSAxMy41VjkuNUg5LjY1TDEwLjU0NyAxMC44MDdBMS41IDEuNSAwIDAwMTEuNzkzIDExLjVIMTQuNVYxMy41QTEgMSAwIDAxMTMuNSAxNC41WiIgZmlsbD0iY3VycmVudENvbG9yIj48L3BhdGg+PC9zdmc+';
+                      (e.target as HTMLImageElement).classList.add('p-2');
+                    }}
                   />
                 </div>
               ) : (
@@ -113,6 +115,7 @@ const RelatedFiles: React.FC<RelatedFilesProps> = ({ files, onRelationshipsChang
           onClose={() => {
             console.log("Closing image annotation modal");
             setSelectedImage(null);
+            onRelationshipsChanged(); // Refresh the list to show any newly created annotations
           }}
           imageUrl={selectedImage.url}
           fileId={selectedImage.id}

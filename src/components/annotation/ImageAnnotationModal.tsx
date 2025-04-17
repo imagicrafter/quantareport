@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [imgLoadError, setImgLoadError] = useState<string | null>(null);
   
   const {
     activeTool,
@@ -47,6 +49,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
   useEffect(() => {
     if (!isOpen || !canvasRef.current) return;
     
+    console.log("Initializing canvas for annotation");
     const canvas = new Canvas(canvasRef.current, {
       isDrawingMode: false,
       selection: true,
@@ -66,78 +69,103 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
     if (!fabricCanvas || !imageUrl) return;
     
     setIsLoading(true);
-    console.log("Attempting to load image from URL:", imageUrl);
+    setImgLoadError(null);
     
-    const img = new Image();
-    img.crossOrigin = "anonymous";
+    console.log("Loading image details:", {
+      imageUrl,
+      fileId,
+      fileName,
+      projectId
+    });
     
     // Add cache-busting parameter to avoid browser caching
     const cacheBuster = `?t=${new Date().getTime()}`;
     const imageUrlWithCache = `${imageUrl}${cacheBuster}`;
-    console.log("Image URL with cache busting:", imageUrlWithCache);
     
-    // Log CORS headers - this will appear after the request is made
+    console.log("Attempting to load image from URL:", imageUrlWithCache);
+    
+    // Test the image URL with a HEAD request first
     fetch(imageUrlWithCache, { method: 'HEAD' })
       .then(response => {
-        console.log("Image fetch headers:", {
-          'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
-          'Content-Type': response.headers.get('Content-Type')
-        });
+        console.log("Image URL status:", response.status, response.ok ? "OK" : "Failed");
+        console.log("Content type:", response.headers.get('Content-Type'));
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error ${response.status}`);
+        }
       })
-      .catch(e => console.error("Failed to check image headers:", e));
+      .catch(error => {
+        console.error("Error checking image URL:", error);
+        setImgLoadError(`Failed to access image: ${error.message}`);
+      });
+    
+    // Create a new image object for loading
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // Important for CORS
     
     img.onload = () => {
       console.log("Image loaded successfully:", {
         width: img.width,
         height: img.height,
-        src: img.src,
         complete: img.complete
       });
       
-      // Calculate sizing
-      const containerWidth = canvasRef.current?.parentElement?.clientWidth || 800;
-      const containerHeight = canvasRef.current?.parentElement?.clientHeight || 600;
-      
-      const imgRatio = img.width / img.height;
-      let canvasWidth = img.width;
-      let canvasHeight = img.height;
-      
-      if (img.width > containerWidth * 0.9) {
-        canvasWidth = containerWidth * 0.9;
-        canvasHeight = canvasWidth / imgRatio;
-      }
-      
-      if (canvasHeight > containerHeight * 0.8) {
-        canvasHeight = containerHeight * 0.8;
-        canvasWidth = canvasHeight * imgRatio;
-      }
-      
-      console.log("Canvas dimensions set to:", { canvasWidth, canvasHeight });
-      
-      // Set canvas size
-      fabricCanvas.setWidth(canvasWidth);
-      fabricCanvas.setHeight(canvasHeight);
-      
       try {
-        // Create fabric.js image object from the loaded image
-        const fabricImage = new FabricImage(img, {
-          scaleX: canvasWidth / img.width,
-          scaleY: canvasHeight / img.height,
-          crossOrigin: 'anonymous'
-        });
+        // Calculate sizing
+        const containerWidth = canvasRef.current?.parentElement?.clientWidth || 800;
+        const containerHeight = canvasRef.current?.parentElement?.clientHeight || 600;
         
-        console.log("FabricImage created successfully:", fabricImage);
+        const imgRatio = img.width / img.height;
+        let canvasWidth = img.width;
+        let canvasHeight = img.height;
         
-        // Set as background image
-        fabricCanvas.backgroundImage = fabricImage;
-        fabricCanvas.renderAll();
-        console.log("Background image set and canvas rendered");
+        if (img.width > containerWidth * 0.9) {
+          canvasWidth = containerWidth * 0.9;
+          canvasHeight = canvasWidth / imgRatio;
+        }
         
-        setIsLoading(false);
-        clearHistory();
+        if (canvasHeight > containerHeight * 0.8) {
+          canvasHeight = containerHeight * 0.8;
+          canvasWidth = canvasHeight * imgRatio;
+        }
+        
+        console.log("Canvas dimensions set to:", { canvasWidth, canvasHeight });
+        
+        // Set canvas size
+        fabricCanvas.setWidth(canvasWidth);
+        fabricCanvas.setHeight(canvasHeight);
+        
+        // Create fabric.js image object
+        FabricImage.fromURL(imageUrlWithCache, (fabricImage) => {
+          console.log("FabricImage created with fromURL:", fabricImage ? "success" : "failed");
+          
+          if (!fabricImage) {
+            setImgLoadError("Failed to create FabricImage object");
+            setIsLoading(false);
+            return;
+          }
+          
+          // Scale the image to fit the canvas
+          fabricImage.scaleToWidth(canvasWidth);
+          fabricImage.scaleToHeight(canvasHeight);
+          
+          // Set as background image with proper scaling
+          fabricCanvas.setBackgroundImage(
+            fabricImage, 
+            fabricCanvas.renderAll.bind(fabricCanvas),
+            {
+              scaleX: canvasWidth / img.width,
+              scaleY: canvasHeight / img.height
+            }
+          );
+          
+          console.log("Background image set successfully");
+          setIsLoading(false);
+          clearHistory();
+        }, { crossOrigin: 'anonymous' });
       } catch (error) {
         console.error("Error creating Fabric image:", error);
-        toast.error("Error setting up the canvas. Please try again.");
+        setImgLoadError(`Error setting up the canvas: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setIsLoading(false);
       }
     };
@@ -148,13 +176,14 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         imageUrl: imageUrlWithCache,
         imageElement: img
       });
-      toast.error(`Failed to load image. Please try again.`);
+      setImgLoadError(`Failed to load image from ${imageUrlWithCache}`);
       setIsLoading(false);
     };
     
+    console.log("Setting image source:", imageUrlWithCache);
     img.src = imageUrlWithCache;
-    console.log("Image src set, starting load");
-  }, [fabricCanvas, imageUrl]);
+    
+  }, [fabricCanvas, imageUrl, fileId]);
   
   useEffect(() => {
     if (!fabricCanvas) return;
@@ -348,8 +377,63 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
           
           <div className="flex-1 overflow-auto flex items-center justify-center p-4 bg-gray-100">
             {isLoading ? (
-              <div className="flex items-center justify-center h-64">
-                <p>Loading image...</p>
+              <div className="flex flex-col items-center justify-center h-64 space-y-2">
+                <p className="text-muted-foreground">Loading image...</p>
+                <p className="text-xs text-muted-foreground">URL: {imageUrl}</p>
+              </div>
+            ) : imgLoadError ? (
+              <div className="flex flex-col items-center justify-center h-64 space-y-2 p-4 max-w-md">
+                <p className="text-red-500 font-medium">Error loading image</p>
+                <p className="text-sm text-muted-foreground">{imgLoadError}</p>
+                <div className="text-xs text-muted-foreground mt-4 p-2 bg-gray-100 rounded-md overflow-auto max-w-full">
+                  <p>Image URL: {imageUrl}</p>
+                  <p>File ID: {fileId}</p>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsLoading(true);
+                    setImgLoadError(null);
+                    
+                    // Force reload after a small delay
+                    setTimeout(() => {
+                      if (fabricCanvas && imageUrl) {
+                        const newCacheBuster = `?t=${new Date().getTime()}`;
+                        const refreshedUrl = `${imageUrl.split('?')[0]}${newCacheBuster}`;
+                        
+                        console.log("Attempting to reload image:", refreshedUrl);
+                        
+                        // Manually create and load image
+                        const img = new Image();
+                        img.crossOrigin = "anonymous";
+                        img.src = refreshedUrl;
+                        
+                        img.onload = () => {
+                          console.log("Image reload successful");
+                          
+                          // Continue with image processing...
+                          // This duplicates the logic from the useEffect, but for a retry button
+                          const fabricImage = new FabricImage(img);
+                          fabricCanvas.setBackgroundImage(
+                            fabricImage, 
+                            fabricCanvas.renderAll.bind(fabricCanvas)
+                          );
+                          
+                          setIsLoading(false);
+                        };
+                        
+                        img.onerror = (e) => {
+                          console.error("Image reload failed:", e);
+                          setImgLoadError(`Reload failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+                          setIsLoading(false);
+                        };
+                      }
+                    }, 500);
+                  }}
+                >
+                  Try Again
+                </Button>
               </div>
             ) : (
               <div className="relative">

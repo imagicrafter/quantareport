@@ -76,7 +76,7 @@ export const saveAnnotatedImage = async (
       console.log("Parent file information:", parentFile);
     }
     
-    // 6. Insert new file record with parent_file_id
+    // 6. Insert new file record with parent_file_id in metadata
     console.log("Creating new file record with metadata:", {
       parentFileId,
       filePath,
