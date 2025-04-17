@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Pencil, Square, Circle, Line, ArrowRight, Type, Undo2, Redo2, Trash2 } from 'lucide-react';
+import { Pencil, Square, Circle, Minus, ArrowRight, Type, Undo2, Redo2, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 
@@ -70,7 +70,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
         onClick={() => onToolChange('line')}
         title="Line"
       >
-        <Line size={16} />
+        <Minus size={16} />
       </Button>
       
       <Button

@@ -95,16 +95,12 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
       fabricCanvas.setWidth(canvasWidth);
       fabricCanvas.setHeight(canvasHeight);
       
-      // Set background image
-      fabricCanvas.setBackgroundImage(
-        imageUrl,
-        fabricCanvas.renderAll.bind(fabricCanvas),
-        {
-          scaleX: canvasWidth / img.width,
-          scaleY: canvasHeight / img.height,
-          crossOrigin: 'anonymous'
-        }
-      );
+      // Create fabric.js image object from the loaded image
+      fabricCanvas.setBackgroundImage(imageUrl, fabricCanvas.renderAll.bind(fabricCanvas), {
+        scaleX: canvasWidth / img.width,
+        scaleY: canvasHeight / img.height,
+        crossOrigin: 'anonymous'
+      });
       
       setIsLoading(false);
       clearHistory();
