@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -78,13 +77,11 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
       projectId
     });
     
-    // Add cache-busting parameter to avoid browser caching
     const cacheBuster = `?t=${new Date().getTime()}`;
     const imageUrlWithCache = `${imageUrl}${cacheBuster}`;
     
     console.log("Attempting to load image from URL:", imageUrlWithCache);
     
-    // Test the image URL with a HEAD request first
     fetch(imageUrlWithCache, { method: 'HEAD' })
       .then(response => {
         console.log("Image URL status:", response.status, response.ok ? "OK" : "Failed");
@@ -99,9 +96,8 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         setImgLoadError(`Failed to access image: ${error.message}`);
       });
     
-    // Create a new image object for loading
     const img = new Image();
-    img.crossOrigin = "anonymous"; // Important for CORS
+    img.crossOrigin = "anonymous";
     
     img.onload = () => {
       console.log("Image loaded successfully:", {
@@ -111,7 +107,6 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
       });
       
       try {
-        // Calculate sizing
         const containerWidth = canvasRef.current?.parentElement?.clientWidth || 800;
         const containerHeight = canvasRef.current?.parentElement?.clientHeight || 600;
         
@@ -131,37 +126,31 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         
         console.log("Canvas dimensions set to:", { canvasWidth, canvasHeight });
         
-        // Set canvas size
         fabricCanvas.setWidth(canvasWidth);
         fabricCanvas.setHeight(canvasHeight);
         
-        // Create fabric.js image object and set as background image
-        // Fix: Correct parameter order for FabricImage.fromURL
         FabricImage.fromURL(
           imageUrlWithCache, 
-          function(fabricImage) {
-            console.log("FabricImage created with fromURL:", fabricImage ? "success" : "failed");
-            
-            if (!fabricImage) {
-              setImgLoadError("Failed to create FabricImage object");
-              setIsLoading(false);
-              return;
-            }
-            
-            // Scale the image to fit the canvas
-            fabricImage.scaleToWidth(canvasWidth);
-            fabricImage.scaleToHeight(canvasHeight);
-            
-            // Set as background image with proper scaling
-            fabricCanvas.backgroundImage = fabricImage;
-            fabricCanvas.renderAll();
-            
-            console.log("Background image set successfully");
-            setIsLoading(false);
-            clearHistory();
-          },
           {
-            crossOrigin: 'anonymous'
+            crossOrigin: 'anonymous',
+            scaleX: canvasWidth / img.width,
+            scaleY: canvasHeight / img.height,
+            onLoad: function(fabricImage) {
+              console.log("FabricImage created with fromURL:", fabricImage ? "success" : "failed");
+              
+              if (!fabricImage) {
+                setImgLoadError("Failed to create FabricImage object");
+                setIsLoading(false);
+                return;
+              }
+              
+              fabricCanvas.backgroundImage = fabricImage;
+              fabricCanvas.renderAll();
+              
+              console.log("Background image set successfully");
+              setIsLoading(false);
+              clearHistory();
+            }
           }
         );
       } catch (error) {
@@ -249,14 +238,12 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         break;
         
       case 'arrow':
-        // Create arrow using line with custom render
         const arrowPoints: [number, number, number, number] = [pointer.x, pointer.y, pointer.x + 100, pointer.y];
         obj = new Line(arrowPoints, {
           stroke: activeColor,
           strokeWidth: 2
         });
         
-        // Add arrow head using custom render
         obj.toSVG = (function(toSVG) {
           return function(this: any, ...args: any[]) {
             const svg = toSVG.apply(this, args);
@@ -304,7 +291,6 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
       setIsSaving(true);
       console.log("Starting image save process");
       
-      // Convert canvas to data URL
       const dataUrl = fabricCanvas.toDataURL({
         format: 'png',
         quality: 1,
@@ -312,13 +298,11 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
       });
       console.log("Canvas converted to data URL, length:", dataUrl.length);
       
-      // Create a file from data URL
       const response = await fetch(dataUrl);
       const blob = await response.blob();
       const file = new File([blob], `${fileName.split('.')[0]}_annotated.png`, { type: 'image/png' });
       console.log("File created:", { name: file.name, size: file.size, type: file.type });
       
-      // Save the file with the parent file ID
       const newFileId = await saveAnnotatedImage(file, projectId, fileId);
       console.log("Annotated image saved with new ID:", newFileId);
       
@@ -397,7 +381,6 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
                     setIsLoading(true);
                     setImgLoadError(null);
                     
-                    // Force reload after a small delay
                     setTimeout(() => {
                       if (fabricCanvas && imageUrl) {
                         const newCacheBuster = `?t=${new Date().getTime()}`;
@@ -405,7 +388,6 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
                         
                         console.log("Attempting to reload image:", refreshedUrl);
                         
-                        // Manually create and load image
                         const img = new Image();
                         img.crossOrigin = "anonymous";
                         img.src = refreshedUrl;
@@ -413,17 +395,15 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
                         img.onload = () => {
                           console.log("Image reload successful");
                           
-                          // Fix: Correct parameter order for FabricImage.fromURL
                           FabricImage.fromURL(
                             refreshedUrl, 
-                            function(fabricImage) {
-                              // Set as background image
-                              fabricCanvas.backgroundImage = fabricImage;
-                              fabricCanvas.renderAll();
-                              setIsLoading(false);
-                            },
                             {
-                              crossOrigin: 'anonymous'
+                              crossOrigin: 'anonymous',
+                              onLoad: function(fabricImage) {
+                                fabricCanvas.backgroundImage = fabricImage;
+                                fabricCanvas.renderAll();
+                                setIsLoading(false);
+                              }
                             }
                           );
                         };
