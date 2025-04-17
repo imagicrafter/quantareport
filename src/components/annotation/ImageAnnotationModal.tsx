@@ -130,7 +130,8 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         fabricCanvas.setHeight(canvasHeight);
         
         FabricImage.fromURL(
-          imageUrlWithCache, 
+          imageUrlWithCache,
+          { crossOrigin: 'anonymous' },
           (fabricImg) => {
             console.log("FabricImage created with fromURL:", fabricImg ? "success" : "failed");
             
@@ -149,8 +150,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
             console.log("Background image set successfully");
             setIsLoading(false);
             clearHistory();
-          },
-          { crossOrigin: 'anonymous' }
+          }
         );
       } catch (error) {
         console.error("Error creating Fabric image:", error);
@@ -336,6 +336,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         
         FabricImage.fromURL(
           refreshedUrl,
+          { crossOrigin: 'anonymous' },
           (fabricImg) => {
             if (fabricImg) {
               const canvasWidth = fabricCanvas.getWidth();
@@ -349,8 +350,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
               console.log("Image reload successful");
             }
             setIsLoading(false);
-          },
-          { crossOrigin: 'anonymous' }
+          }
         );
       }
     }, 500);
