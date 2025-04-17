@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Canvas, Circle, Rect, Line, IText } from 'fabric';
+import { Canvas, Circle, Rect, Line, IText, Image as FabricImage } from 'fabric';
 import { useAnnotationTools } from '@/hooks/useAnnotationTools';
 import { AnnotationToolbar } from './AnnotationToolbar';
 import { toast } from 'sonner';
@@ -93,7 +94,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
       fabricCanvas.setHeight(canvasHeight);
       
       // Create fabric.js image object from the loaded image
-      const fabricImage = new fabric.Image(img, {
+      const fabricImage = new FabricImage(img, {
         scaleX: canvasWidth / img.width,
         scaleY: canvasHeight / img.height,
         crossOrigin: 'anonymous'
