@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { saveAnnotatedImage } from '@/services/imageAnnotationService';
 
 // Import fabric/Image specifically with a name to avoid conflicts
-import { Image as FabricImage, LoadImageOptions } from 'fabric';
+import { Image as FabricImage } from 'fabric';
 
 interface ImageAnnotationModalProps {
   isOpen: boolean;
@@ -132,31 +132,33 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         fabricCanvas.setWidth(canvasWidth);
         fabricCanvas.setHeight(canvasHeight);
         
-        const imageOptions: LoadImageOptions = { 
-          crossOrigin: 'anonymous',
-          width: canvasWidth,
-          height: canvasHeight
-        };
-
-        FabricImage.fromURL(imageUrlWithCache, imageOptions, (fabricImg) => {
-          console.log("FabricImage created from URL:", fabricImg ? "success" : "failed");
-          
-          if (!fabricImg) {
-            setImgLoadError("Failed to create FabricImage object");
+        FabricImage.fromURL(
+          imageUrlWithCache, 
+          (fabricImg) => {
+            console.log("FabricImage created from URL:", fabricImg ? "success" : "failed");
+            
+            if (!fabricImg) {
+              setImgLoadError("Failed to create FabricImage object");
+              setIsLoading(false);
+              return;
+            }
+            
+            fabricImg.scaleX = canvasWidth / img.width;
+            fabricImg.scaleY = canvasHeight / img.height;
+            
+            fabricCanvas.backgroundImage = fabricImg;
+            fabricCanvas.renderAll();
+            
+            console.log("Background image set successfully");
             setIsLoading(false);
-            return;
+            clearHistory();
+          },
+          {
+            crossOrigin: 'anonymous',
+            width: canvasWidth,
+            height: canvasHeight
           }
-          
-          fabricImg.scaleX = canvasWidth / img.width;
-          fabricImg.scaleY = canvasHeight / img.height;
-          
-          fabricCanvas.backgroundImage = fabricImg;
-          fabricCanvas.renderAll();
-          
-          console.log("Background image set successfully");
-          setIsLoading(false);
-          clearHistory();
-        });
+        );
       } catch (error) {
         console.error("Error creating Fabric image:", error);
         setImgLoadError(`Error setting up the canvas: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -339,24 +341,26 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         
         console.log("Attempting to reload image:", refreshedUrl);
         
-        const imageOptions: LoadImageOptions = { 
-          crossOrigin: 'anonymous'
-        };
-
-        FabricImage.fromURL(refreshedUrl, imageOptions, (fabricImg) => {
-          if (fabricImg) {
-            const canvasWidth = fabricCanvas.getWidth();
-            const canvasHeight = fabricCanvas.getHeight();
-            
-            fabricImg.scaleX = canvasWidth / fabricImg.width!;
-            fabricImg.scaleY = canvasHeight / fabricImg.height!;
-            
-            fabricCanvas.backgroundImage = fabricImg;
-            fabricCanvas.renderAll();
-            console.log("Image reload successful");
+        FabricImage.fromURL(
+          refreshedUrl, 
+          (fabricImg) => {
+            if (fabricImg) {
+              const canvasWidth = fabricCanvas.getWidth();
+              const canvasHeight = fabricCanvas.getHeight();
+              
+              fabricImg.scaleX = canvasWidth / fabricImg.width!;
+              fabricImg.scaleY = canvasHeight / fabricImg.height!;
+              
+              fabricCanvas.backgroundImage = fabricImg;
+              fabricCanvas.renderAll();
+              console.log("Image reload successful");
+            }
+            setIsLoading(false);
+          },
+          {
+            crossOrigin: 'anonymous'
           }
-          setIsLoading(false);
-        });
+        );
       }
     }, 500);
   };
