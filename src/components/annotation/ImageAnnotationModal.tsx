@@ -1,12 +1,16 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Canvas, Circle, Rect, Line, IText, Image as FabricImage } from 'fabric';
+import { Canvas, Circle, Rect, Line, IText } from 'fabric';
 import { useAnnotationTools } from '@/hooks/useAnnotationTools';
 import { AnnotationToolbar } from './AnnotationToolbar';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { saveAnnotatedImage } from '@/services/imageAnnotationService';
+
+// Import fabric/Image specifically with a name to avoid conflicts
+import { Image as FabricImage } from 'fabric';
 
 interface ImageAnnotationModalProps {
   isOpen: boolean;
@@ -129,7 +133,11 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         fabricCanvas.setWidth(canvasWidth);
         fabricCanvas.setHeight(canvasHeight);
         
-        FabricImage.fromURL(imageUrlWithCache, (fabricImg) => {
+        // Fix the parameter order according to Fabric.js v6 API
+        // First parameter: URL string
+        // Second parameter: callback function
+        // Third parameter: options object
+        FabricImage.fromURL(imageUrlWithCache, function(fabricImg) {
           console.log("FabricImage created from URL:", fabricImg ? "success" : "failed");
           
           if (!fabricImg) {
@@ -330,7 +338,8 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         
         console.log("Attempting to reload image:", refreshedUrl);
         
-        FabricImage.fromURL(refreshedUrl, (fabricImg) => {
+        // Fix the parameter order here as well
+        FabricImage.fromURL(refreshedUrl, function(fabricImg) {
           if (fabricImg) {
             const canvasWidth = fabricCanvas.getWidth();
             const canvasHeight = fabricCanvas.getHeight();
