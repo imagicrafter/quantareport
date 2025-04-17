@@ -135,7 +135,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         fabricCanvas.setWidth(canvasWidth);
         fabricCanvas.setHeight(canvasHeight);
         
-        // Create fabric.js image object
+        // Create fabric.js image object and set as background image
         FabricImage.fromURL(imageUrlWithCache, (fabricImage) => {
           console.log("FabricImage created with fromURL:", fabricImage ? "success" : "failed");
           
@@ -150,14 +150,8 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
           fabricImage.scaleToHeight(canvasHeight);
           
           // Set as background image with proper scaling
-          fabricCanvas.setBackgroundImage(
-            fabricImage, 
-            fabricCanvas.renderAll.bind(fabricCanvas),
-            {
-              scaleX: canvasWidth / img.width,
-              scaleY: canvasHeight / img.height
-            }
-          );
+          fabricCanvas.backgroundImage = fabricImage;
+          fabricCanvas.renderAll();
           
           console.log("Background image set successfully");
           setIsLoading(false);
@@ -412,15 +406,13 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
                         img.onload = () => {
                           console.log("Image reload successful");
                           
-                          // Continue with image processing...
-                          // This duplicates the logic from the useEffect, but for a retry button
-                          const fabricImage = new FabricImage(img);
-                          fabricCanvas.setBackgroundImage(
-                            fabricImage, 
-                            fabricCanvas.renderAll.bind(fabricCanvas)
-                          );
-                          
-                          setIsLoading(false);
+                          // Create a new fabric image
+                          FabricImage.fromURL(refreshedUrl, (fabricImage) => {
+                            // Set as background image
+                            fabricCanvas.backgroundImage = fabricImage;
+                            fabricCanvas.renderAll();
+                            setIsLoading(false);
+                          }, { crossOrigin: 'anonymous' });
                         };
                         
                         img.onerror = (e) => {
