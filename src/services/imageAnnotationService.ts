@@ -11,29 +11,44 @@ export const saveAnnotatedImage = async (
   parentFileId: string
 ): Promise<string> => {
   try {
+    console.log("Starting saveAnnotatedImage:", {
+      fileName: file.name,
+      fileSize: file.size,
+      projectId,
+      parentFileId
+    });
+    
     // 1. Get user session
     const { data: session } = await supabase.auth.getSession();
     if (!session.session) {
-      throw new Error('No active session found');
+      const error = new Error('No active session found');
+      console.error('Authentication error:', error);
+      throw error;
     }
+    console.log("User session verified");
     
     // 2. Upload file to storage
     const fileName = `annotated_${Date.now()}_${file.name}`;
+    const storagePath = `${projectId}/${fileName}`;
+    console.log("Uploading file to storage path:", storagePath);
+    
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('pub_images')
-      .upload(`${projectId}/${fileName}`, file);
+      .upload(storagePath, file);
       
     if (uploadError) {
       console.error('Upload error:', uploadError);
       throw uploadError;
     }
+    console.log("File uploaded successfully:", uploadData);
     
     // 3. Get public URL
     const { data: urlData } = await supabase.storage
       .from('pub_images')
-      .getPublicUrl(`${projectId}/${fileName}`);
+      .getPublicUrl(storagePath);
       
     const filePath = urlData.publicUrl;
+    console.log("Public URL generated:", filePath);
     
     // 4. Get position value for new file
     const { data: positionData } = await supabase
@@ -46,6 +61,7 @@ export const saveAnnotatedImage = async (
     const position = positionData && positionData.length > 0 
       ? (positionData[0].position || 0) + 1 
       : 1;
+    console.log("New file position:", position);
     
     // 5. Get parent file information
     const { data: parentFile, error: parentError } = await supabase
@@ -56,9 +72,18 @@ export const saveAnnotatedImage = async (
       
     if (parentError) {
       console.error('Error fetching parent file:', parentError);
+    } else {
+      console.log("Parent file information:", parentFile);
     }
     
     // 6. Insert new file record with parent_file_id
+    console.log("Creating new file record with metadata:", {
+      parentFileId,
+      filePath,
+      projectId,
+      userId: session.session.user.id
+    });
+    
     const { data: fileData, error: fileError } = await supabase
       .from('files')
       .insert({
@@ -83,7 +108,10 @@ export const saveAnnotatedImage = async (
       throw fileError;
     }
     
-    console.log('Successfully saved annotated image with parent ID:', parentFileId);
+    console.log('Successfully saved annotated image:', {
+      newFileId: fileData.id,
+      parentFileId: parentFileId
+    });
     return fileData.id;
   } catch (error) {
     console.error('Error saving annotated image:', error);

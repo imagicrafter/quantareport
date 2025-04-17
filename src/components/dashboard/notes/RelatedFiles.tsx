@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,10 +30,25 @@ const RelatedFiles: React.FC<RelatedFilesProps> = ({ files, onRelationshipsChang
 
   const handleImageClick = (file: NoteFileRelationshipWithType) => {
     if (file.file_type === 'image') {
-      console.log('Opening image annotation for file:', file);
+      console.log('Opening image annotation for file:', {
+        id: file.file_id,
+        path: file.file_path,
+        name: file.file?.name,
+        file_full: file
+      });
+      
+      fetch(file.file_path, { method: 'HEAD' })
+        .then(response => {
+          console.log("Image URL status:", response.status, response.ok ? "OK" : "Failed");
+          console.log("Content type:", response.headers.get('Content-Type'));
+        })
+        .catch(error => {
+          console.error("Error checking image URL:", error);
+        });
+      
       setSelectedImage({
         url: file.file_path,
-        id: file.file_id,  // This is the correct file ID for the image
+        id: file.file_id,
         name: file.file?.name || 'image.png',
         projectId: file.file?.project_id || ''
       });
@@ -96,7 +110,10 @@ const RelatedFiles: React.FC<RelatedFilesProps> = ({ files, onRelationshipsChang
       {selectedImage && (
         <ImageAnnotationModal
           isOpen={Boolean(selectedImage)}
-          onClose={() => setSelectedImage(null)}
+          onClose={() => {
+            console.log("Closing image annotation modal");
+            setSelectedImage(null);
+          }}
           imageUrl={selectedImage.url}
           fileId={selectedImage.id}
           fileName={selectedImage.name}

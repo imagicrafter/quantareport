@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -55,8 +54,10 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
     });
     
     setFabricCanvas(canvas);
+    console.log("Canvas initialized:", canvas ? "success" : "failed");
     
     return () => {
+      console.log("Disposing canvas");
       canvas.dispose();
     };
   }, [isOpen]);
@@ -65,17 +66,34 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
     if (!fabricCanvas || !imageUrl) return;
     
     setIsLoading(true);
-    console.log("Loading image from URL:", imageUrl);
+    console.log("Attempting to load image from URL:", imageUrl);
     
     const img = new Image();
     img.crossOrigin = "anonymous";
     
     // Add cache-busting parameter to avoid browser caching
     const cacheBuster = `?t=${new Date().getTime()}`;
-    img.src = `${imageUrl}${cacheBuster}`;
+    const imageUrlWithCache = `${imageUrl}${cacheBuster}`;
+    console.log("Image URL with cache busting:", imageUrlWithCache);
+    
+    // Log CORS headers - this will appear after the request is made
+    fetch(imageUrlWithCache, { method: 'HEAD' })
+      .then(response => {
+        console.log("Image fetch headers:", {
+          'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+          'Content-Type': response.headers.get('Content-Type')
+        });
+      })
+      .catch(e => console.error("Failed to check image headers:", e));
     
     img.onload = () => {
-      console.log("Image loaded successfully, dimensions:", img.width, "x", img.height);
+      console.log("Image loaded successfully:", {
+        width: img.width,
+        height: img.height,
+        src: img.src,
+        complete: img.complete
+      });
+      
       // Calculate sizing
       const containerWidth = canvasRef.current?.parentElement?.clientWidth || 800;
       const containerHeight = canvasRef.current?.parentElement?.clientHeight || 600;
@@ -94,30 +112,48 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         canvasWidth = canvasHeight * imgRatio;
       }
       
+      console.log("Canvas dimensions set to:", { canvasWidth, canvasHeight });
+      
       // Set canvas size
       fabricCanvas.setWidth(canvasWidth);
       fabricCanvas.setHeight(canvasHeight);
       
-      // Create fabric.js image object from the loaded image
-      const fabricImage = new FabricImage(img, {
-        scaleX: canvasWidth / img.width,
-        scaleY: canvasHeight / img.height,
-        crossOrigin: 'anonymous'
-      });
-      
-      // Set as background image
-      fabricCanvas.backgroundImage = fabricImage;
-      fabricCanvas.renderAll();
-      
-      setIsLoading(false);
-      clearHistory();
+      try {
+        // Create fabric.js image object from the loaded image
+        const fabricImage = new FabricImage(img, {
+          scaleX: canvasWidth / img.width,
+          scaleY: canvasHeight / img.height,
+          crossOrigin: 'anonymous'
+        });
+        
+        console.log("FabricImage created successfully:", fabricImage);
+        
+        // Set as background image
+        fabricCanvas.backgroundImage = fabricImage;
+        fabricCanvas.renderAll();
+        console.log("Background image set and canvas rendered");
+        
+        setIsLoading(false);
+        clearHistory();
+      } catch (error) {
+        console.error("Error creating Fabric image:", error);
+        toast.error("Error setting up the canvas. Please try again.");
+        setIsLoading(false);
+      }
     };
     
     img.onerror = (e) => {
-      console.error("Failed to load image:", e);
-      toast.error(`Failed to load image: ${imageUrl}. Please try again.`);
+      console.error("Failed to load image:", {
+        error: e,
+        imageUrl: imageUrlWithCache,
+        imageElement: img
+      });
+      toast.error(`Failed to load image. Please try again.`);
       setIsLoading(false);
     };
+    
+    img.src = imageUrlWithCache;
+    console.log("Image src set, starting load");
   }, [fabricCanvas, imageUrl]);
   
   useEffect(() => {
@@ -236,6 +272,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
     
     try {
       setIsSaving(true);
+      console.log("Starting image save process");
       
       // Convert canvas to data URL
       const dataUrl = fabricCanvas.toDataURL({
@@ -243,14 +280,17 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         quality: 1,
         multiplier: 1
       });
+      console.log("Canvas converted to data URL, length:", dataUrl.length);
       
       // Create a file from data URL
       const response = await fetch(dataUrl);
       const blob = await response.blob();
       const file = new File([blob], `${fileName.split('.')[0]}_annotated.png`, { type: 'image/png' });
+      console.log("File created:", { name: file.name, size: file.size, type: file.type });
       
       // Save the file with the parent file ID
-      await saveAnnotatedImage(file, projectId, fileId);
+      const newFileId = await saveAnnotatedImage(file, projectId, fileId);
+      console.log("Annotated image saved with new ID:", newFileId);
       
       toast.success("Annotated image saved successfully");
       onClose();
