@@ -129,30 +129,27 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         fabricCanvas.setWidth(canvasWidth);
         fabricCanvas.setHeight(canvasHeight);
         
-        FabricImage.fromURL(
-          imageUrlWithCache, 
-          {
-            crossOrigin: 'anonymous',
-            scaleX: canvasWidth / img.width,
-            scaleY: canvasHeight / img.height,
-            onLoad: function(fabricImage) {
-              console.log("FabricImage created with fromURL:", fabricImage ? "success" : "failed");
-              
-              if (!fabricImage) {
-                setImgLoadError("Failed to create FabricImage object");
-                setIsLoading(false);
-                return;
-              }
-              
-              fabricCanvas.backgroundImage = fabricImage;
-              fabricCanvas.renderAll();
-              
-              console.log("Background image set successfully");
-              setIsLoading(false);
-              clearHistory();
-            }
+        FabricImage.fromURL(imageUrlWithCache, (fabricImage) => {
+          console.log("FabricImage created with fromURL:", fabricImage ? "success" : "failed");
+          
+          if (!fabricImage) {
+            setImgLoadError("Failed to create FabricImage object");
+            setIsLoading(false);
+            return;
           }
-        );
+          
+          fabricImage.scaleX = canvasWidth / img.width;
+          fabricImage.scaleY = canvasHeight / img.height;
+          
+          fabricCanvas.backgroundImage = fabricImage;
+          fabricCanvas.renderAll();
+          
+          console.log("Background image set successfully");
+          setIsLoading(false);
+          clearHistory();
+        }, {
+          crossOrigin: 'anonymous'
+        });
       } catch (error) {
         console.error("Error creating Fabric image:", error);
         setImgLoadError(`Error setting up the canvas: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -324,6 +321,37 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
     }
   };
 
+  const handleReloadImage = () => {
+    setIsLoading(true);
+    setImgLoadError(null);
+    
+    setTimeout(() => {
+      if (fabricCanvas && imageUrl) {
+        const newCacheBuster = `?t=${new Date().getTime()}`;
+        const refreshedUrl = `${imageUrl.split('?')[0]}${newCacheBuster}`;
+        
+        console.log("Attempting to reload image:", refreshedUrl);
+        
+        FabricImage.fromURL(refreshedUrl, (fabricImage) => {
+          if (fabricImage) {
+            const canvasWidth = fabricCanvas.getWidth();
+            const canvasHeight = fabricCanvas.getHeight();
+            
+            fabricImage.scaleX = canvasWidth / fabricImage.width!;
+            fabricImage.scaleY = canvasHeight / fabricImage.height!;
+            
+            fabricCanvas.backgroundImage = fabricImage;
+            fabricCanvas.renderAll();
+            console.log("Image reload successful");
+          }
+          setIsLoading(false);
+        }, {
+          crossOrigin: 'anonymous'
+        });
+      }
+    }, 500);
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleDelete()}>
@@ -377,45 +405,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
                 <Button 
                   size="sm" 
                   variant="outline" 
-                  onClick={() => {
-                    setIsLoading(true);
-                    setImgLoadError(null);
-                    
-                    setTimeout(() => {
-                      if (fabricCanvas && imageUrl) {
-                        const newCacheBuster = `?t=${new Date().getTime()}`;
-                        const refreshedUrl = `${imageUrl.split('?')[0]}${newCacheBuster}`;
-                        
-                        console.log("Attempting to reload image:", refreshedUrl);
-                        
-                        const img = new Image();
-                        img.crossOrigin = "anonymous";
-                        img.src = refreshedUrl;
-                        
-                        img.onload = () => {
-                          console.log("Image reload successful");
-                          
-                          FabricImage.fromURL(
-                            refreshedUrl, 
-                            {
-                              crossOrigin: 'anonymous',
-                              onLoad: function(fabricImage) {
-                                fabricCanvas.backgroundImage = fabricImage;
-                                fabricCanvas.renderAll();
-                                setIsLoading(false);
-                              }
-                            }
-                          );
-                        };
-                        
-                        img.onerror = (e) => {
-                          console.error("Image reload failed:", e);
-                          setImgLoadError(`Reload failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
-                          setIsLoading(false);
-                        };
-                      }
-                    }, 500);
-                  }}
+                  onClick={handleReloadImage}
                 >
                   Try Again
                 </Button>
