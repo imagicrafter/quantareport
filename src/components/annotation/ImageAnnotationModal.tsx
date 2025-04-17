@@ -129,29 +129,25 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         fabricCanvas.setWidth(canvasWidth);
         fabricCanvas.setHeight(canvasHeight);
         
-        FabricImage.fromURL(
-          imageUrlWithCache,
-          { crossOrigin: 'anonymous' },
-          (fabricImg) => {
-            console.log("FabricImage created with fromURL:", fabricImg ? "success" : "failed");
-            
-            if (!fabricImg) {
-              setImgLoadError("Failed to create FabricImage object");
-              setIsLoading(false);
-              return;
-            }
-            
-            fabricImg.scaleX = canvasWidth / img.width;
-            fabricImg.scaleY = canvasHeight / img.height;
-            
-            fabricCanvas.backgroundImage = fabricImg;
-            fabricCanvas.renderAll();
-            
-            console.log("Background image set successfully");
+        FabricImage.fromURL(imageUrlWithCache, (fabricImg) => {
+          console.log("FabricImage created from URL:", fabricImg ? "success" : "failed");
+          
+          if (!fabricImg) {
+            setImgLoadError("Failed to create FabricImage object");
             setIsLoading(false);
-            clearHistory();
+            return;
           }
-        );
+          
+          fabricImg.scaleX = canvasWidth / img.width;
+          fabricImg.scaleY = canvasHeight / img.height;
+          
+          fabricCanvas.backgroundImage = fabricImg;
+          fabricCanvas.renderAll();
+          
+          console.log("Background image set successfully");
+          setIsLoading(false);
+          clearHistory();
+        }, { crossOrigin: 'anonymous' });
       } catch (error) {
         console.error("Error creating Fabric image:", error);
         setImgLoadError(`Error setting up the canvas: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -334,24 +330,20 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         
         console.log("Attempting to reload image:", refreshedUrl);
         
-        FabricImage.fromURL(
-          refreshedUrl,
-          { crossOrigin: 'anonymous' },
-          (fabricImg) => {
-            if (fabricImg) {
-              const canvasWidth = fabricCanvas.getWidth();
-              const canvasHeight = fabricCanvas.getHeight();
-              
-              fabricImg.scaleX = canvasWidth / fabricImg.width!;
-              fabricImg.scaleY = canvasHeight / fabricImg.height!;
-              
-              fabricCanvas.backgroundImage = fabricImg;
-              fabricCanvas.renderAll();
-              console.log("Image reload successful");
-            }
-            setIsLoading(false);
+        FabricImage.fromURL(refreshedUrl, (fabricImg) => {
+          if (fabricImg) {
+            const canvasWidth = fabricCanvas.getWidth();
+            const canvasHeight = fabricCanvas.getHeight();
+            
+            fabricImg.scaleX = canvasWidth / fabricImg.width!;
+            fabricImg.scaleY = canvasHeight / fabricImg.height!;
+            
+            fabricCanvas.backgroundImage = fabricImg;
+            fabricCanvas.renderAll();
+            console.log("Image reload successful");
           }
-        );
+          setIsLoading(false);
+        }, { crossOrigin: 'anonymous' });
       }
     }, 500);
   };

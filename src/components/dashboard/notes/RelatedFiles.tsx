@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
 import { removeFileFromNote } from '@/utils/noteFileRelationshipUtils';
 import { ImageAnnotationModal } from '@/components/annotation/ImageAnnotationModal';
+import { toast } from 'sonner';
 
 interface RelatedFilesProps {
   files: NoteFileRelationshipWithType[];
@@ -38,8 +39,25 @@ const RelatedFiles: React.FC<RelatedFilesProps> = ({ files, onRelationshipsChang
         projectId: file.file?.project_id
       });
       
-      if (!file.file_id || !file.file_path || !file.file?.name || !file.file?.project_id) {
-        console.error('Missing required file information for annotation:', file);
+      // Check if we have all required information before allowing annotation
+      if (!file.file_id) {
+        toast.error("Missing file ID");
+        return;
+      }
+      
+      if (!file.file_path) {
+        toast.error("Missing file path");
+        return;
+      }
+      
+      if (!file.file?.name) {
+        toast.error("Missing file name");
+        return;
+      }
+      
+      if (!file.file?.project_id) {
+        toast.error("Missing project ID");
+        console.error('Missing project ID for file:', file);
         return;
       }
       
@@ -47,7 +65,7 @@ const RelatedFiles: React.FC<RelatedFilesProps> = ({ files, onRelationshipsChang
         url: file.file_path,
         id: file.file_id,
         name: file.file?.name || 'image.png',
-        projectId: file.file?.project_id || ''
+        projectId: file.file?.project_id
       });
     }
   };
