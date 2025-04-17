@@ -136,27 +136,34 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         fabricCanvas.setHeight(canvasHeight);
         
         // Create fabric.js image object and set as background image
-        FabricImage.fromURL(imageUrlWithCache, (fabricImage) => {
-          console.log("FabricImage created with fromURL:", fabricImage ? "success" : "failed");
-          
-          if (!fabricImage) {
-            setImgLoadError("Failed to create FabricImage object");
+        // Fix: Correct parameter order for FabricImage.fromURL
+        FabricImage.fromURL(
+          imageUrlWithCache, 
+          function(fabricImage) {
+            console.log("FabricImage created with fromURL:", fabricImage ? "success" : "failed");
+            
+            if (!fabricImage) {
+              setImgLoadError("Failed to create FabricImage object");
+              setIsLoading(false);
+              return;
+            }
+            
+            // Scale the image to fit the canvas
+            fabricImage.scaleToWidth(canvasWidth);
+            fabricImage.scaleToHeight(canvasHeight);
+            
+            // Set as background image with proper scaling
+            fabricCanvas.backgroundImage = fabricImage;
+            fabricCanvas.renderAll();
+            
+            console.log("Background image set successfully");
             setIsLoading(false);
-            return;
+            clearHistory();
+          },
+          {
+            crossOrigin: 'anonymous'
           }
-          
-          // Scale the image to fit the canvas
-          fabricImage.scaleToWidth(canvasWidth);
-          fabricImage.scaleToHeight(canvasHeight);
-          
-          // Set as background image with proper scaling
-          fabricCanvas.backgroundImage = fabricImage;
-          fabricCanvas.renderAll();
-          
-          console.log("Background image set successfully");
-          setIsLoading(false);
-          clearHistory();
-        }, { crossOrigin: 'anonymous' });
+        );
       } catch (error) {
         console.error("Error creating Fabric image:", error);
         setImgLoadError(`Error setting up the canvas: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -406,13 +413,19 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
                         img.onload = () => {
                           console.log("Image reload successful");
                           
-                          // Create a new fabric image
-                          FabricImage.fromURL(refreshedUrl, (fabricImage) => {
-                            // Set as background image
-                            fabricCanvas.backgroundImage = fabricImage;
-                            fabricCanvas.renderAll();
-                            setIsLoading(false);
-                          }, { crossOrigin: 'anonymous' });
+                          // Fix: Correct parameter order for FabricImage.fromURL
+                          FabricImage.fromURL(
+                            refreshedUrl, 
+                            function(fabricImage) {
+                              // Set as background image
+                              fabricCanvas.backgroundImage = fabricImage;
+                              fabricCanvas.renderAll();
+                              setIsLoading(false);
+                            },
+                            {
+                              crossOrigin: 'anonymous'
+                            }
+                          );
                         };
                         
                         img.onerror = (e) => {
