@@ -65,12 +65,17 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
     if (!fabricCanvas || !imageUrl) return;
     
     setIsLoading(true);
+    console.log("Loading image from URL:", imageUrl);
     
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = imageUrl;
+    
+    // Add cache-busting parameter to avoid browser caching
+    const cacheBuster = `?t=${new Date().getTime()}`;
+    img.src = `${imageUrl}${cacheBuster}`;
     
     img.onload = () => {
+      console.log("Image loaded successfully, dimensions:", img.width, "x", img.height);
       // Calculate sizing
       const containerWidth = canvasRef.current?.parentElement?.clientWidth || 800;
       const containerHeight = canvasRef.current?.parentElement?.clientHeight || 600;
@@ -100,6 +105,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         crossOrigin: 'anonymous'
       });
       
+      // Set as background image
       fabricCanvas.backgroundImage = fabricImage;
       fabricCanvas.renderAll();
       
@@ -107,10 +113,10 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
       clearHistory();
     };
     
-    img.onerror = () => {
-      toast.error("Failed to load image. Please try again.");
+    img.onerror = (e) => {
+      console.error("Failed to load image:", e);
+      toast.error(`Failed to load image: ${imageUrl}. Please try again.`);
       setIsLoading(false);
-      onClose();
     };
   }, [fabricCanvas, imageUrl]);
   
@@ -243,7 +249,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
       const blob = await response.blob();
       const file = new File([blob], `${fileName.split('.')[0]}_annotated.png`, { type: 'image/png' });
       
-      // Save the file
+      // Save the file with the parent file ID
       await saveAnnotatedImage(file, projectId, fileId);
       
       toast.success("Annotated image saved successfully");

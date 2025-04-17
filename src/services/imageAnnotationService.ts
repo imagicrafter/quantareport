@@ -24,6 +24,7 @@ export const saveAnnotatedImage = async (
       .upload(`${projectId}/${fileName}`, file);
       
     if (uploadError) {
+      console.error('Upload error:', uploadError);
       throw uploadError;
     }
     
@@ -46,12 +47,23 @@ export const saveAnnotatedImage = async (
       ? (positionData[0].position || 0) + 1 
       : 1;
     
-    // 5. Insert new file record with parent_file_id
+    // 5. Get parent file information
+    const { data: parentFile, error: parentError } = await supabase
+      .from('files')
+      .select('name, type')
+      .eq('id', parentFileId)
+      .single();
+      
+    if (parentError) {
+      console.error('Error fetching parent file:', parentError);
+    }
+    
+    // 6. Insert new file record with parent_file_id
     const { data: fileData, error: fileError } = await supabase
       .from('files')
       .insert({
         name: file.name,
-        description: 'Annotated image',
+        description: `Annotated version of ${parentFile?.name || 'image'}`,
         file_path: filePath,
         type: 'image',
         project_id: projectId,
@@ -67,9 +79,11 @@ export const saveAnnotatedImage = async (
       .single();
       
     if (fileError) {
+      console.error('File insert error:', fileError);
       throw fileError;
     }
     
+    console.log('Successfully saved annotated image with parent ID:', parentFileId);
     return fileData.id;
   } catch (error) {
     console.error('Error saving annotated image:', error);

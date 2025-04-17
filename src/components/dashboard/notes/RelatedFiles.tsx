@@ -31,9 +31,10 @@ const RelatedFiles: React.FC<RelatedFilesProps> = ({ files, onRelationshipsChang
 
   const handleImageClick = (file: NoteFileRelationshipWithType) => {
     if (file.file_type === 'image') {
+      console.log('Opening image annotation for file:', file);
       setSelectedImage({
         url: file.file_path,
-        id: file.file_id,
+        id: file.file_id,  // This is the correct file ID for the image
         name: file.file?.name || 'image.png',
         projectId: file.file?.project_id || ''
       });
