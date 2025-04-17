@@ -132,7 +132,11 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         fabricCanvas.setWidth(canvasWidth);
         fabricCanvas.setHeight(canvasHeight);
         
-        FabricImage.fromURL(imageUrlWithCache, (fabricImg) => {
+        FabricImage.fromURL(imageUrlWithCache, {
+            crossOrigin: 'anonymous',
+            scaleX: canvasWidth / img.width,
+            scaleY: canvasHeight / img.height,
+        }).then(fabricImg => {
             console.log("FabricImage created from URL:", fabricImg ? "success" : "failed");
             
             if (!fabricImg) {
@@ -141,19 +145,16 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
               return;
             }
             
-            fabricImg.scaleX = canvasWidth / img.width;
-            fabricImg.scaleY = canvasHeight / img.height;
-            
             fabricCanvas.backgroundImage = fabricImg;
             fabricCanvas.renderAll();
             
             console.log("Background image set successfully");
             setIsLoading(false);
             clearHistory();
-        }, {
-            crossOrigin: 'anonymous',
-            width: canvasWidth,
-            height: canvasHeight
+        }).catch(error => {
+            console.error("Error loading fabric image:", error);
+            setImgLoadError(`Failed to load image: ${error.message}`);
+            setIsLoading(false);
         });
       } catch (error) {
         console.error("Error creating Fabric image:", error);
@@ -337,21 +338,25 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         
         console.log("Attempting to reload image:", refreshedUrl);
         
-        FabricImage.fromURL(refreshedUrl, (fabricImg) => {
+        FabricImage.fromURL(refreshedUrl, {
+            crossOrigin: 'anonymous'
+        }).then(fabricImg => {
             if (fabricImg) {
               const canvasWidth = fabricCanvas.getWidth();
               const canvasHeight = fabricCanvas.getHeight();
               
-              fabricImg.scaleX = canvasWidth / fabricImg.width!;
-              fabricImg.scaleY = canvasHeight / fabricImg.height!;
+              fabricImg.scaleX = canvasWidth / (fabricImg.width || 1);
+              fabricImg.scaleY = canvasHeight / (fabricImg.height || 1);
               
               fabricCanvas.backgroundImage = fabricImg;
               fabricCanvas.renderAll();
               console.log("Image reload successful");
             }
             setIsLoading(false);
-        }, {
-            crossOrigin: 'anonymous'
+        }).catch(error => {
+            console.error("Error reloading fabric image:", error);
+            setImgLoadError(`Failed to reload image: ${error.message}`);
+            setIsLoading(false);
         });
       }
     }, 500);
