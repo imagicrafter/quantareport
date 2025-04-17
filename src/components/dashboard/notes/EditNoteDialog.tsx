@@ -92,6 +92,12 @@ const EditNoteDialog = ({
       setIsLocked(!locked); // Revert state on error
     }
   };
+  
+  const handleRelationshipsChanged = () => {
+    if (onFileAdded) {
+      onFileAdded();
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -217,6 +223,7 @@ const EditNoteDialog = ({
                 </div>
                 <RelatedFiles 
                   files={relatedFiles}
+                  onRelationshipsChanged={handleRelationshipsChanged}
                   compact={true}
                 />
               </div>

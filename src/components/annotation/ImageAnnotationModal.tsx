@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Canvas, Circle, Rect, Line } from 'fabric';
+import { Canvas, Circle, Rect, Line, IText } from 'fabric';
 import { useAnnotationTools } from '@/hooks/useAnnotationTools';
 import { AnnotationToolbar } from './AnnotationToolbar';
 import { toast } from 'sonner';
@@ -174,8 +174,8 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         break;
         
       case 'line':
-        const points = [pointer.x, pointer.y, pointer.x + 100, pointer.y];
-        obj = new Line(points, {
+        const linePoints: [number, number, number, number] = [pointer.x, pointer.y, pointer.x + 100, pointer.y];
+        obj = new Line(linePoints, {
           stroke: activeColor,
           strokeWidth: 2
         });
@@ -184,7 +184,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         
       case 'arrow':
         // Create arrow using line with custom render
-        const arrowPoints = [pointer.x, pointer.y, pointer.x + 100, pointer.y];
+        const arrowPoints: [number, number, number, number] = [pointer.x, pointer.y, pointer.x + 100, pointer.y];
         obj = new Line(arrowPoints, {
           stroke: activeColor,
           strokeWidth: 2
@@ -214,7 +214,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         break;
         
       case 'text':
-        obj = new fabric.IText('Edit this text', {
+        obj = new IText('Edit this text', {
           left: pointer.x,
           top: pointer.y,
           fontFamily: 'Arial',
@@ -240,7 +240,8 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
       // Convert canvas to data URL
       const dataUrl = fabricCanvas.toDataURL({
         format: 'png',
-        quality: 1
+        quality: 1,
+        multiplier: 1
       });
       
       // Create a file from data URL

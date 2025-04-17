@@ -9,9 +9,10 @@ import { ImageAnnotationModal } from '@/components/annotation/ImageAnnotationMod
 interface RelatedFilesProps {
   files: NoteFileRelationshipWithType[];
   onRelationshipsChanged: () => void;
+  compact?: boolean;
 }
 
-const RelatedFiles: React.FC<RelatedFilesProps> = ({ files, onRelationshipsChanged }) => {
+const RelatedFiles: React.FC<RelatedFilesProps> = ({ files, onRelationshipsChanged, compact = false }) => {
   const [selectedImage, setSelectedImage] = useState<{
     url: string;
     id: string;
@@ -46,7 +47,7 @@ const RelatedFiles: React.FC<RelatedFilesProps> = ({ files, onRelationshipsChang
           No files attached to this note.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div className={`grid grid-cols-1 ${compact ? '' : 'md:grid-cols-2'} gap-2`}>
           {files.map((file) => (
             <div
               key={file.id}
