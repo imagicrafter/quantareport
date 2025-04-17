@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { saveAnnotatedImage } from '@/services/imageAnnotationService';
 
 // Import fabric/Image specifically with a name to avoid conflicts
-import { Image as FabricImage } from 'fabric';
+import { Image as FabricImage, LoadImageOptions } from 'fabric';
 
 interface ImageAnnotationModalProps {
   isOpen: boolean;
@@ -133,11 +132,13 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         fabricCanvas.setWidth(canvasWidth);
         fabricCanvas.setHeight(canvasHeight);
         
-        // Fix the parameter order according to Fabric.js v6 API
-        // First parameter: URL string
-        // Second parameter: callback function
-        // Third parameter: options object
-        FabricImage.fromURL(imageUrlWithCache, function(fabricImg) {
+        const imageOptions: LoadImageOptions = { 
+          crossOrigin: 'anonymous',
+          width: canvasWidth,
+          height: canvasHeight
+        };
+
+        FabricImage.fromURL(imageUrlWithCache, imageOptions, (fabricImg) => {
           console.log("FabricImage created from URL:", fabricImg ? "success" : "failed");
           
           if (!fabricImg) {
@@ -155,7 +156,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
           console.log("Background image set successfully");
           setIsLoading(false);
           clearHistory();
-        }, { crossOrigin: 'anonymous' });
+        });
       } catch (error) {
         console.error("Error creating Fabric image:", error);
         setImgLoadError(`Error setting up the canvas: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -338,8 +339,11 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
         
         console.log("Attempting to reload image:", refreshedUrl);
         
-        // Fix the parameter order here as well
-        FabricImage.fromURL(refreshedUrl, function(fabricImg) {
+        const imageOptions: LoadImageOptions = { 
+          crossOrigin: 'anonymous'
+        };
+
+        FabricImage.fromURL(refreshedUrl, imageOptions, (fabricImg) => {
           if (fabricImg) {
             const canvasWidth = fabricCanvas.getWidth();
             const canvasHeight = fabricCanvas.getHeight();
@@ -352,7 +356,7 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
             console.log("Image reload successful");
           }
           setIsLoading(false);
-        }, { crossOrigin: 'anonymous' });
+        });
       }
     }, 500);
   };
