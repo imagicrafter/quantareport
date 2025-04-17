@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -45,7 +44,6 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
     clearHistory
   } = useAnnotationTools(fabricCanvas);
 
-  // Initialize Canvas
   useEffect(() => {
     if (!isOpen || !canvasRef.current) return;
     
@@ -62,7 +60,6 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
     };
   }, [isOpen]);
   
-  // Load Image
   useEffect(() => {
     if (!fabricCanvas || !imageUrl) return;
     
@@ -96,11 +93,14 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
       fabricCanvas.setHeight(canvasHeight);
       
       // Create fabric.js image object from the loaded image
-      fabricCanvas.setBackgroundImage(imageUrl, fabricCanvas.renderAll.bind(fabricCanvas), {
+      const fabricImage = new fabric.Image(img, {
         scaleX: canvasWidth / img.width,
         scaleY: canvasHeight / img.height,
         crossOrigin: 'anonymous'
       });
+      
+      fabricCanvas.backgroundImage = fabricImage;
+      fabricCanvas.renderAll();
       
       setIsLoading(false);
       clearHistory();
@@ -113,7 +113,6 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
     };
   }, [fabricCanvas, imageUrl]);
   
-  // Handle tool interactions on canvas
   useEffect(() => {
     if (!fabricCanvas) return;
     
@@ -124,7 +123,6 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
       fabricCanvas.freeDrawingBrush.width = 2;
     }
     
-    // Track if there are annotations
     const handleObjectAdded = () => {
       setHasAnnotations(true);
     };
@@ -136,7 +134,6 @@ export const ImageAnnotationModal: React.FC<ImageAnnotationModalProps> = ({
     };
   }, [fabricCanvas, activeTool, activeColor]);
   
-  // Mouse down handler for various drawing tools
   const handleCanvasMouseDown = (event: React.MouseEvent) => {
     if (!fabricCanvas) return;
     
