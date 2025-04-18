@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
-import { File, X, Music, FileText } from 'lucide-react';
+import { File as FileIcon, X, Music, FileText } from 'lucide-react';
 import UploadedFilesTable from '../file-upload/UploadedFilesTable';
 
 const FilePreview = ({ file, onDelete }: { file: ProjectFile; onDelete: () => void }) => {
@@ -279,8 +279,9 @@ const Step2Files = () => {
       // Create a Blob from the text
       const blob = new Blob([pastedText], { type: 'text/plain' });
       
-      // Correctly create a File object with two arguments
-      const file = new File([blob], fileName);
+      // Use File constructor with blob array and filename
+      const file = blob as File; // Convert the blob to a File for supabase upload
+      Object.defineProperty(file, 'name', { value: fileName });
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('pub_documents')
