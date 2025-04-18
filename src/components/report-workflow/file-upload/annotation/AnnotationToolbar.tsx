@@ -1,8 +1,7 @@
-
 import { useState } from 'react';
 import {
   ArrowRight,
-  LineHorizontal,
+  FlipHorizontal,  // Changed from LineHorizontal
   Circle,
   Square,
   Type,
@@ -41,7 +40,7 @@ interface AnnotationToolbarProps {
 
 const tools = [
   { id: 'arrow', icon: ArrowRight, tooltip: 'Arrow Tool' },
-  { id: 'line', icon: LineHorizontal, tooltip: 'Line Tool' },
+  { id: 'line', icon: FlipHorizontal, tooltip: 'Line Tool' },
   { id: 'circle', icon: Circle, tooltip: 'Circle Tool' },
   { id: 'rectangle', icon: Square, tooltip: 'Rectangle Tool' },
   { id: 'text', icon: Type, tooltip: 'Text Tool' },
