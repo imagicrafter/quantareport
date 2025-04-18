@@ -275,8 +275,10 @@ const Step2Files = () => {
       const fileName = `${projectName}_${datePart}_${randomNumber}.txt`;
       const filePath = `${projectId}/${fileName}`;
 
-      // Fix: Create a File object without using 'new' keyword and with proper arguments
-      const file = new File([pastedText], fileName, { type: 'text/plain' });
+      // Fixed: Create File object with correct arguments
+      // The File constructor takes an array of parts (BlobPart[]), name, and options
+      const fileContent = new Blob([pastedText], { type: 'text/plain' });
+      const file = new File([fileContent], fileName, { type: 'text/plain' });
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('pub_documents')
