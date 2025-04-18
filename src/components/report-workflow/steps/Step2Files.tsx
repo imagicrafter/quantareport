@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import FileUploadArea from '../file-upload/FileUploadArea';
-import UploadedFilesTable from '../file-upload/UploadedFilesTable';
 import StepBanner from '../StepBanner';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -9,6 +8,124 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
+import { File as FileIcon, X, Music, FileText } from 'lucide-react';
+
+const FilePreview = ({ file, onDelete }: { file: ProjectFile; onDelete: () => void }) => {
+  const getFileIcon = (type: FileType) => {
+    switch (type) {
+      case 'audio':
+        return <Music size={18} className="text-purple-500" />;
+      case 'text':
+        return <FileText size={18} className="text-green-500" />;
+      default:
+        return <FileIcon size={18} className="text-gray-500" />;
+    }
+  };
+
+  return (
+    <div key={file.id} className="relative group">
+      {file.type === 'image' ? (
+        <div className="h-32 w-32 rounded-md overflow-hidden border border-border">
+          <img
+            src={file.file_path}
+            alt={file.name}
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.src = "/placeholder.svg";
+            }}
+          />
+        </div>
+      ) : (
+        <div className="h-32 w-32 rounded-md overflow-hidden border border-border bg-secondary/30 flex items-center justify-center">
+          {getFileIcon(file.type)}
+          <span className="text-xs text-muted-foreground mt-2 text-center max-w-[80%] break-words">
+            {file.name}
+          </span>
+        </div>
+      )}
+      <button
+        className="absolute -top-2 -right-2 bg-background border rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={onDelete}
+      >
+        <X size={12} className="text-muted-foreground hover:text-destructive" />
+      </button>
+    </div>
+  );
+};
+
+const FilesList = ({ files, onDelete }: { files: ProjectFile[]; onDelete: (file: ProjectFile) => void }) => {
+  if (files.length === 0) {
+    return (
+      <div className="text-muted-foreground text-sm italic">
+        No files uploaded yet
+      </div>
+    );
+  }
+
+  const imageFiles = files.filter(file => file.type === 'image');
+  const otherFiles = files.filter(file => file.type !== 'image');
+
+  const getFileIcon = (type: FileType) => {
+    switch (type) {
+      case 'audio':
+        return <Music size={18} className="text-purple-500" />;
+      case 'text':
+        return <FileText size={18} className="text-green-500" />;
+      default:
+        return <FileIcon size={18} className="text-gray-500" />;
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {imageFiles.length > 0 && (
+        <div className="flex flex-wrap gap-4">
+          {imageFiles.map((file) => (
+            <div key={file.id} className="relative group">
+              <div className="h-32 w-32 rounded-md overflow-hidden border border-border">
+                <img
+                  src={file.file_path}
+                  alt={file.name}
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder.svg";
+                  }}
+                />
+              </div>
+              <button
+                className="absolute -top-2 -right-2 bg-background border rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => onDelete(file)}
+              >
+                <X size={12} className="text-muted-foreground hover:text-destructive" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {otherFiles.length > 0 && (
+        <div className="flex flex-wrap gap-4">
+          {otherFiles.map((file) => (
+            <div key={file.id} className="relative group">
+              <div className="h-32 w-32 rounded-md overflow-hidden border border-border bg-secondary/30 flex flex-col items-center justify-center">
+                {getFileIcon(file.type)}
+                <span className="text-xs text-muted-foreground mt-2 text-center max-w-[80%] break-words">
+                  {file.name}
+                </span>
+              </div>
+              <button
+                className="absolute -top-2 -right-2 bg-background border rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => onDelete(file)}
+              >
+                <X size={12} className="text-muted-foreground hover:text-destructive" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Step2Files = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -207,11 +324,13 @@ const Step2Files = () => {
       const fileName = `${projectName}_${datePart}_${randomNumber}.txt`;
       const filePath = `${projectId}/${fileName}`;
 
-      const file = new File([pastedText], fileName, { type: 'text/plain' });
+      const blob = new Blob([pastedText], { type: 'text/plain' });
+      
+      const fileObject = new File([blob], fileName, { type: 'text/plain' });
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('pub_documents')
-        .upload(filePath, file);
+        .upload(filePath, fileObject);
 
       if (uploadError) {
         throw uploadError;
@@ -235,7 +354,7 @@ const Step2Files = () => {
           type: 'text',
           project_id: projectId,
           user_id: userData.user.id,
-          size: file.size,
+          size: fileObject.size,
           metadata: { content: pastedText }
         })
         .select()
@@ -363,7 +482,7 @@ const Step2Files = () => {
             onFilesSelected={handleFilesUploaded} 
             acceptedFileTypes=".jpg,.jpeg,.png,.pdf,.doc,.docx,.txt"
             files={[]}
-            projectId={projectId}
+            projectId={projectId || ''}
           />
         </TabsContent>
 
@@ -385,12 +504,10 @@ const Step2Files = () => {
           </div>
         </TabsContent>
       </Tabs>
-      
-      <UploadedFilesTable 
-        files={uploadedFiles} 
-        loading={false}
-        onFileDeleted={handleFileDeleted}
-      />
+
+      <div className="mt-8">
+        <FilesList files={uploadedFiles} onDelete={handleFileDeleted} />
+      </div>
       
       <div className="flex justify-end max-w-4xl mx-auto mt-8">
         <Button

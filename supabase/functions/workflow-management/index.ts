@@ -1,6 +1,5 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
 
 // Create a single supabase client for interacting with your database
 const corsHeaders = {
@@ -14,124 +13,37 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    // Log the deprecation access
+    console.warn("DEPRECATED FUNCTION ACCESSED: workflow-management - This function has been deprecated and will be removed. Workflow state is now managed directly through Supabase client operations on the project_workflow table.");
+    
+    const requestData = await req.json();
+    console.log("Deprecated workflow-management accessed with request data:", JSON.stringify(requestData));
 
-    const { operation, projectId, userId, workflowState } = await req.json()
-
-    if (!projectId) {
-      return new Response(
-        JSON.stringify({ error: 'Project ID is required' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      )
-    }
-
-    let result = null
-    let error = null
-
-    switch (operation) {
-      case 'get':
-        const { data: existingWorkflow, error: getError } = await supabaseClient
-          .from('project_workflow')
-          .select('*')
-          .eq('project_id', projectId)
-          .maybeSingle()
-
-        result = existingWorkflow
-        error = getError
-        break
-
-      case 'insert':
-        if (!userId || !workflowState) {
-          return new Response(
-            JSON.stringify({ error: 'User ID and workflow state are required for insert' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-          )
-        }
-
-        const { data: insertData, error: insertError } = await supabaseClient
-          .from('project_workflow')
-          .insert({
-            project_id: projectId,
-            user_id: userId,
-            workflow_state: workflowState
-          })
-          .select()
-          .single()
-
-        result = insertData
-        error = insertError
-        break
-
-      case 'update':
-        if (!workflowState) {
-          return new Response(
-            JSON.stringify({ error: 'Workflow state is required for update' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-          )
-        }
-
-        // First check if a record exists
-        const { data: existingRecord } = await supabaseClient
-          .from('project_workflow')
-          .select('id')
-          .eq('project_id', projectId)
-          .maybeSingle()
-
-        if (existingRecord) {
-          // Update existing record
-          const { data: updateData, error: updateError } = await supabaseClient
-            .from('project_workflow')
-            .update({ workflow_state: workflowState })
-            .eq('project_id', projectId)
-            .select()
-            .single()
-
-          result = updateData
-          error = updateError
-        } else if (userId) {
-          // Create new record if it doesn't exist
-          const { data: insertData, error: insertError } = await supabaseClient
-            .from('project_workflow')
-            .insert({
-              project_id: projectId,
-              user_id: userId,
-              workflow_state: workflowState
-            })
-            .select()
-            .single()
-
-          result = insertData
-          error = insertError
-        } else {
-          error = { message: 'User ID required to create workflow state' }
-        }
-        break
-
-      default:
-        return new Response(
-          JSON.stringify({ error: 'Invalid operation' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        )
-    }
-
-    if (error) {
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      )
-    }
-
+    // Return a deprecation notice
     return new Response(
-      JSON.stringify({ data: result }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      JSON.stringify({ 
+        error: "DEPRECATED ENDPOINT", 
+        message: "This endpoint has been deprecated and will be removed soon. Workflow state is now managed directly through Supabase client operations on the project_workflow table.",
+        alternativeApproach: "Use direct Supabase client operations on the project_workflow table."
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+        status: 410 // Gone
+      }
     )
   } catch (error) {
+    console.error(`Error in deprecated workflow-management function: ${error.message}`);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({ 
+        error: "DEPRECATED ENDPOINT", 
+        message: "This endpoint has been deprecated and will be removed soon. Workflow state is now managed directly through Supabase client operations on the project_workflow table.",
+        parseError: error.message 
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+        status: 410 // Gone 
+      }
     )
   }
 })
