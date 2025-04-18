@@ -26,28 +26,13 @@ const initializeBuckets = async () => {
           if (error.message.includes('does not exist')) {
             console.log(`Bucket ${bucketName} doesn't exist, creating...`);
             const { data: bucketData, error: createError } = await supabase.storage.createBucket(bucketName, {
-              public: true,
-              fileSizeLimit: 50 * 1024 * 1024, // 50MB limit
-              allowedMimeTypes: bucketName === 'pub_images' ? ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] : undefined
+              public: true
             });
             
             if (createError) {
               console.error(`Error creating ${bucketName} bucket:`, createError);
             } else {
               console.log(`Created ${bucketName} bucket successfully`);
-              
-              // Configure CORS for the bucket
-              const { error: corsError } = await supabase.storage.updateBucket(bucketName, {
-                public: true,
-                allowedMimeTypes: bucketName === 'pub_images' ? ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] : undefined,
-                fileSizeLimit: 50 * 1024 * 1024
-              });
-              
-              if (corsError) {
-                console.error(`Error configuring ${bucketName} bucket CORS:`, corsError);
-              } else {
-                console.log(`CORS configured for ${bucketName} bucket`);
-              }
               
               // Add a public policy to the bucket
               // Note: getPublicUrl doesn't return an error property, only data
@@ -58,38 +43,11 @@ const initializeBuckets = async () => {
             console.error(`Error checking ${bucketName} bucket:`, error);
           }
         } else {
-          console.log(`Bucket ${bucketName} already exists`, data);
-          
-          // Verify bucket is public
-          if (!data.public) {
-            console.log(`Setting bucket ${bucketName} to public...`);
-            const { error: updateError } = await supabase.storage.updateBucket(bucketName, {
-              public: true,
-              allowedMimeTypes: bucketName === 'pub_images' ? ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] : undefined,
-              fileSizeLimit: 50 * 1024 * 1024
-            });
-            
-            if (updateError) {
-              console.error(`Error updating ${bucketName} bucket to public:`, updateError);
-            } else {
-              console.log(`Successfully updated ${bucketName} bucket to public`);
-            }
-          }
+          console.log(`Bucket ${bucketName} already exists`);
         }
       } catch (err) {
         console.error(`Error handling ${bucketName} bucket:`, err);
       }
-    }
-    
-    // Test image URL generation
-    try {
-      const { data: testUrlData } = await supabase.storage
-        .from('pub_images')
-        .getPublicUrl('test_image.png');
-        
-      console.log('Test public URL generation:', testUrlData.publicUrl);
-    } catch (urlErr) {
-      console.error('Error testing public URL:', urlErr);
     }
   } catch (error) {
     console.error('Error initializing storage buckets:', error);

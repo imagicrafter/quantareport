@@ -148,6 +148,19 @@ const ExpandableNote = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Finding</label>
+              {/* Audio transcription does not work on Expandable note section
+              {!isRecording && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsRecording(true)}
+                  className="h-6 px-2 text-xs"
+                >
+                  Record Audio
+                </Button>
+              )} 
+              */}
             </div>
             {isRecording ? (
               <div className="mb-4">
@@ -176,6 +189,23 @@ const ExpandableNote = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">Analysis</label>
+                {/* analysis does not work on this page
+                {loadedFiles.some(file => file.file_type === 'image') && (
+                 <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={onAnalyzeImages}
+                    disabled={analyzingImages}
+                  >
+                    <Sparkles size={16} />
+                    <span>
+                      {analyzingImages ? 'Analyzing...' : 'Analyze'}
+                    </span>
+                  </Button>
+                )}
+                */}
               </div>
               <Textarea
                 value={analysis}

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { NoteFormValues } from '@/components/dashboard/notes/hooks/useNotesOperations';
@@ -187,14 +188,7 @@ const AddNoteDialog = ({
                       />
                     </div>
                   </div>
-                  <RelatedFiles 
-                    files={relatedFiles}
-                    onRelationshipsChanged={() => {
-                      if (onFileAdded) {
-                        onFileAdded();
-                      }
-                    }}
-                  />
+                  <RelatedFiles files={relatedFiles} />
                 </div>
               )}
             </div>
