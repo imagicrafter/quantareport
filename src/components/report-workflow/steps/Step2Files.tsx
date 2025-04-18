@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import FileUploadArea from '../file-upload/FileUploadArea';
@@ -20,7 +19,7 @@ const FilePreview = ({ file, onDelete }: { file: ProjectFile; onDelete: () => vo
       case 'text':
         return <FileText size={18} className="text-green-500" />;
       default:
-        return <File size={18} className="text-gray-500" />;
+        return <FileIcon size={18} className="text-gray-500" />;
     }
   };
 
@@ -279,13 +278,12 @@ const Step2Files = () => {
       // Create a Blob from the text
       const blob = new Blob([pastedText], { type: 'text/plain' });
       
-      // Use File constructor with blob array and filename
-      const file = blob as File; // Convert the blob to a File for supabase upload
-      Object.defineProperty(file, 'name', { value: fileName });
+      // Create a real File object properly
+      const fileObject = new File([blob], fileName, { type: 'text/plain' });
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('pub_documents')
-        .upload(filePath, file);
+        .upload(filePath, fileObject);
 
       if (uploadError) {
         throw uploadError;
@@ -309,7 +307,7 @@ const Step2Files = () => {
           type: 'text',
           project_id: projectId,
           user_id: userData.user.id,
-          size: file.size,
+          size: fileObject.size,
           metadata: { content: pastedText }
         })
         .select()
