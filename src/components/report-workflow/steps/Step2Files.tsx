@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
 import { File, X, Music, FileText } from 'lucide-react';
+import UploadedFilesTable from '../file-upload/UploadedFilesTable';
 
 const FilePreview = ({ file, onDelete }: { file: ProjectFile; onDelete: () => void }) => {
   const getFileIcon = (type: FileType) => {
@@ -274,8 +275,10 @@ const Step2Files = () => {
       const fileName = `${projectName}_${datePart}_${randomNumber}.txt`;
       const filePath = `${projectId}/${fileName}`;
 
+      // Create a Blob from the text
       const blob = new Blob([pastedText], { type: 'text/plain' });
       
+      // Create a File object properly from the Blob
       const file = new File([blob], fileName, { type: 'text/plain' });
 
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -456,7 +459,7 @@ const Step2Files = () => {
       </Tabs>
 
       <div className="mt-8">
-        <FilesList files={uploadedFiles} onDelete={handleFileDeleted} />
+        <UploadedFilesTable files={uploadedFiles} onFileDeleted={handleFileDeleted} />
       </div>
       
       <div className="flex justify-end max-w-4xl mx-auto mt-8">
