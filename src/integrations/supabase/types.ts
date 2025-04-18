@@ -1022,7 +1022,7 @@ export type Database = {
     }
     Functions: {
       binary_quantize: {
-        Args: { "": unknown } | { "": string }
+        Args: { "": string } | { "": unknown }
         Returns: unknown
       }
       halfvec_avg: {
@@ -1074,7 +1074,7 @@ export type Database = {
         Returns: number
       }
       l2_normalize: {
-        Args: { "": unknown } | { "": string } | { "": unknown }
+        Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
       }
       sparsevec_out: {
@@ -1094,7 +1094,7 @@ export type Database = {
         Returns: string
       }
       vector_dims: {
-        Args: { "": unknown } | { "": string }
+        Args: { "": string } | { "": unknown }
         Returns: number
       }
       vector_norm: {
