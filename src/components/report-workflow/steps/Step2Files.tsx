@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
 import { File as FileIcon, X, Music, FileText } from 'lucide-react';
+import ImageAnnotationModal from '../file-upload/ImageAnnotationModal';
 
 const FilePreview = ({ file, onDelete }: { file: ProjectFile; onDelete: () => void }) => {
   const getFileIcon = (type: FileType) => {
@@ -133,6 +134,7 @@ const Step2Files = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [uploadedFiles, setUploadedFiles] = useState<ProjectFile[]>([]);
   const [pastedText, setPastedText] = useState('');
+  const [selectedImage, setSelectedImage] = useState<ProjectFile | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -435,6 +437,12 @@ const Step2Files = () => {
     }
   };
 
+  const handleImageClick = (file: ProjectFile) => {
+    if (file.type === 'image') {
+      setSelectedImage(file);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -506,8 +514,27 @@ const Step2Files = () => {
       </Tabs>
 
       <div className="mt-8">
-        <FilesList files={uploadedFiles} onDelete={handleFileDeleted} />
+        <div className="flex flex-wrap gap-4">
+          {uploadedFiles.map((file) => (
+            <div 
+              key={file.id} 
+              onClick={() => handleImageClick(file)}
+              className={file.type === 'image' ? 'cursor-pointer' : ''}
+            >
+              <FilePreview
+                file={file}
+                onDelete={() => handleFileDeleted()}
+              />
+            </div>
+          ))}
+        </div>
       </div>
+      
+      <ImageAnnotationModal
+        imageUrl={selectedImage?.file_path || ''}
+        isOpen={!!selectedImage}
+        onClose={() => setSelectedImage(null)}
+      />
       
       <div className="flex justify-end max-w-4xl mx-auto mt-8">
         <Button
