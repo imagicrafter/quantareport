@@ -11,9 +11,9 @@ const corsHeaders = {
 // Get n8n webhook URLs from environment variables with fallbacks
 // We'll keep these but enhance with a more flexible system
 const DEV_FILE_ANALYSIS_WEBHOOK_URL = Deno.env.get("DEV_FILE_ANALYSIS_WEBHOOK_URL") || 
-  "https://n8n-01.imagicrafterai.com/webhook-test/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0";
+  "https://n8n-01.imagicrafterai.com/webhook-test/d42cb7ac-c4e1-4f0e-a084-0f6f85807b65";
 const PROD_FILE_ANALYSIS_WEBHOOK_URL = Deno.env.get("PROD_FILE_ANALYSIS_WEBHOOK_URL") || 
-  "https://n8n-01.imagicrafterai.com/webhook/7981ebe6-58f6-4b8f-9fdb-0e7b2e1020f0";
+  "https://n8n-01.imagicrafterai.com/webhook/d42cb7ac-c4e1-4f0e-a084-0f6f85807b65";
 
 // New function to get webhook URL based on environment
 const getWebhookUrl = async (env: string): Promise<string> => {
