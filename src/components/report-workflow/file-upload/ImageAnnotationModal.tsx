@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import Konva from 'konva';
 import { Stage, Layer, Image as KonvaImage } from 'react-konva';
@@ -7,7 +6,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
+import { AnnotationToolbar, AnnotationTool } from './annotation/AnnotationToolbar';
 
 interface ImageAnnotationModalProps {
   imageUrl: string;
@@ -19,10 +19,11 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose }: ImageAnnotationModa
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [stageScale, setStageScale] = useState(1);
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
+  const [selectedTool, setSelectedTool] = useState<AnnotationTool>(null);
+  const [selectedColor, setSelectedColor] = useState('#9b87f5');
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Load image when URL changes
   useEffect(() => {
     if (!imageUrl) return;
 
@@ -34,7 +35,6 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose }: ImageAnnotationModa
     };
   }, [imageUrl]);
 
-  // Handle zoom with mouse wheel
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     
@@ -53,7 +53,6 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose }: ImageAnnotationModa
 
     const newScale = e.evt.deltaY < 0 ? oldScale * 1.1 : oldScale / 1.1;
 
-    // Limit zoom
     if (newScale < 0.1 || newScale > 5) return;
 
     setStageScale(newScale);
@@ -63,7 +62,6 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose }: ImageAnnotationModa
     });
   };
 
-  // Calculate initial stage dimensions to fit the image
   const getInitialDimensions = () => {
     if (!image || !containerRef.current) return { width: 800, height: 600 };
 
@@ -84,6 +82,18 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose }: ImageAnnotationModa
     return { width, height };
   };
 
+  const handleUndo = () => {
+    console.log('Undo clicked');
+  };
+
+  const handleRedo = () => {
+    console.log('Redo clicked');
+  };
+
+  const handleClear = () => {
+    console.log('Clear clicked');
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[90vw] w-[900px] h-[80vh] max-h-[800px]">
@@ -91,6 +101,20 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose }: ImageAnnotationModa
           <DialogTitle>Image Annotation</DialogTitle>
         </DialogHeader>
         
+        <div className="mb-4">
+          <AnnotationToolbar
+            selectedTool={selectedTool}
+            selectedColor={selectedColor}
+            canUndo={false}
+            canRedo={false}
+            onToolSelect={setSelectedTool}
+            onColorChange={setSelectedColor}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onClear={handleClear}
+          />
+        </div>
+
         <div 
           ref={containerRef}
           className="flex-1 bg-muted/20 rounded-lg overflow-hidden"
