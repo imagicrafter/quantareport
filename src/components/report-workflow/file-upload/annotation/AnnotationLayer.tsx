@@ -8,8 +8,8 @@ interface AnnotationLayerProps {
 }
 
 export const AnnotationLayer = ({ annotations, tempAnnotation }: AnnotationLayerProps) => {
-  const renderAnnotation = (annotation: Annotation | Partial<Annotation>) => {
-    if (!annotation.tool || !annotation.color) return null;
+  const renderAnnotation = (annotation: Annotation | Partial<Annotation> | null) => {
+    if (!annotation || !annotation.tool || !annotation.color) return null;
 
     switch (annotation.tool) {
       case 'arrow':
