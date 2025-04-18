@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import FileUploadArea from '../file-upload/FileUploadArea';
@@ -278,8 +279,8 @@ const Step2Files = () => {
       // Create a Blob from the text
       const blob = new Blob([pastedText], { type: 'text/plain' });
       
-      // Create a File object properly from the Blob
-      const file = new File([blob], fileName, { type: 'text/plain' });
+      // Correctly create a File object with two arguments
+      const file = new File([blob], fileName);
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('pub_documents')
