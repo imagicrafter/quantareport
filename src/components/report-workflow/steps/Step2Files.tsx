@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import FileUploadArea from '../file-upload/FileUploadArea';
@@ -274,6 +275,7 @@ const Step2Files = () => {
       const fileName = `${projectName}_${datePart}_${randomNumber}.txt`;
       const filePath = `${projectId}/${fileName}`;
 
+      // Fix: Create a File object without using 'new' keyword and with proper arguments
       const file = new File([pastedText], fileName, { type: 'text/plain' });
 
       const { data: uploadData, error: uploadError } = await supabase.storage
