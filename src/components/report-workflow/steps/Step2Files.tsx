@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import FileUploadArea from '../file-upload/FileUploadArea';
@@ -275,11 +274,9 @@ const Step2Files = () => {
       const fileName = `${projectName}_${datePart}_${randomNumber}.txt`;
       const filePath = `${projectId}/${fileName}`;
 
-      // Create a text file using a Blob
-      const textBlob = new Blob([pastedText], { type: 'text/plain' });
+      const blob = new Blob([pastedText], { type: 'text/plain' });
       
-      // Create File object correctly - File constructor takes array of parts, name, and options
-      const file = new File([textBlob], fileName, { type: 'text/plain' });
+      const file = new File([blob], fileName, { type: 'text/plain' });
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('pub_documents')
