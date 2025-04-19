@@ -10,14 +10,16 @@ import { FilesProvider, useFiles } from '../file-upload/context/FilesContext';
 import FileUploadTabs from '../file-upload/components/FileUploadTabs';
 import FilesPreview from '../file-upload/components/FilesPreview';
 import { removeImageExtension } from '@/utils/fileUtils';
+import { deleteFile } from '@/components/dashboard/files/services/DeleteFileService';
 
 const Step2FilesContent = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string>('');
   const [selectedImage, setSelectedImage] = useState<ProjectFile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { files, isLoading, fetchFiles, handleFilesUploaded, handleFileDeleted } = useFiles();
+  const { files, isLoading, fetchFiles, handleFilesUploaded } = useFiles();
 
   useEffect(() => {
     const setupStep = async () => {
@@ -185,6 +187,33 @@ const Step2FilesContent = () => {
         description: "Failed to save text file. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleFileDeleted = async (file: ProjectFile) => {
+    try {
+      setIsDeleting(true);
+      // Use the deleteFile service to properly remove the file
+      await deleteFile(file);
+      
+      // Refresh the files list after deletion
+      if (projectId) {
+        await fetchFiles(projectId);
+      }
+      
+      toast({
+        title: "Success",
+        description: "File deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete file. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
