@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { ProjectFile } from '@/components/dashboard/files/FileItem';
+import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -38,7 +38,8 @@ export const FilesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           title: file.title || '',
           description: file.description || '',
           file_path: file.file_path,
-          type: file.type,
+          // Convert string type to FileType enum
+          type: file.type as FileType,
           size: file.size,
           created_at: file.created_at,
           project_id: file.project_id,
