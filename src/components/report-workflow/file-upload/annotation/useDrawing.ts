@@ -194,9 +194,15 @@ export const useDrawing = () => {
   };
 
   const handleClear = () => {
-    // Save current state before clearing
-    saveToHistory(annotations);
+    // Completely reset the state
     setAnnotations([]);
+    setHistory([]);
+    setHistoryIndex(-1);
+    tempAnnotationRef.current = null;
+    if (textInputRef.current) {
+      textInputRef.current.style.display = 'none';
+      textInputRef.current.value = '';
+    }
   };
 
   return {

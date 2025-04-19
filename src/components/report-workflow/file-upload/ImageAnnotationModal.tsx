@@ -66,6 +66,12 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose, onSave }: ImageAnnota
     };
   }, [imageUrl]);
 
+  // Clear annotations when the modal is closed
+  const handleClose = () => {
+    handleClear(); // Clear all annotations
+    onClose();
+  };
+
   const handleSaveClick = async () => {
     if (!image || !hasAnnotations(annotations)) {
       toast({
@@ -89,7 +95,7 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose, onSave }: ImageAnnota
         title: "Success",
         description: "Image annotations saved successfully",
       });
-      onClose();
+      handleClose(); // Use handleClose instead of onClose to also clear annotations
     } catch (error) {
       console.error('Error saving annotations:', error);
       toast({
@@ -103,7 +109,7 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose, onSave }: ImageAnnota
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-[90vw] w-[900px] h-[80vh] max-h-[800px]">
         <DialogHeader>
           <DialogTitle>Image Annotation</DialogTitle>
@@ -163,7 +169,7 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose, onSave }: ImageAnnota
         <DialogFooter className="mt-4">
           <Button 
             variant="outline" 
-            onClick={onClose}
+            onClick={handleClose}
           >
             Cancel
           </Button>

@@ -16,3 +16,8 @@ export const convertStageToImage = async (stageRef: any, image: HTMLImageElement
 export const hasAnnotations = (annotations: Annotation[]): boolean => {
   return annotations.length > 0;
 };
+
+// A utility function to clear all annotations and reset state
+export const resetAnnotationState = () => {
+  return [];
+};
