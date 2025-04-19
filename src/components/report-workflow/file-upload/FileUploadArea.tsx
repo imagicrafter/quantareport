@@ -1,10 +1,10 @@
-
 import { useState, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
 import { useToast } from '@/components/ui/use-toast';
+import { removeImageExtension } from '@/utils/fileUtils';
 
 interface FileUploadAreaProps {
   onFilesSelected: (files: ProjectFile[]) => void;
@@ -12,7 +12,7 @@ interface FileUploadAreaProps {
   maxFileSizeMB?: number;
   className?: string;
   files?: File[];
-  projectId: string; // Make sure projectId is passed as a required prop
+  projectId: string;
 }
 
 const FileUploadArea = ({
@@ -21,14 +21,14 @@ const FileUploadArea = ({
   maxFileSizeMB = 10,
   className,
   files = [],
-  projectId // Required project ID
+  projectId
 }: FileUploadAreaProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  const maxFileSize = maxFileSizeMB * 1024 * 1024; // Convert MB to bytes
+  const maxFileSize = maxFileSizeMB * 1024 * 1024;
   
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -73,7 +73,6 @@ const FileUploadArea = ({
     }
 
     const validFiles = fileList.filter(file => {
-      // Check file size
       if (file.size > maxFileSize) {
         toast({
           title: "File too large",
@@ -83,7 +82,6 @@ const FileUploadArea = ({
         return false;
       }
       
-      // Check file type if acceptedFileTypes is specified
       if (acceptedFileTypes) {
         const fileType = `.${file.name.split('.').pop()?.toLowerCase() || ''}`;
         const accepted = acceptedFileTypes.split(',').some(type => {
@@ -107,7 +105,6 @@ const FileUploadArea = ({
       setUploading(true);
       
       try {
-        // Get current user
         const { data: userData } = await supabase.auth.getUser();
         
         if (!userData.user) {
@@ -119,11 +116,9 @@ const FileUploadArea = ({
           return;
         }
         
-        // Upload each file to storage and record in database
         const uploadedFiles: ProjectFile[] = [];
         
         for (const file of validFiles) {
-          // Determine file type category
           let fileType: FileType = 'other';
           if (file.type.startsWith('image/')) {
             fileType = 'image';
@@ -133,28 +128,11 @@ const FileUploadArea = ({
             fileType = 'text';
           }
           
-          // Upload file to Supabase Storage - use projectId in the path
           const fileName = `${Date.now()}-${file.name}`;
-          const filePath = `${projectId}/${fileName}`; // Store in a folder named with projectId
+          const filePath = `${projectId}/${fileName}`;
           
           const bucketName = fileType === 'image' ? 'pub_images' : 
                             fileType === 'audio' ? 'pub_audio' : 'pub_documents';
-          
-          console.log(`Uploading file to ${bucketName}/${filePath}`);
-          
-          // Try to create the bucket first if it doesn't exist
-          try {
-            const { data: bucketData, error: bucketError } = await supabase.storage
-              .createBucket(bucketName, {
-                public: true
-              });
-            
-            if (bucketError && !bucketError.message.includes('already exists')) {
-              console.error(`Error creating bucket ${bucketName}:`, bucketError);
-            }
-          } catch (err) {
-            console.log(`Bucket ${bucketName} might already exist:`, err);
-          }
           
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from(bucketName)
@@ -170,12 +148,10 @@ const FileUploadArea = ({
             continue;
           }
           
-          // Get public URL
           const { data: urlData } = await supabase.storage
             .from(bucketName)
             .getPublicUrl(filePath);
             
-          // Read text content for text files
           let fileContent = null;
           if (fileType === 'text') {
             try {
@@ -185,16 +161,17 @@ const FileUploadArea = ({
             }
           }
           
-          // Record file in database
+          const displayName = removeImageExtension(file.name);
+          
           const { data: fileData, error: fileError } = await supabase
             .from('files')
             .insert({
-              name: file.name,
+              name: displayName,
               type: fileType,
               size: file.size,
-              file_path: urlData.publicUrl, // Store the full public URL
+              file_path: urlData.publicUrl,
               user_id: userData.user.id,
-              project_id: projectId, // Set the project ID here
+              project_id: projectId,
               metadata: fileContent ? { content: fileContent } : null
             })
             .select()
@@ -212,7 +189,6 @@ const FileUploadArea = ({
           
           console.log("File saved to database:", fileData);
           
-          // Make sure the fileData is properly typed as a ProjectFile
           const typedFileData: ProjectFile = {
             id: fileData.id,
             name: fileData.name,
@@ -231,7 +207,6 @@ const FileUploadArea = ({
           uploadedFiles.push(typedFileData);
         }
         
-        // Notify parent component of uploaded files
         if (uploadedFiles.length > 0) {
           toast({
             title: "Upload Successful",

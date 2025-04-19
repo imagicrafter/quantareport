@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +9,7 @@ import ImageAnnotationModal from '../file-upload/ImageAnnotationModal';
 import { FilesProvider, useFiles } from '../file-upload/context/FilesContext';
 import FileUploadTabs from '../file-upload/components/FileUploadTabs';
 import FilesPreview from '../file-upload/components/FilesPreview';
+import { removeImageExtension } from '@/utils/fileUtils';
 
 const Step2FilesContent = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -76,9 +76,9 @@ const Step2FilesContent = () => {
 
     try {
       const originalName = selectedImage.name;
-      const fileExtension = originalName.split('.').pop() || 'png';
+      const fileExtension = selectedImage.name.split('.').pop() || 'png';
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const newFileName = `${Date.now()}-${originalName}`;
+      const newFileName = `${Date.now()}-${originalName}.${fileExtension}`;
       const annotatedFile = new File([annotatedImageBlob], newFileName, { type: 'image/png' });
       const filePath = `${projectId}/${newFileName}`;
 
@@ -95,10 +95,12 @@ const Step2FilesContent = () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('No authenticated user found');
 
+      const displayName = `${removeImageExtension(originalName)} (Annotated)`;
+
       await supabase
         .from('files')
         .insert({
-          name: originalName,
+          name: displayName,
           file_path: urlData.publicUrl,
           type: 'image',
           project_id: projectId,
