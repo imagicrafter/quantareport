@@ -6,20 +6,28 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 import { AnnotationToolbar } from './annotation/AnnotationToolbar';
 import { AnnotationLayer } from './annotation/AnnotationLayer';
 import { useDrawing } from './annotation/useDrawing';
+import { convertStageToImage, hasAnnotations } from './annotation/utils/imageUtils';
+import { Save } from 'lucide-react';
 
 interface ImageAnnotationModalProps {
   imageUrl: string;
   isOpen: boolean;
   onClose: () => void;
+  onSave: (annotatedImage: Blob) => Promise<void>;
 }
 
-const ImageAnnotationModal = ({ imageUrl, isOpen, onClose }: ImageAnnotationModalProps) => {
+const ImageAnnotationModal = ({ imageUrl, isOpen, onClose, onSave }: ImageAnnotationModalProps) => {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
   
   const {
     annotations,
@@ -57,6 +65,42 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose }: ImageAnnotationModa
       });
     };
   }, [imageUrl]);
+
+  const handleSaveClick = async () => {
+    if (!image || !hasAnnotations(annotations)) {
+      toast({
+        variant: "destructive",
+        title: "No annotations",
+        description: "Please add annotations before saving.",
+      });
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const annotatedImage = await convertStageToImage(stageRef, image, annotations);
+      
+      if (!annotatedImage) {
+        throw new Error("Failed to generate annotated image");
+      }
+      
+      await onSave(annotatedImage);
+      toast({
+        title: "Success",
+        description: "Image annotations saved successfully",
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error saving annotations:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save annotations. Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -115,6 +159,28 @@ const ImageAnnotationModal = ({ imageUrl, isOpen, onClose }: ImageAnnotationModa
             />
           )}
         </div>
+
+        <DialogFooter className="mt-4">
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveClick}
+            disabled={isSaving || !hasAnnotations(annotations)}
+          >
+            {isSaving ? (
+              "Saving..."
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save Annotations
+              </>
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
