@@ -458,12 +458,8 @@ const Step2Files = () => {
       const fileExtension = originalName.split('.').pop() || 'png';
       const baseName = originalName.replace(`.${fileExtension}`, '');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const newFileName = `${Date.now()}-${baseName}.${fileExtension}`;
 
-      // Use the original file name for the annotated image
-      // to avoid confusion during processing and report output where the orginal image name is referenced
-      const newFileName = `${baseName}.${fileExtension}`;
-
-      
       const annotatedFile = new File([annotatedImageBlob], newFileName, { type: 'image/png' });
       
       const filePath = `${projectId}/${newFileName}`;
@@ -488,7 +484,7 @@ const Step2Files = () => {
       const { data: fileData, error: fileError } = await supabase
         .from('files')
         .insert({
-          name: newFileName,
+          name: baseName, /* The file name of the annotated image must stay the same to maintain consitency in the report output when referencing the image */
           file_path: urlData.publicUrl,
           type: 'image',
           project_id: projectId,
