@@ -78,7 +78,8 @@ const Step2FilesContent = () => {
 
     try {
       const originalName = selectedImage.name;
-      const fileExtension = selectedImage.name.split('.').pop() || 'png';
+      //const fileExtension = selectedImage.name.split('.').pop() || 'png';
+      const fileExtension = 'png';
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const newFileName = `${Date.now()}-${originalName}.${fileExtension}`;
       const annotatedFile = new File([annotatedImageBlob], newFileName, { type: 'image/png' });
@@ -97,7 +98,7 @@ const Step2FilesContent = () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('No authenticated user found');
 
-      const displayName = `${removeImageExtension(originalName)} (Annotated)`;
+      const displayName = `${removeImageExtension(originalName)}`;
 
       await supabase
         .from('files')
