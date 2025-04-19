@@ -443,6 +443,81 @@ const Step2Files = () => {
     }
   };
 
+  const handleSaveAnnotation = async (annotatedImageBlob: Blob) => {
+    if (!projectId || !selectedImage) {
+      toast({
+        title: "Error",
+        description: "Missing project or image information.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const originalName = selectedImage.name;
+      const fileExtension = originalName.split('.').pop() || 'png';
+      const baseName = originalName.replace(`.${fileExtension}`, '');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const newFileName = `${baseName}_annotated_${timestamp}.png`;
+      
+      const annotatedFile = new File([annotatedImageBlob], newFileName, { type: 'image/png' });
+      
+      const filePath = `${projectId}/${newFileName}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('pub_documents')
+        .upload(filePath, annotatedFile);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: urlData } = await supabase.storage
+        .from('pub_documents')
+        .getPublicUrl(filePath);
+
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData.user) {
+        throw new Error('No authenticated user found');
+      }
+
+      const { data: fileData, error: fileError } = await supabase
+        .from('files')
+        .insert({
+          name: newFileName,
+          file_path: urlData.publicUrl,
+          type: 'image',
+          project_id: projectId,
+          user_id: userData.user.id,
+          size: annotatedFile.size,
+          metadata: { 
+            annotated: true,
+            original_file_id: selectedImage.id 
+          }
+        })
+        .select()
+        .single();
+
+      if (fileError) {
+        throw fileError;
+      }
+
+      toast({
+        title: "Success",
+        description: "Annotated image saved successfully!",
+      });
+      
+      fetchFiles();
+    } catch (error) {
+      console.error('Error saving annotated image:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save annotated image. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -534,6 +609,7 @@ const Step2Files = () => {
         imageUrl={selectedImage?.file_path || ''}
         isOpen={!!selectedImage}
         onClose={() => setSelectedImage(null)}
+        onSave={handleSaveAnnotation}
       />
       
       <div className="flex justify-end max-w-4xl mx-auto mt-8">
