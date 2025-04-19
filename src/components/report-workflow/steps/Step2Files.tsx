@@ -458,13 +458,17 @@ const Step2Files = () => {
       const fileExtension = originalName.split('.').pop() || 'png';
       const baseName = originalName.replace(`.${fileExtension}`, '');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const newFileName = `${baseName}_annotated_${timestamp}.png`;
+
+      // Use the original file name for the annotated image
+      // to avoid confusion during processing and report output where the orginal image name is referenced
+      const newFileName = `${baseName}.${fileExtension}`;
+
       
       const annotatedFile = new File([annotatedImageBlob], newFileName, { type: 'image/png' });
       
       const filePath = `${projectId}/${newFileName}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('pub_documents')
+        .from('pub_images') /* type:image files go into the pub_images bucket */
         .upload(filePath, annotatedFile);
 
       if (uploadError) {
@@ -472,7 +476,7 @@ const Step2Files = () => {
       }
 
       const { data: urlData } = await supabase.storage
-        .from('pub_documents')
+        .from('pub_images')
         .getPublicUrl(filePath);
 
       const { data: userData } = await supabase.auth.getUser();
