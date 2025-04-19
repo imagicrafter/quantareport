@@ -78,7 +78,6 @@ const Step2FilesContent = () => {
 
     try {
       const originalName = selectedImage.name;
-      //const fileExtension = selectedImage.name.split('.').pop() || 'png';
       const fileExtension = 'png';
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const newFileName = `${Date.now()}-${originalName}.${fileExtension}`;
@@ -120,7 +119,7 @@ const Step2FilesContent = () => {
         description: "Annotated image saved successfully!",
       });
       
-      fetchFiles(projectId);
+      await fetchFiles(projectId);
     } catch (error) {
       console.error('Error saving annotated image:', error);
       toast({
@@ -194,10 +193,8 @@ const Step2FilesContent = () => {
   const handleFileDeleted = async (file: ProjectFile) => {
     try {
       setIsDeleting(true);
-      // Use the deleteFile service to properly remove the file
       await deleteFile(file);
       
-      // Refresh the files list after deletion
       if (projectId) {
         await fetchFiles(projectId);
       }

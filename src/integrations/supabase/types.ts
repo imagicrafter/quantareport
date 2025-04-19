@@ -170,6 +170,27 @@ export type Database = {
             referencedRelation: "project_images"
             referencedColumns: ["files_id"]
           },
+          {
+            foreignKeyName: "image_descriptions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: true
+            referencedRelation: "v_files_most_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_descriptions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: true
+            referencedRelation: "v_files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_descriptions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: true
+            referencedRelation: "v_project_images"
+            referencedColumns: ["files_id"]
+          },
         ]
       }
       note_file_relationships: {
@@ -214,6 +235,27 @@ export type Database = {
             columns: ["file_id"]
             isOneToOne: false
             referencedRelation: "project_images"
+            referencedColumns: ["files_id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_most_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_images"
             referencedColumns: ["files_id"]
           },
           {
@@ -386,6 +428,27 @@ export type Database = {
             columns: ["file_id"]
             isOneToOne: false
             referencedRelation: "project_images"
+            referencedColumns: ["files_id"]
+          },
+          {
+            foreignKeyName: "project_transcript_insights_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_most_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_transcript_insights_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_transcript_insights_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_images"
             referencedColumns: ["files_id"]
           },
         ]
@@ -845,6 +908,104 @@ export type Database = {
           },
         ]
       }
+      v_files_most_current: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          file_path: string | null
+          id: string | null
+          metadata: Json | null
+          name: string | null
+          position: number | null
+          project_id: string | null
+          size: number | null
+          title: string | null
+          type: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "files_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_files_not_processed: {
+        Row: {
+          file_path: string | null
+          id: string | null
+          name: string | null
+          project_id: string | null
+          type: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "files_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_image_descriptions_related_to_note: {
+        Row: {
+          content: string | null
+          file_path: string | null
+          image_description: Json | null
+          name: string | null
+          note_id: string | null
+          title: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_notes_excluding_template"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_lower_priority_related_notes_with_images: {
         Row: {
           created_at: string | null
@@ -888,6 +1049,27 @@ export type Database = {
             columns: ["file_id"]
             isOneToOne: false
             referencedRelation: "project_images"
+            referencedColumns: ["files_id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_most_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_images"
             referencedColumns: ["files_id"]
           },
           {
@@ -938,6 +1120,31 @@ export type Database = {
           },
           {
             foreignKeyName: "notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      v_project_images: {
+        Row: {
+          file_path: string | null
+          files_id: string | null
+          image_description: Json | null
+          name: string | null
+          project_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "v_projects_last_update"
