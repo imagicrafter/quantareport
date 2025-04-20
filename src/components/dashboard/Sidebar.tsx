@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, LayoutDashboard, FileText, Image, FileEdit, Settings, Users, FilePlus, ChevronDown, ChevronRight, Menu, Wand2 } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, FileText, Image, FileEdit, Settings, Users, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
+import Logo from '../ui-elements/Logo';
 import { supabase } from '@/integrations/supabase/client';
 
 interface SidebarProps {
@@ -57,11 +58,11 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
       {/* Sidebar Header */}
       <div className="p-4 border-b flex items-center justify-between">
         <Link to="/dashboard" className="flex items-center">
-          {sidebarOpen ? (
-            <span className="text-xl font-bold text-quanta-blue">QuantaReport</span>
-          ) : (
-            <span className="text-xl font-bold text-quanta-blue">QR</span>
-          )}
+          <Logo 
+            variant="sidebar" 
+            sidebarCollapsed={!sidebarOpen} 
+            size="md" 
+          />
         </Link>
         <button onClick={toggleSidebar} className="text-gray-500 hover:text-gray-700">
           {sidebarOpen ? (
