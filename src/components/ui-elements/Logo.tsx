@@ -21,8 +21,8 @@ const Logo: FC<LogoProps> = ({
   // Determine logo based on variant and sidebar state
   const logoSrc = 
     variant === 'sidebar' && sidebarCollapsed 
-      ? '/images/Q_logo.png' 
-      : '/images/QuantaReport_logo.png';
+      ? '/public/images/Q_logo.png' 
+      : '/public/images/QuantaReport_Logo.png';
 
   const logoAlt = 
     variant === 'sidebar' && sidebarCollapsed 
