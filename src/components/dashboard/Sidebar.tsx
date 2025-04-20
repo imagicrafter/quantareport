@@ -1,6 +1,19 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, LayoutDashboard, FileText, Image, FileEdit, Settings, Users, Menu } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  LayoutDashboard, 
+  FileText, 
+  Image, 
+  FileEdit, 
+  Settings, 
+  Users, 
+  Menu,
+  ChevronDown,  // Added missing icons
+  ChevronRight, 
+  Wand2 
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
 import Logo from '../ui-elements/Logo';
