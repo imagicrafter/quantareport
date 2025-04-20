@@ -160,7 +160,7 @@ export type Database = {
             foreignKeyName: "image_descriptions_file_id_fkey"
             columns: ["file_id"]
             isOneToOne: true
-            referencedRelation: "files_not_processed"
+            referencedRelation: "v_files_not_processed"
             referencedColumns: ["id"]
           },
           {
@@ -227,7 +227,7 @@ export type Database = {
             foreignKeyName: "note_file_relationships_file_id_fkey"
             columns: ["file_id"]
             isOneToOne: false
-            referencedRelation: "files_not_processed"
+            referencedRelation: "v_files_not_processed"
             referencedColumns: ["id"]
           },
           {
@@ -420,7 +420,7 @@ export type Database = {
             foreignKeyName: "project_transcript_insights_file_id_fkey"
             columns: ["file_id"]
             isOneToOne: false
-            referencedRelation: "files_not_processed"
+            referencedRelation: "v_files_not_processed"
             referencedColumns: ["id"]
           },
           {
@@ -817,39 +817,6 @@ export type Database = {
           },
         ]
       }
-      files_not_processed: {
-        Row: {
-          file_path: string | null
-          id: string | null
-          name: string | null
-          project_id: string | null
-          type: string | null
-          user_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "files_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "files_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "v_projects_last_update"
-            referencedColumns: ["project_id"]
-          },
-          {
-            foreignKeyName: "files_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       image_descriptions_related_to_note: {
         Row: {
           content: string | null
@@ -1041,7 +1008,7 @@ export type Database = {
             foreignKeyName: "note_file_relationships_file_id_fkey"
             columns: ["file_id"]
             isOneToOne: false
-            referencedRelation: "files_not_processed"
+            referencedRelation: "v_files_not_processed"
             referencedColumns: ["id"]
           },
           {

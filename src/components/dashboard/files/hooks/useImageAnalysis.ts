@@ -19,7 +19,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
     
     try {
       const { data, error } = await supabase
-        .from('files_not_processed')
+        .from('v_files_not_processed')
         .select('id')
         .eq('project_id', projectId);
 

@@ -106,7 +106,7 @@ serve(async (req) => {
     
     // Get unprocessed files for the project
     const { data: unprocessedFiles, error: filesError } = await supabase
-      .from("files_not_processed")
+      .from("v_files_not_processed")
       .select("*")
       .eq("project_id", project_id);
       
@@ -390,7 +390,7 @@ async function handleProgressUpdate(data: any) {
     
     console.log("Progress update saved successfully");
     
-    // If status is completed, remove processed files from files_not_processed
+    // If status is completed, remove processed files from v_files_not_processed
     if (appStatus === "completed" && data.project_id) {
       try {
         console.log(`Completing file analysis for project ${data.project_id}`);
@@ -410,7 +410,7 @@ async function handleProgressUpdate(data: any) {
         }
         
         const { error: cleanupError } = await supabase
-          .from("files_not_processed")
+          .from("image_descriptions")
           .delete()
           .eq("project_id", data.project_id);
           

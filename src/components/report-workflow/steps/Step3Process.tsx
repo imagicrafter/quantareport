@@ -151,7 +151,7 @@ const Step3Process = () => {
     
     try {
       const { data: unprocessedFiles, error: unprocessedError } = await supabase
-        .from('files_not_processed')
+        .from('v_files_not_processed')
         .select('id')
         .eq('project_id', projectId);
         
