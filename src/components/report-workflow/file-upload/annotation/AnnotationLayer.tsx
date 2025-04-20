@@ -26,7 +26,7 @@ export const AnnotationLayer = ({ annotations, tempAnnotation }: AnnotationLayer
             pointerLength={10}
             pointerWidth={10}
             stroke={annotation.color}
-            strokeWidth={2}
+            strokeWidth={8}
           />
         );
 
@@ -42,7 +42,7 @@ export const AnnotationLayer = ({ annotations, tempAnnotation }: AnnotationLayer
               annotation.points[1].y,
             ]}
             stroke={annotation.color}
-            strokeWidth={2}
+            strokeWidth={4}
           />
         );
 
@@ -55,7 +55,7 @@ export const AnnotationLayer = ({ annotations, tempAnnotation }: AnnotationLayer
             y={annotation.center.y}
             radius={annotation.radius}
             stroke={annotation.color}
-            strokeWidth={2}
+            strokeWidth={4}
           />
         );
 
@@ -69,7 +69,7 @@ export const AnnotationLayer = ({ annotations, tempAnnotation }: AnnotationLayer
             width={annotation.width}
             height={annotation.height}
             stroke={annotation.color}
-            strokeWidth={2}
+            strokeWidth={4}
           />
         );
 
