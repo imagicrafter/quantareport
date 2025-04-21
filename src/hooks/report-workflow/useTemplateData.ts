@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -25,7 +26,7 @@ export const useTemplateData = (projectId?: string) => {
 
   const fetchDefaultTemplate = async () => {
     // Prevent duplicate fetches for the same template
-    if (hasFetchedTemplate) return;
+    if (hasFetchedTemplate && defaultTemplate) return;
     
     try {
       setIsLoading(true);
@@ -74,6 +75,9 @@ export const useTemplateData = (projectId?: string) => {
       } else {
         setDefaultTemplate(templateData);
       }
+      
+      // Reset selected template when fetching default
+      setSelectedTemplate(null);
       
       // Fetch template notes if we have a default template
       if (templateData || defaultTemplate) {
@@ -138,18 +142,31 @@ export const useTemplateData = (projectId?: string) => {
         
       if (templateError) throw templateError;
       
+      // Store the selected template
       setSelectedTemplate(template);
       
       // Load template notes for the selected template
       const notes = await loadTemplateNotes(templateId);
-      setTemplateNotes(notes || []);
+      
+      // Sort notes by position if available
+      const sortedNotes = [...notes].sort((a, b) => {
+        // Handle null positions by placing them at the end
+        if (a.position === null && b.position === null) return 0;
+        if (a.position === null) return 1;
+        if (b.position === null) return -1;
+        return a.position - b.position;
+      });
+      
+      setTemplateNotes(sortedNotes);
       
       // Initialize template note values
       const initialValues: Record<string, string> = {};
-      notes.forEach(note => {
+      sortedNotes.forEach(note => {
         initialValues[note.id] = note.custom_content || '';
       });
       setTemplateNoteValues(initialValues);
+      
+      console.log('Selected template:', template.name, 'with', sortedNotes.length, 'notes');
       
     } catch (error) {
       console.error('Error fetching template:', error);

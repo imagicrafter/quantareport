@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -32,6 +33,7 @@ const Step1Start = () => {
   const navigate = useNavigate();
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   
+  // Get template data and functions from the hook
   const {
     defaultTemplate,
     selectedTemplate,
@@ -45,6 +47,20 @@ const Step1Start = () => {
     fetchDefaultTemplate,
     fetchTemplateById,
   } = useTemplateData();
+
+  // Get project data and functions from the hook
+  const {
+    existingProjects,
+    selectedProjectId,
+    reportName,
+    setSelectedProjectId,
+    setReportName,
+    handleProjectSelect,
+    resetForm
+  } = useProjectData();
+
+  // Get report save functionality from the hook
+  const { isSaving, saveReport } = useReportSave();
 
   useEffect(() => {
     const initializeForm = async () => {
@@ -197,9 +213,9 @@ const Step1Start = () => {
     
     saveReport({
       reportMode,
-      reportName,
+      reportName: reportName,
       templateId: selectedTemplate?.id || defaultTemplate?.id,
-      selectedProjectId,
+      selectedProjectId: selectedProjectId,
       templateNotes,
       templateNoteValues
     });
