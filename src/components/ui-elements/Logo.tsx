@@ -22,7 +22,7 @@ const Logo: FC<LogoProps> = ({
   const logoSrc = 
     variant === 'sidebar' && sidebarCollapsed 
       ? '/images/Q_logo.png' 
-      : '/images/QuantaReport_Logo.png';
+      : '/images/QuantaReport_logo.png';
 
   const logoAlt = 
     variant === 'sidebar' && sidebarCollapsed 
