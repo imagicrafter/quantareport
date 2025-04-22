@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { File, X, Music, Folder, FileText } from 'lucide-react';
+import { File, X, Music, Folder, FileText, Plus } from 'lucide-react';
 import { removeFileFromNote } from '@/utils/noteFileRelationshipUtils';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
 import ImagePreviewModal from '@/components/report-workflow/file-upload/ImagePreviewModal';
@@ -10,9 +11,15 @@ interface RelatedFilesProps {
   projectId?: string;
   onRelationshipsChanged?: (newRelationship?: NoteFileRelationshipWithType) => void;
   compact?: boolean;
+  onManageFilesClick?: () => void; // allow opening the Manage Files modal via dashed square
 }
 
-const RelatedFiles = ({ files, onRelationshipsChanged, compact = false }: RelatedFilesProps) => {
+const RelatedFiles = ({ 
+  files, 
+  onRelationshipsChanged, 
+  compact = false,
+  onManageFilesClick
+}: RelatedFilesProps) => {
   const [removingFileId, setRemovingFileId] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -54,8 +61,20 @@ const RelatedFiles = ({ files, onRelationshipsChanged, compact = false }: Relate
 
   if (files.length === 0) {
     return (
-      <div className="text-muted-foreground text-sm italic">
-        No files associated with this note
+      <div className="flex items-center gap-4">
+        <div className="text-muted-foreground text-sm italic">
+          No files associated with this note
+        </div>
+        {onManageFilesClick && (
+          <button
+            type="button"
+            className="h-32 w-32 flex items-center justify-center border-2 border-dashed border-primary/40 rounded-md bg-background/80 text-primary hover:bg-secondary/30 text-4xl transition focus:outline-none"
+            aria-label="Add or Manage Related Files"
+            onClick={onManageFilesClick}
+          >
+            <Plus size={36} />
+          </button>
+        )}
       </div>
     );
   }
@@ -66,7 +85,7 @@ const RelatedFiles = ({ files, onRelationshipsChanged, compact = false }: Relate
   return (
     <div className="space-y-4">
       {imageFiles.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {imageFiles.map((rel) => (
             <div key={rel.id} className="relative group">
               <div 
@@ -93,6 +112,16 @@ const RelatedFiles = ({ files, onRelationshipsChanged, compact = false }: Relate
               )}
             </div>
           ))}
+          {onManageFilesClick && (
+            <button
+              type="button"
+              className="h-32 w-32 flex items-center justify-center border-2 border-dashed border-primary/40 rounded-md bg-background/80 text-primary hover:bg-secondary/30 text-4xl transition focus:outline-none"
+              aria-label="Add or Manage Related Files"
+              onClick={onManageFilesClick}
+            >
+              <Plus size={36} />
+            </button>
+          )}
         </div>
       )}
       
