@@ -62,9 +62,6 @@ const RelatedFiles = ({
   if (files.length === 0) {
     return (
       <div className="flex items-center gap-4">
-        <div className="text-muted-foreground text-sm italic">
-          No files associated with this note
-        </div>
         {onManageFilesClick && (
           <button
             type="button"

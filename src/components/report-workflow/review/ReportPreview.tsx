@@ -38,7 +38,7 @@ const ReportPreview = ({
             </div>
           </div>
         ) : (
-          <div className="aspect-[8.5/11] bg-white p-8 border-b relative">
+          <div className="aspect-[8.5/11] bg-white p-8 border-b relative" style={{ textAlign: 'left' }}> {/* This must stay aligned left */}
             <div dangerouslySetInnerHTML={{ __html: reportContent || '' }} />
             <div className="absolute bottom-4 right-4 text-muted-foreground text-sm">
               Page {currentPage} of {totalPages}
