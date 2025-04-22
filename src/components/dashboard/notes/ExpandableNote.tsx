@@ -229,8 +229,8 @@ const ExpandableNote = ({
               {loadedFiles.filter(file => file.file_type === "image").map((file, idx) => (
                 <img
                   key={file.id || idx}
-                  src={file.url}
-                  alt={file.name || 'Related file'}
+                  src={file.file_path}
+                  alt={file.file?.name || 'Related file'}
                   className="h-20 w-20 object-cover rounded border"
                   draggable={false}
                 />
@@ -259,8 +259,6 @@ const ExpandableNote = ({
           isLocked={isLocked}
           onLockToggle={handleLockToggle}
           buttonLabel="Manage Files"
-          open={showFilePicker}
-          onOpenChange={setShowFilePicker}
         />
       </CollapsibleContent>
     </Collapsible>
