@@ -44,6 +44,7 @@ const ExpandableNote = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [loadedFiles, setLoadedFiles] = useState<NoteFileRelationshipWithType[]>(relatedFiles);
   const [isLoading, setIsLoading] = useState(false);
+  const [showFilePicker, setShowFilePicker] = useState(false);
 
   useEffect(() => {
     setTitle(note.title);
@@ -99,6 +100,8 @@ const ExpandableNote = ({
       setIsLoading(false);
     }
   };
+
+  const handleOpenFilePicker = () => setShowFilePicker(true);
 
   return (
     <Collapsible
@@ -221,15 +224,26 @@ const ExpandableNote = ({
               <label className="text-sm font-medium">
                 Related Files ({isLoading ? '...' : loadedFiles.length})
               </label>
-              <FilePicker
-                projectId={projectId}
-                noteId={note.id}
-                onFileAdded={handleFileChange}
-                relatedFiles={loadedFiles}
-                isLocked={isLocked}
-                onLockToggle={handleLockToggle}
-                buttonLabel="Manage Files"
-              />
+            </div>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {loadedFiles.filter(file => file.file_type === "image").map((file, idx) => (
+                <img
+                  key={file.id || idx}
+                  src={file.url}
+                  alt={file.name || 'Related file'}
+                  className="h-20 w-20 object-cover rounded border"
+                  draggable={false}
+                />
+              ))}
+              {/* Dashed Outlined + Square */}
+              <button
+                type="button"
+                className="h-20 w-20 flex items-center justify-center border-2 border-dashed border-primary/40 rounded bg-background/80 text-primary hover:bg-secondary/30 transition focus:outline-none"
+                aria-label="Add or Manage Related Files"
+                onClick={handleOpenFilePicker}
+              >
+                <span className="text-3xl font-bold">+</span>
+              </button>
             </div>
             <RelatedFiles 
               files={loadedFiles}
@@ -237,6 +251,17 @@ const ExpandableNote = ({
             />
           </div>
         </div>
+        <FilePicker
+          projectId={projectId}
+          noteId={note.id}
+          onFileAdded={handleFileChange}
+          relatedFiles={loadedFiles}
+          isLocked={isLocked}
+          onLockToggle={handleLockToggle}
+          buttonLabel="Manage Files"
+          open={showFilePicker}
+          onOpenChange={setShowFilePicker}
+        />
       </CollapsibleContent>
     </Collapsible>
   );
