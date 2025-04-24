@@ -1,4 +1,5 @@
-import { Image, PencilLine, ArrowRight } from 'lucide-react';
+
+import { Image, PencilLine, ArrowRight, FileText, BrainCircuit, ClipboardList } from 'lucide-react';
 
 const FeaturesSection = () => {
   const features = [
@@ -13,9 +14,19 @@ const FeaturesSection = () => {
       icon: <ArrowRight className="h-12 w-12 text-primary" />,
     },
     {
-      title: "Centralized data storage",
-      description: "Keep all your reports, images, and notes in one secure location.",
-      icon: <Image className="h-12 w-12 text-primary" />,
+      title: "Industry-specific templates",
+      description: "Pre-built report templates for engineering, insurance, construction, appraisals, and more.",
+      icon: <FileText className="h-12 w-12 text-primary" />,
+    },
+    {
+      title: "AI-powered image analysis",
+      description: "Our smart system analyzes and describes images, extracting key details for your reports.",
+      icon: <BrainCircuit className="h-12 w-12 text-primary" />,
+    },
+    {
+      title: "Notes processing & compilation",
+      description: "Convert text, documents, and audio files into organized notes for your reports.",
+      icon: <ClipboardList className="h-12 w-12 text-primary" />,
     },
   ];
 
@@ -23,9 +34,9 @@ const FeaturesSection = () => {
     <section className="py-20 bg-secondary/10" id="features">
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Key Features</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Powerful features to transform your workflow</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Explore the features that make our reporting platform the best solution for your needs.
+            Our comprehensive platform streamlines the entire reporting process from image upload to final delivery.
           </p>
         </div>
 
