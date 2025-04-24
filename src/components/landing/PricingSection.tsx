@@ -131,9 +131,9 @@ const PricingSection = () => {
             <div className="text-center md:text-left">
               <h3 className="text-xl font-medium mb-2">Need a custom solution?</h3>
               <p className="text-muted-foreground mb-4">Contact our sales team for a customized plan tailored to your specific requirements.</p>
-              <Link to="/contact-sales">
-                <Button variant="outline">Contact Sales</Button>
-              </Link>
+              <ContactFormModal>
+                <Button variant="outline">Contact Us</Button>
+              </ContactFormModal>
             </div>
           </div>
         </div>
