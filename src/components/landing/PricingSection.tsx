@@ -1,6 +1,7 @@
 import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Button from '../ui-elements/Button';
+import ContactFormModal from '../contact/ContactFormModal';
 
 const PricingSection = () => {
   const plans = [
@@ -18,9 +19,7 @@ const PricingSection = () => {
       limitedFeatures: [
         "No custom templates",
       ],
-      cta: "Start for free",
       popular: false,
-      href: "/signup?plan=free"
     },
     {
       name: "Starter",
@@ -32,9 +31,7 @@ const PricingSection = () => {
         "Email support",
       ],
       limitedFeatures: [],
-      cta: "Get started",
       popular: true,
-      href: "/signup?plan=starter"
     },
     {
       name: "Professional",
@@ -47,9 +44,7 @@ const PricingSection = () => {
         "Dedicated support",
       ],
       limitedFeatures: [],
-      cta: "Contact sales",
       popular: false,
-      href: "/contact-sales"
     }
   ];
 
@@ -92,14 +87,14 @@ const PricingSection = () => {
                   </div>
                 </div>
                 
-                <Link to={plan.href}>
+                <ContactFormModal>
                   <Button 
                     variant={plan.popular ? "primary" : "outline"} 
                     className="w-full mb-6"
                   >
-                    {plan.cta}
+                    Contact Us
                   </Button>
-                </Link>
+                </ContactFormModal>
                 
                 <div className="space-y-3">
                   <p className="text-sm font-medium">Includes:</p>
