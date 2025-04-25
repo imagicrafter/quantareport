@@ -10,28 +10,32 @@ const HowItWorksSection = () => {
       description: "Choose from our library of industry-specific templates for your project or we can customize one to match your exact needs.",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-quanta-blue"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-      )
+      ),
+      image: "https://vtaufnxworztolfdwlll.supabase.co/storage/v1/object/public/pub_images//templates.png"
     },
     {
       title: "Upload Images & Notes",
       description: "Upload your images and notes to the platform. Upload files directly and instantly record and transcribe descriptions.",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-quanta-blue"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-      )
+      ),
+      image: "https://vtaufnxworztolfdwlll.supabase.co/storage/v1/object/public/pub_images//upload_images_and_notes.png"
     },
     {
       title: "AI Report Generation",
       description: "Our AI system analyzes your images and notes, extracting key information for your report that combines your images, notes using your project's selected template.",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-quanta-blue"><path d="M16 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M16 21v-2"/><path d="M8 17H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6"/></svg>
-      )
+      ),
+      image: "https://vtaufnxworztolfdwlll.supabase.co/storage/v1/object/public/pub_images//Notes_and_image_analysis.png"
     },
     {
       title: "Review & Edit",
       description: "Review your report and make any necessary edits through our intuitive chat-based interface.",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-quanta-blue"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-      )
+      ),
+      image: "https://vtaufnxworztolfdwlll.supabase.co/storage/v1/object/public/pub_images//review%20and%20edit.png"
     },
     {
       title: "Export & Share",
@@ -39,7 +43,7 @@ const HowItWorksSection = () => {
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-quanta-blue"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
       )
-    }
+    },
   ];
 
   return (
@@ -80,15 +84,23 @@ const HowItWorksSection = () => {
           </div>
 
           <div className="relative h-[500px] bg-white rounded-lg overflow-hidden border border-border shadow-md">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center p-8">
-                <div className="w-16 h-16 bg-gradient-to-r from-quanta-blue/10 to-quanta-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  {steps[activeStep].icon}
+            {steps[activeStep].image ? (
+              <img 
+                src={steps[activeStep].image} 
+                alt={steps[activeStep].title}
+                className="w-full h-full object-contain p-4"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center p-8">
+                  <div className="w-16 h-16 bg-gradient-to-r from-quanta-blue/10 to-quanta-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    {steps[activeStep].icon}
+                  </div>
+                  <h3 className="text-xl font-medium mb-2">{steps[activeStep].title}</h3>
+                  <p className="text-muted-foreground max-w-sm">Step {activeStep + 1} visualization will appear here.</p>
                 </div>
-                <h3 className="text-xl font-medium mb-2">{steps[activeStep].title}</h3>
-                <p className="text-muted-foreground max-w-sm">Step {activeStep + 1} visualization will appear here.</p>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
