@@ -10,6 +10,7 @@ export interface SignupCode {
   used: boolean;
   used_at: string | null;
   status: string;
+  last_invited_at: string | null;
 }
 
 /**
