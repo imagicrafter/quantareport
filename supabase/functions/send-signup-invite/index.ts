@@ -41,13 +41,20 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Configure email client
-    const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = Number(Deno.env.get("SMTP_PORT")) || 587;
-    const smtpUser = Deno.env.get("SMTP_USER");
-    const smtpPass = Deno.env.get("SMTP_PASSWORD");
-    const smtpFrom = Deno.env.get("SMTP_FROM") || "noreply@example.com";
+    //const smtpHost = Deno.env.get("SMTP_HOST");
+    //const smtpPort = Number(Deno.env.get("SMTP_PORT")) || 587;
+    //const smtpUser = Deno.env.get("SMTP_USER");
+    //const smtpPass = Deno.env.get("SMTP_PASSWORD");
+    //const smtpFrom = Deno.env.get("SMTP_FROM") || "noreply@example.com";
 
-    const frontendUrl = Deno.env.get("FRONTEND_URL") || "http://localhost:3000";
+    const smtpHost = "smtp.gmail.com";
+    const smtpPort = "587";
+    const smtpUser = "quantabase@martins.net";
+    const smtpPass = "lvow aqtf lgbj ycrt";
+    const smtpFrom = "quantabase@martins.net";
+    const frontendUrl = "http://staging.quantareport.com";
+
+    //const frontendUrl = Deno.env.get("FRONTEND_URL") || "http://localhost:3000";
     const signupUrl = `${frontendUrl}/signup?code=${signupCode}&email=${encodeURIComponent(recipientEmail)}`;
 
     console.log("Email configuration:", { 
