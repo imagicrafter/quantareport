@@ -1,10 +1,18 @@
 
 import { useState, useEffect } from 'react';
-import { LogOut, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { LogOut, Settings, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface UserAvatarProps {
@@ -64,7 +72,7 @@ const UserAvatar = ({ showName = false }: UserAvatarProps) => {
     };
   }, []);
 
-  const handleSignOut = async () => {
+  const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -95,57 +103,42 @@ const UserAvatar = ({ showName = false }: UserAvatarProps) => {
     return 'U';
   };
 
+  const diceBearUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${userDetails.full_name || userDetails.email}`;
+
   return (
     <div className="flex items-center">
-      <HoverCard>
-        <HoverCardTrigger asChild>
-          <button className="p-1 rounded-full hover:bg-secondary transition-colors">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="relative h-8 w-8 rounded-full"
+          >
             <Avatar className="h-8 w-8">
-              <AvatarImage 
-                src={userDetails.avatar_url || undefined} 
-                alt={userDetails.full_name || 'User'} 
-              />
+              <AvatarImage src={userDetails.avatar_url || diceBearUrl} />
               <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                 {getInitials()}
               </AvatarFallback>
             </Avatar>
-          </button>
-        </HoverCardTrigger>
-        <HoverCardContent className="w-56 p-0">
-          <div className="p-3 space-y-2">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={userDetails.avatar_url || undefined} alt="Avatar" />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {getInitials()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium">{userDetails.full_name || 'User'}</p>
-                <p className="text-xs text-muted-foreground truncate">{userDetails.email}</p>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-border">
-            <div className="p-2">
-              <button 
-                onClick={() => navigate('/dashboard/settings')}
-                className="w-full flex items-center gap-2 text-sm px-3 py-2 hover:bg-secondary rounded-md"
-              >
-                <Settings size={16} />
-                <span>Settings</span>
-              </button>
-              <button 
-                onClick={handleSignOut}
-                className="w-full flex items-center gap-2 text-sm px-3 py-2 hover:bg-secondary rounded-md text-red-500 hover:text-red-600"
-              >
-                <LogOut size={16} />
-                <span>Sign out</span>
-              </button>
-            </div>
-          </div>
-        </HoverCardContent>
-      </HoverCard>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>
+            <User className="mr-2 h-4 w-4" />
+            Profile
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       
       {/* Display name if showName is true */}
       {showName && userDetails.full_name && (
