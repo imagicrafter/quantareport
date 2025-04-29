@@ -92,7 +92,7 @@ const FilesSection = ({ projectId, projectName = '' }: FilesSectionProps) => {
     try {
       // Get all files for this project that are NOT in the unprocessed table
       const { data: unprocessedFiles, error: unprocessedError } = await supabase
-        .from('files_not_processed')
+        .from('v_files_not_processed')
         .select('id')
         .eq('project_id', projectId);
         

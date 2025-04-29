@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -25,15 +26,17 @@ const Step1Start = () => {
   const [workflowState, setWorkflowState] = useState<number | null>(null);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [exitAction, setExitAction] = useState<{
-    type: 'mode-change' | 'project-change';
+    type: 'mode-change' | 'project-change' | 'template-change';
     value: string | 'new';
   } | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   
+  // Get template data and functions from the hook
   const {
     defaultTemplate,
+    selectedTemplate,
     isLoading,
     templateNotes,
     templateNoteValues,
@@ -41,9 +44,11 @@ const Step1Start = () => {
     setTemplateNoteValues,
     handleInputChange,
     resetTemplateNoteValues,
-    fetchDefaultTemplate
+    fetchDefaultTemplate,
+    fetchTemplateById,
   } = useTemplateData();
-  
+
+  // Get project data and functions from the hook
   const {
     existingProjects,
     selectedProjectId,
@@ -53,9 +58,10 @@ const Step1Start = () => {
     handleProjectSelect,
     resetForm
   } = useProjectData();
-  
+
+  // Get report save functionality from the hook
   const { isSaving, saveReport } = useReportSave();
-  
+
   useEffect(() => {
     const initializeForm = async () => {
       try {
@@ -180,8 +186,21 @@ const Step1Start = () => {
     setExitAction(null);
   };
   
+  const handleTemplateChange = async (templateId: string) => {
+    if (workflowState === 1 && selectedProjectId) {
+      setExitAction({
+        type: 'template-change',
+        value: templateId
+      });
+      setShowExitDialog(true);
+      return;
+    }
+    
+    await fetchTemplateById(templateId);
+  };
+  
   const handleSave = () => {
-    if (!defaultTemplate) {
+    if (!selectedTemplate && !defaultTemplate) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -194,9 +213,9 @@ const Step1Start = () => {
     
     saveReport({
       reportMode,
-      reportName,
-      templateId: defaultTemplate.id,
-      selectedProjectId,
+      reportName: reportName,
+      templateId: selectedTemplate?.id || defaultTemplate?.id,
+      selectedProjectId: selectedProjectId,
       templateNotes,
       templateNoteValues
     });
@@ -253,12 +272,8 @@ const Step1Start = () => {
               )}
             </div>
             <TemplateSelector
-              selectedTemplateId={defaultTemplate?.id || null}
-              onTemplateChange={(templateId) => {
-                if (templateId) {
-                  fetchDefaultTemplate();
-                }
-              }}
+              selectedTemplateId={selectedTemplate?.id || defaultTemplate?.id || null}
+              onTemplateChange={handleTemplateChange}
             />
           </div>
           

@@ -101,7 +101,7 @@ export const fetchAvailableFiles = async (projectId: string, noteId: string): Pr
     
     // Get project files that are not already related
     let query = supabase
-      .from('files')
+      .from('v_files_most_current')
       .select('*')
       .eq('project_id', projectId)
       .eq('type', 'image')

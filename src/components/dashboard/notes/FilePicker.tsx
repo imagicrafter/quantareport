@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Plus, Lock, Unlock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,8 @@ interface FilePickerProps {
   isLocked?: boolean;
   onLockToggle?: (locked: boolean) => Promise<void>;
   buttonLabel?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const FilePicker = ({ 
@@ -32,7 +35,9 @@ const FilePicker = ({
   relatedFiles, 
   isLocked = false, 
   onLockToggle,
-  buttonLabel = "Add Files"
+  buttonLabel = "Add Files",
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange
 }: FilePickerProps) => {
   const [open, setOpen] = useState(false);
   const [availableFiles, setAvailableFiles] = useState<ProjectFile[]>([]);
@@ -41,15 +46,20 @@ const FilePicker = ({
   const [removingFileId, setRemovingFileId] = useState<string | null>(null);
   const [locked, setLocked] = useState(isLocked);
   
+  // Handle controlled vs uncontrolled state
+  const isControlled = externalOpen !== undefined && externalOnOpenChange !== undefined;
+  const dialogOpen = isControlled ? externalOpen : open;
+  const setDialogOpen = isControlled ? externalOnOpenChange : setOpen;
+  
   useEffect(() => {
     setLocked(isLocked);
   }, [isLocked]);
   
   useEffect(() => {
-    if (open) {
+    if (dialogOpen) {
       fetchFiles();
     }
-  }, [open, relatedFiles]);
+  }, [dialogOpen, relatedFiles]);
   
   const fetchFiles = async () => {
     try {
@@ -96,18 +106,21 @@ const FilePicker = ({
   };
   
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-1 h-7 px-2"
-        >
-          <Plus size={14} />
-          <span className="text-xs">{buttonLabel}</span>
-        </Button>
-      </DialogTrigger>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1 h-7 px-2"
+          >
+            <Plus size={14} />
+            <span className="text-xs">{buttonLabel}</span>
+          </Button>
+        </DialogTrigger>
+      )}
+      
       <DialogContent className="sm:max-w-lg max-h-[80vh] p-0 flex flex-col">
         <DialogHeader className="px-6 py-4 border-b flex-shrink-0 flex justify-between items-center">
           <DialogTitle>Manage Related Files</DialogTitle>
@@ -246,7 +259,7 @@ const FilePicker = ({
         </ScrollArea>
         
         <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
-          <Button onClick={() => setOpen(false)}>
+          <Button onClick={() => setDialogOpen(false)}>
             Close
           </Button>
         </DialogFooter>

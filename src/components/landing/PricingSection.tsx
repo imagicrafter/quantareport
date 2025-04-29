@@ -1,80 +1,50 @@
-
 import { Check } from 'lucide-react';
-import { useState } from 'react';
-import Button from '../ui-elements/Button';
 import { Link } from 'react-router-dom';
+import Button from '../ui-elements/Button';
+import ContactFormModal from '../contact/ContactFormModal';
 
 const PricingSection = () => {
-  const [annual, setAnnual] = useState(true);
-  
   const plans = [
     {
       name: "Free Demo",
       description: "Perfect for trying out the platform",
-      price: {
-        monthly: 0,
-        annually: 0
-      },
+      price: "0",
       features: [
-        "5 projects",
-        "20 images per project",
+        "5 reports",
+        "20 images per report",
         "Basic templates only",
         "Standard AI processing",
         "Export as PDF only",
-        "Community support",
       ],
       limitedFeatures: [
         "No custom templates",
-        "No Google Drive integration",
-        "No priority processing",
       ],
-      cta: "Start for free",
       popular: false,
-      href: "/signup?plan=free"
+    },
+    {
+      name: "Starter",
+      description: "For individuals and small teams",
+      price: "7.99",
+      features: [
+        "Basic templates only",
+        "Advanced AI processing",
+        "Email support",
+      ],
+      limitedFeatures: [],
+      popular: true,
     },
     {
       name: "Professional",
-      description: "For individuals and small teams",
-      price: {
-        monthly: 29,
-        annually: 24
-      },
-      features: [
-        "25 projects",
-        "100 images per project",
-        "All templates included",
-        "Advanced AI processing",
-        "Export in multiple formats",
-        "Email support",
-        "Google Drive integration",
-      ],
-      limitedFeatures: [],
-      cta: "Get started",
-      popular: true,
-      href: "/signup?plan=pro"
-    },
-    {
-      name: "Enterprise",
       description: "For organizations with advanced needs",
-      price: {
-        monthly: 79,
-        annually: 69
-      },
+      price: "11.99",
       features: [
-        "Unlimited projects",
-        "Unlimited images",
-        "Custom templates",
+        "Advanced templates",
         "Priority AI processing",
-        "All export options",
+        "Export in multiple formats",
         "Dedicated support",
-        "Google Drive integration",
-        "Team collaboration",
-        "API access",
       ],
       limitedFeatures: [],
-      cta: "Contact sales",
       popular: false,
-      href: "/contact-sales"
     }
   ];
 
@@ -86,27 +56,6 @@ const PricingSection = () => {
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Choose the plan that works best for your reporting needs. No hidden fees or surprises.
           </p>
-          
-          <div className="flex items-center justify-center mt-8">
-            <div className="relative inline-flex items-center p-1 bg-secondary rounded-full">
-              <button
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  annual ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground'
-                }`}
-                onClick={() => setAnnual(true)}
-              >
-                Annual <span className="text-xs font-normal text-primary">Save 20%</span>
-              </button>
-              <button
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  !annual ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground'
-                }`}
-                onClick={() => setAnnual(false)}
-              >
-                Monthly
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -132,27 +81,20 @@ const PricingSection = () => {
                 <div className="mb-6">
                   <div className="flex items-end">
                     <span className="text-4xl font-bold">
-                      ${annual ? plan.price.annually : plan.price.monthly}
+                      ${plan.price}
                     </span>
-                    {plan.price.monthly > 0 && (
-                      <span className="text-muted-foreground ml-1 mb-1">/mo</span>
-                    )}
+                    <span className="text-muted-foreground ml-1 mb-1">/report</span>
                   </div>
-                  {annual && plan.price.monthly > 0 && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Billed annually (${plan.price.annually * 12}/year)
-                    </p>
-                  )}
                 </div>
                 
-                <Link to={plan.href}>
+                <ContactFormModal>
                   <Button 
                     variant={plan.popular ? "primary" : "outline"} 
                     className="w-full mb-6"
                   >
-                    {plan.cta}
+                    Contact Us
                   </Button>
-                </Link>
+                </ContactFormModal>
                 
                 <div className="space-y-3">
                   <p className="text-sm font-medium">Includes:</p>
@@ -189,9 +131,9 @@ const PricingSection = () => {
             <div className="text-center md:text-left">
               <h3 className="text-xl font-medium mb-2">Need a custom solution?</h3>
               <p className="text-muted-foreground mb-4">Contact our sales team for a customized plan tailored to your specific requirements.</p>
-              <Link to="/contact-sales">
-                <Button variant="outline">Contact Sales</Button>
-              </Link>
+              <ContactFormModal>
+                <Button variant="outline">Contact Us</Button>
+              </ContactFormModal>
             </div>
           </div>
         </div>

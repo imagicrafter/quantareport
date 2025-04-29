@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectFile } from '@/components/dashboard/files/FileItem';
 
@@ -45,4 +44,12 @@ export const formatFileSize = (bytes: number): string => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+export const removeImageExtension = (filename: string): string => {
+  // Only remove extension for image files
+  if (filename.match(/\.(jpg|jpeg|png|gif|bmp|webp)$/i)) {
+    return filename.replace(/\.[^/.]+$/, '');
+  }
+  return filename;
 };

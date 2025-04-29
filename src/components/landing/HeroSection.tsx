@@ -1,4 +1,3 @@
-
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Button from '../ui-elements/Button';
@@ -45,15 +44,11 @@ const HeroSection = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-quanta-blue/5 to-quanta-teal/5"></div>
             <div className="w-full aspect-[16/9] bg-background rounded-lg overflow-hidden">
               <div className="w-full h-full bg-white/80 backdrop-blur-sm rounded-lg p-4">
-                <div className="w-full h-full rounded bg-white shadow-sm flex items-center justify-center">
-                  <div className="text-center p-8">
-                    <div className="w-16 h-16 bg-quanta-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-quanta-teal"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-                    </div>
-                    <h3 className="text-xl font-medium mb-2">Application Interface Preview</h3>
-                    <p className="text-muted-foreground">Experience the future of reporting. Fast, flexible, and professional.</p>
-                  </div>
-                </div>
+                <img 
+                  src="https://vtaufnxworztolfdwlll.supabase.co/storage/v1/object/public/pub_images//start_new_report.png" 
+                  alt="QuantaReport Application Interface" 
+                  className="w-full h-full object-cover rounded-lg shadow-sm"
+                />
               </div>
             </div>
           </div>

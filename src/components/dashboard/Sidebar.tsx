@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, LayoutDashboard, FileText, Image, FileEdit, Settings, Users, FilePlus, ChevronDown, ChevronRight, Menu, Wand2 } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  LayoutDashboard, 
+  FileText, 
+  Image, 
+  FileEdit, 
+  Settings, 
+  Users, 
+  Menu,
+  ChevronDown,
+  ChevronRight, 
+  Wand2 
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
+import Logo from '../ui-elements/Logo';
 import { supabase } from '@/integrations/supabase/client';
 
 interface SidebarProps {
@@ -54,28 +67,18 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
         sidebarOpen ? "w-64" : "w-20"
       )}
     >
-      {/* Sidebar Header */}
-      <div className="p-4 border-b flex items-center justify-between">
-        <Link to="/dashboard" className="flex items-center">
-          {sidebarOpen ? (
-            <span className="text-xl font-bold text-quanta-blue">QuantaReport</span>
-          ) : (
-            <span className="text-xl font-bold text-quanta-blue">QR</span>
-          )}
+      <div className="p-4 border-b">
+        <Link to="/dashboard" className="flex items-center justify-center">
+          <Logo 
+            variant="sidebar" 
+            sidebarCollapsed={!sidebarOpen} 
+            size="md" 
+          />
         </Link>
-        <button onClick={toggleSidebar} className="text-gray-500 hover:text-gray-700">
-          {sidebarOpen ? (
-            <ArrowLeft size={20} />
-          ) : (
-            <Menu size={20} />
-          )}
-        </button>
       </div>
       
-      {/* Sidebar Content */}
       <div className="flex-1 flex flex-col justify-between py-4 overflow-y-auto">
         <div className="px-4 space-y-1">
-          {/* Reports Section with Submenu */}
           <div>
             <button
               onClick={() => setReportsExpanded(!reportsExpanded)}
@@ -100,7 +103,6 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
               )}
             </button>
 
-            {/* Reports Submenu */}
             {(sidebarOpen && reportsExpanded) && (
               <div className="ml-8 mt-1 space-y-1">
                 <Link
@@ -226,12 +228,30 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
           )}
         </div>
         
-        {/* User Profile */}
-        <div className={cn(
-          "mt-auto px-4 py-2",
-          sidebarOpen ? "text-left" : "text-center"
-        )}>
-          <UserAvatar showName={sidebarOpen} />
+        <div className="mt-auto">
+          <div className="px-4 mb-2">
+            <button 
+              onClick={toggleSidebar}
+              className={cn(
+                "w-full flex items-center p-2 rounded-md transition-colors",
+                "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
+                sidebarOpen ? "justify-end" : "justify-center"
+              )}
+            >
+              {sidebarOpen ? (
+                <ArrowLeft size={20} />
+              ) : (
+                <Menu size={20} />
+              )}
+            </button>
+          </div>
+          
+          <div className={cn(
+            "px-4 py-2",
+            sidebarOpen ? "text-left" : "text-center"
+          )}>
+            <UserAvatar showName={sidebarOpen} />
+          </div>
         </div>
       </div>
     </aside>
