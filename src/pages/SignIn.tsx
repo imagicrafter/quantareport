@@ -87,7 +87,7 @@ const SignIn = () => {
           <div className="glass-card p-8">
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold mb-2">Welcome back</h1>
-              <p className="text-muted-foreground">Sign in to your Inovy account</p>
+              <p className="text-muted-foreground">Sign in to your QuantaReport account</p>
             </div>
 
             {error && (
