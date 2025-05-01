@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { getAppSettings } from './configurationService';
 
 export interface SignupCode {
   id: string;
@@ -21,6 +22,18 @@ export interface SignupCode {
  */
 export const validateSignupCode = async (code: string, email: string): Promise<{ valid: boolean; message: string }> => {
   try {
+    // First check if signup codes are required at all
+    const settings = await getAppSettings();
+    
+    // If signup codes are not required, bypass validation
+    if (settings && settings.require_signup_code === false) {
+      console.log('Signup codes not required, bypassing validation');
+      return { valid: true, message: 'Signup code not required' };
+    }
+    
+    // If we get here, signup codes are required or settings couldn't be loaded
+    // (in case of error, we default to requiring codes for security)
+    
     // Check if code exists and is unused
     const { data, error } = await supabase
       .from('signup_codes' as any)

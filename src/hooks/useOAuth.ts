@@ -1,17 +1,92 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
+import { validateSignupCode } from '@/services/signupCodeService';
+import { getAppSettings } from '@/services/configurationService';
+
+// Define a session storage key for storing validated signup info
+const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
+
+interface OAuthSignupInfo {
+  email: string;
+  code: string;
+  validated: boolean;
+}
 
 export const useOAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [requiresSignupCode, setRequiresSignupCode] = useState<boolean | null>(null);
+  const [isCheckingSettings, setIsCheckingSettings] = useState(true);
 
-  const handleGoogleSignUp = async () => {
+  // Check if signup codes are required on component mount
+  useEffect(() => {
+    const checkSignupRequirements = async () => {
+      try {
+        const settings = await getAppSettings();
+        setRequiresSignupCode(settings?.require_signup_code ?? true);
+      } catch (err) {
+        console.error('Error checking signup requirements:', err);
+        // Default to requiring signup codes for security if we can't check
+        setRequiresSignupCode(true);
+      } finally {
+        setIsCheckingSettings(false);
+      }
+    };
+
+    checkSignupRequirements();
+  }, []);
+
+  // Helper function to save validated signup info to session storage
+  const saveOAuthSignupInfo = (email: string, code: string) => {
+    const signupInfo: OAuthSignupInfo = {
+      email,
+      code,
+      validated: true
+    };
+    sessionStorage.setItem(OAUTH_SIGNUP_SESSION_KEY, JSON.stringify(signupInfo));
+  };
+
+  // Helper function to validate signup code before OAuth
+  const validateSignupCodeBeforeOAuth = async (email: string, code: string): Promise<boolean> => {
+    if (!requiresSignupCode) {
+      // If signup codes aren't required, proceed without validation
+      return true;
+    }
+
+    // Validate the signup code
+    const validationResult = await validateSignupCode(code, email);
+    
+    if (validationResult.valid) {
+      // Store the validated signup info in session storage
+      saveOAuthSignupInfo(email, code);
+      return true;
+    } else {
+      toast.error(validationResult.message || 'Invalid signup code');
+      return false;
+    }
+  };
+
+  const handleGoogleSignUp = async (email?: string, signupCode?: string) => {
     setIsLoading(true);
     setError('');
     
     try {
+      // If signup codes are required, validate email and code first
+      if (requiresSignupCode && (!email || !signupCode)) {
+        throw new Error('Email and signup code are required');
+      }
+      
+      // Validate signup code if provided
+      if (requiresSignupCode && email && signupCode) {
+        const isValid = await validateSignupCodeBeforeOAuth(email, signupCode);
+        if (!isValid) {
+          setIsLoading(false);
+          return;
+        }
+      }
+      
       // Log the origin to help debugging
       console.log('Redirecting with origin:', window.location.origin);
       
@@ -49,11 +124,25 @@ export const useOAuth = () => {
     }
   };
 
-  const handleFacebookSignUp = async () => {
+  const handleFacebookSignUp = async (email?: string, signupCode?: string) => {
     setIsLoading(true);
     setError('');
     
     try {
+      // If signup codes are required, validate email and code first
+      if (requiresSignupCode && (!email || !signupCode)) {
+        throw new Error('Email and signup code are required');
+      }
+      
+      // Validate signup code if provided
+      if (requiresSignupCode && email && signupCode) {
+        const isValid = await validateSignupCodeBeforeOAuth(email, signupCode);
+        if (!isValid) {
+          setIsLoading(false);
+          return;
+        }
+      }
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'facebook',
         options: {
@@ -82,6 +171,8 @@ export const useOAuth = () => {
 
   return {
     isOAuthLoading: isLoading,
+    isCheckingSettings,
+    requiresSignupCode,
     oAuthError: error,
     handleGoogleSignUp,
     handleFacebookSignUp,

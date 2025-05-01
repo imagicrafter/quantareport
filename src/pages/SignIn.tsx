@@ -70,12 +70,14 @@ const SignIn = () => {
   const handleGoogleButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log('Google sign-in button clicked, initiating OAuth flow');
+    // For sign in, we don't need to validate signup codes
     handleGoogleSignIn();
   };
 
   const handleFacebookButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log('Facebook sign-in button clicked, initiating OAuth flow');
+    // For sign in, we don't need to validate signup codes
     handleFacebookSignIn();
   };
 
