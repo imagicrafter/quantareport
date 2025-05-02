@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
@@ -86,8 +85,8 @@ const SignUp = () => {
         return;
       }
       
-      // Validate signup code if required
-      if (requiresSignupCode) {
+      // Validate signup code if provided or required
+      if (requiresSignupCode || signUpCode) {
         setIsLoading(true);
         const validationResult = await validateSignupCode(signUpCode, email);
         setIsLoading(false);
@@ -113,8 +112,8 @@ const SignUp = () => {
     setIsLoading(true);
     
     try {
-      // If signup codes are required, validate one more time before registration
-      if (requiresSignupCode) {
+      // If signup codes are required or provided, validate one more time
+      if (requiresSignupCode || signUpCode) {
         const validationResult = await validateSignupCode(signUpCode, email);
         
         if (!validationResult.valid) {

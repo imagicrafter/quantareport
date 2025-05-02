@@ -67,7 +67,7 @@ const SignUpStep1Form = ({
       {requiresSignupCode !== false && (
         <div className="space-y-2">
           <label htmlFor="signUpCode" className="text-sm font-medium">
-            Sign-up Code
+            Sign-up Code {requiresSignupCode === true ? "" : "(Optional)"}
           </label>
           <input
             id="signUpCode"
@@ -76,7 +76,9 @@ const SignUpStep1Form = ({
             onChange={(e) => setSignUpCode(e.target.value)}
             className="w-full p-2 rounded-md border border-input bg-background"
             required={requiresSignupCode === true}
-            placeholder="Enter your sign-up code"
+            placeholder={requiresSignupCode === true 
+              ? "Enter your sign-up code" 
+              : "Enter sign-up code if you have one"}
           />
           <p className="text-xs text-muted-foreground">
             {requiresSignupCode === true 
