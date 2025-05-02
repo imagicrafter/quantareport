@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
@@ -42,6 +43,7 @@ const SignUp = () => {
       try {
         const settings = await getAppSettings();
         setRequiresSignupCode(settings?.require_signup_code ?? true);
+        console.log('Signup codes required:', settings?.require_signup_code);
       } catch (err) {
         console.error('Error checking signup requirements:', err);
         // Default to requiring signup codes for security if we can't check
@@ -74,7 +76,7 @@ const SignUp = () => {
       }
       
       // Check if signup code is required
-      if (requiresSignupCode && !signUpCode) {
+      if (requiresSignupCode === true && !signUpCode) {
         setError('A sign-up code is required');
         return;
       }
@@ -86,7 +88,7 @@ const SignUp = () => {
       }
       
       // Validate signup code if provided or required
-      if (requiresSignupCode || signUpCode) {
+      if (requiresSignupCode === true || signUpCode) {
         setIsLoading(true);
         const validationResult = await validateSignupCode(signUpCode, email);
         setIsLoading(false);
@@ -113,7 +115,7 @@ const SignUp = () => {
     
     try {
       // If signup codes are required or provided, validate one more time
-      if (requiresSignupCode || signUpCode) {
+      if (requiresSignupCode === true || signUpCode) {
         const validationResult = await validateSignupCode(signUpCode, email);
         
         if (!validationResult.valid) {
