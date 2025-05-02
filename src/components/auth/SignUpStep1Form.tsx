@@ -64,7 +64,7 @@ const SignUpStep1Form = ({
         </p>
       </div>
       
-      {requiresSignupCode === true || requiresSignupCode === null ? (
+      {requiresSignupCode !== false && (
         <div className="space-y-2">
           <label htmlFor="signUpCode" className="text-sm font-medium">
             Sign-up Code {requiresSignupCode === null ? "(Optional)" : ""}
@@ -86,7 +86,7 @@ const SignUpStep1Form = ({
               : "Enter sign-up code if you have one"}
           </p>
         </div>
-      ) : null}
+      )}
 
       {error && (
         <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
