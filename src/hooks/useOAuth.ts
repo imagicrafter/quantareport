@@ -24,8 +24,10 @@ export const useOAuth = () => {
   useEffect(() => {
     const checkSignupRequirements = async () => {
       try {
+        setIsCheckingSettings(true);
         const settings = await getAppSettings();
         setRequiresSignupCode(settings?.require_signup_code ?? true);
+        console.log('OAuth hook - Signup codes required:', settings?.require_signup_code);
       } catch (err) {
         console.error('Error checking signup requirements:', err);
         // Default to requiring signup codes for security if we can't check
@@ -74,8 +76,8 @@ export const useOAuth = () => {
     
     try {
       // If signup codes are required, validate email and code first
-      if (requiresSignupCode && (!email || !signupCode)) {
-        throw new Error('Email and signup code are required');
+      if (requiresSignupCode && email && !signupCode) {
+        throw new Error('A signup code is required');
       }
       
       // Validate signup code if provided
@@ -130,8 +132,8 @@ export const useOAuth = () => {
     
     try {
       // If signup codes are required, validate email and code first
-      if (requiresSignupCode && (!email || !signupCode)) {
-        throw new Error('Email and signup code are required');
+      if (requiresSignupCode && email && !signupCode) {
+        throw new Error('A signup code is required');
       }
       
       // Validate signup code if provided

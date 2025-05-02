@@ -24,6 +24,7 @@ export const getAppSettings = async (): Promise<AppSettings | null> => {
       return null;
     }
 
+    console.log('App settings fetched:', data?.value);
     return data?.value as AppSettings;
   } catch (error) {
     console.error('Error fetching app settings:', error);
@@ -38,6 +39,8 @@ export const getAppSettings = async (): Promise<AppSettings | null> => {
  */
 export const updateSignupRequirement = async (requireSignupCode: boolean): Promise<boolean> => {
   try {
+    console.log('Updating signup requirement to:', requireSignupCode);
+    
     const { error } = await supabase
       .from('app_settings')
       .update({
@@ -51,6 +54,7 @@ export const updateSignupRequirement = async (requireSignupCode: boolean): Promi
       return false;
     }
 
+    console.log('Signup requirement updated successfully');
     return true;
   } catch (error) {
     console.error('Error updating signup requirement:', error);
@@ -58,4 +62,3 @@ export const updateSignupRequirement = async (requireSignupCode: boolean): Promi
     return false;
   }
 };
-
