@@ -111,7 +111,7 @@ export const useOAuth = () => {
         }
       };
 
-      // Add signup code to scopes if provided
+      // Add signup code to query params if provided
       if (email && signupCode) {
         // Pass signup info through custom OAuth scope param
         options.queryParams.signup_code = signupCode;

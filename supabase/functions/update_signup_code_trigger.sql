@@ -1,45 +1,47 @@
 
 CREATE OR REPLACE FUNCTION public.handle_signup_code_usage()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
 AS $function$
 DECLARE
   require_signup_code BOOLEAN;
   signup_code TEXT;
-  settings_record RECORD;
+  settings_exists BOOLEAN;
 BEGIN
   -- Get the signup code from metadata
   signup_code := NEW.raw_user_meta_data->>'signup_code';
   
-  -- Default to requiring signup codes for security
-  require_signup_code := TRUE;
+  -- Default to not requiring signup codes (failsafe)
+  require_signup_code := FALSE;
   
-  -- Check if app_settings table exists and get settings if it does
-  BEGIN
-    SELECT EXISTS (
-      SELECT FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      AND table_name = 'app_settings'
-    ) INTO require_signup_code;
-    
-    IF require_signup_code THEN
-      -- Try to get the settings
-      SELECT * INTO settings_record
-      FROM app_settings 
+  -- Check if app_settings table exists
+  SELECT EXISTS (
+    SELECT FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'app_settings'
+  ) INTO settings_exists;
+  
+  -- Only check settings if the table exists
+  IF settings_exists THEN
+    BEGIN
+      -- Try to get require_signup_code setting
+      SELECT (value->>'require_signup_code')::BOOLEAN INTO require_signup_code 
+      FROM public.app_settings 
       WHERE key = 'signup_requirements' 
       LIMIT 1;
       
-      IF FOUND THEN
-        -- Extract the setting from the record
-        require_signup_code := (settings_record.value->>'require_signup_code')::BOOLEAN;
+      -- If no setting found, default to FALSE for safety
+      IF require_signup_code IS NULL THEN
+        require_signup_code := FALSE;
       END IF;
-    END IF;
-    
-  EXCEPTION WHEN OTHERS THEN
-    -- Log error but continue with default (requiring codes)
-    RAISE LOG 'Error checking signup requirements: %', SQLERRM;
-  END;
+      
+    EXCEPTION WHEN OTHERS THEN
+      -- Log error but continue with default (not requiring codes)
+      RAISE LOG 'Error checking signup requirements: %', SQLERRM;
+      require_signup_code := FALSE;
+    END;
+  END IF;
   
   -- Log for debugging
   RAISE LOG 'Processing signup: Email=%, Code=%, RequireCode=%', 
@@ -69,4 +71,3 @@ BEGIN
   RETURN NEW;
 END;
 $function$;
-
