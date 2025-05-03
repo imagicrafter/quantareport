@@ -13,6 +13,7 @@ interface AppSettings {
  */
 export const getAppSettings = async (): Promise<AppSettings | null> => {
   try {
+    console.log('Fetching app settings');
     // Default settings in case the database query fails
     const defaultSettings: AppSettings = {
       require_signup_code: true
@@ -27,6 +28,7 @@ export const getAppSettings = async (): Promise<AppSettings | null> => {
     if (error) {
       console.error('Error fetching app settings:', error);
       // Return default settings instead of null
+      console.log('Returning default settings due to error');
       return defaultSettings;
     }
 
@@ -35,6 +37,7 @@ export const getAppSettings = async (): Promise<AppSettings | null> => {
   } catch (error) {
     console.error('Error fetching app settings:', error);
     // Return default settings instead of null
+    console.log('Returning default settings due to exception');
     return {
       require_signup_code: true
     };

@@ -34,6 +34,7 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
     
     try {
       settings = await getAppSettings();
+      console.log('Retrieved app settings:', settings);
     } catch (settingsError) {
       console.error('Error getting app settings, defaulting to requiring codes:', settingsError);
       // Default to requiring codes
@@ -51,6 +52,7 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
     
     try {
       // Check if code exists and is unused
+      console.log('Querying signup_codes table for validation');
       const { data, error } = await supabase
         .from('signup_codes')
         .select('*')
@@ -64,6 +66,7 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
   
       if (error || !data) {
         // Check if there's any code for this email at all
+        console.log('Initial validation failed, checking for any codes for this email');
         const anyCodeResult = await supabase
           .from('signup_codes')
           .select('*')

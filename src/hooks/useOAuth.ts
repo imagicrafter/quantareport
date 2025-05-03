@@ -66,6 +66,7 @@ export const useOAuth = () => {
     try {
       // Validate the signup code
       const validationResult = await validateSignupCode(code, email);
+      console.log('OAuth signup code validation result:', validationResult);
       
       if (validationResult.valid) {
         // Store the validated signup info in session storage
