@@ -14,9 +14,9 @@ interface AppSettings {
 export const getAppSettings = async (): Promise<AppSettings | null> => {
   try {
     console.log('Fetching app settings');
-    // Default settings in case the database query fails
+    // Default settings - set to NOT require signup codes as failsafe
     const defaultSettings: AppSettings = {
-      require_signup_code: true
+      require_signup_code: false
     };
 
     const { data, error } = await supabase
@@ -39,7 +39,7 @@ export const getAppSettings = async (): Promise<AppSettings | null> => {
     // Return default settings instead of null
     console.log('Returning default settings due to exception');
     return {
-      require_signup_code: true
+      require_signup_code: false
     };
   }
 };
