@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
@@ -13,12 +14,14 @@ import { getAppSettings } from '@/services/configurationService';
 const SignUp = () => {
   const [searchParams] = useSearchParams();
   const planFromUrl = searchParams.get('plan') || 'free';
+  const codeFromUrl = searchParams.get('code') || '';
+  const emailFromUrl = searchParams.get('email') || '';
   const navigate = useNavigate();
   
   const [step, setStep] = useState(1);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(emailFromUrl);
   const [password, setPassword] = useState('');
-  const [signUpCode, setSignUpCode] = useState('');
+  const [signUpCode, setSignUpCode] = useState(codeFromUrl);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [industry, setIndustry] = useState('');
@@ -33,7 +36,8 @@ const SignUp = () => {
     isOAuthLoading,
     requiresSignupCode: oauthRequiresSignupCode,
     isCheckingSettings,
-    oAuthError
+    oAuthError,
+    setOAuthError
   } = useOAuth();
   
   // Check if signup codes are required
@@ -52,6 +56,32 @@ const SignUp = () => {
     
     checkSignupRequirements();
   }, []);
+
+  // Check URL parameters on load
+  useEffect(() => {
+    console.log('URL parameters:', { code: codeFromUrl, email: emailFromUrl });
+    
+    if (codeFromUrl && emailFromUrl) {
+      // Pre-validate the signup code
+      const validateCodeFromUrl = async () => {
+        if (requiresSignupCode === null) return; // Wait until we know if codes are required
+        
+        try {
+          setIsLoading(true);
+          const validationResult = await validateSignupCode(codeFromUrl, emailFromUrl);
+          if (!validationResult.valid) {
+            setError(validationResult.message);
+          }
+        } catch (err) {
+          console.error('Error validating code from URL:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      validateCodeFromUrl();
+    }
+  }, [codeFromUrl, emailFromUrl, requiresSignupCode]);
   
   // Combine loading states
   const isSubmitting = isLoading || isOAuthLoading || isCheckingSettings;
@@ -111,6 +141,7 @@ const SignUp = () => {
   
   const handleSubmit = async () => {
     setIsLoading(true);
+    setError('');
     
     try {
       // If signup codes are required or provided, validate one more time
@@ -141,7 +172,8 @@ const SignUp = () => {
         email,
         password,
         options: {
-          data: metadata
+          data: metadata,
+          emailRedirectTo: `${window.location.origin}/dashboard`
         }
       });
       
@@ -160,9 +192,9 @@ const SignUp = () => {
       navigate('/dashboard');
       
     } catch (err: any) {
+      console.error('Sign up error:', err);
       setError(err.message || 'An error occurred during sign up');
       toast.error(err.message || 'Failed to create account');
-      console.error('Sign up error:', err);
     } finally {
       setIsLoading(false);
     }

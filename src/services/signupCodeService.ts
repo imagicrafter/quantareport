@@ -22,6 +22,13 @@ export interface SignupCode {
  */
 export const validateSignupCode = async (code: string, email: string): Promise<{ valid: boolean; message: string }> => {
   try {
+    console.log(`Validating signup code: ${code} for email: ${email}`);
+    
+    if (!code || !email) {
+      console.log('Missing code or email for validation');
+      return { valid: false, message: 'Signup code and email are required' };
+    }
+    
     // First check if signup codes are required at all
     const settings = await getAppSettings();
     
@@ -36,7 +43,7 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
     
     // Check if code exists and is unused
     const { data, error } = await supabase
-      .from('signup_codes' as any)
+      .from('signup_codes')
       .select()
       .eq('code', code)
       .eq('email', email)
@@ -44,17 +51,21 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
       .eq('status', 'pending')
       .single();
 
+    console.log('Signup code validation result:', { data, error });
+
     if (error || !data) {
       // Check if there's any code for this email at all
       const anyCodeResult = await supabase
-        .from('signup_codes' as any)
+        .from('signup_codes')
         .select()
         .eq('email', email)
         .single();
       
+      console.log('Any code for email check result:', anyCodeResult);
+      
       // Only access data properties if data exists (not error)
       if (!anyCodeResult.error && anyCodeResult.data) {
-        const anyCodeData = anyCodeResult.data as any;
+        const anyCodeData = anyCodeResult.data;
         
         if (anyCodeData.used) {
           return { 
@@ -94,18 +105,22 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
  */
 export const markSignupCodeAsUsed = async (code: string, email: string): Promise<void> => {
   try {
+    console.log(`Marking signup code as used: ${code} for email: ${email}`);
+    
     const { error } = await supabase
-      .from('signup_codes' as any)
+      .from('signup_codes')
       .update({ 
         used: true,
         used_at: new Date().toISOString(),
-        status: 'active'
+        status: 'registered'
       })
       .eq('code', code)
       .eq('email', email);
 
     if (error) {
       console.error('Error marking signup code as used:', error);
+    } else {
+      console.log('Successfully marked signup code as used');
     }
   } catch (error) {
     console.error('Error marking signup code as used:', error);
@@ -124,7 +139,7 @@ export const generateSignupCode = async (email: string, createdBy: string): Prom
     const code = Math.random().toString(36).substring(2, 10).toUpperCase();
     
     const { data, error } = await supabase
-      .from('signup_codes' as any)
+      .from('signup_codes')
       .insert([
         {
           code,
@@ -142,7 +157,7 @@ export const generateSignupCode = async (email: string, createdBy: string): Prom
       return null;
     }
 
-    return data as unknown as SignupCode;
+    return data as SignupCode;
   } catch (error) {
     console.error('Error generating signup code:', error);
     return null;
@@ -156,7 +171,7 @@ export const generateSignupCode = async (email: string, createdBy: string): Prom
 export const getSignupCodes = async (): Promise<SignupCode[]> => {
   try {
     const { data, error } = await supabase
-      .from('signup_codes' as any)
+      .from('signup_codes')
       .select()
       .order('created_at', { ascending: false });
 
@@ -165,7 +180,7 @@ export const getSignupCodes = async (): Promise<SignupCode[]> => {
       return [];
     }
 
-    return data as unknown as SignupCode[];
+    return data as SignupCode[];
   } catch (error) {
     console.error('Error fetching signup codes:', error);
     return [];

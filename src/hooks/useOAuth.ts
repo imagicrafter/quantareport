@@ -90,17 +90,20 @@ export const useOAuth = () => {
       }
       
       // Log the origin to help debugging
-      console.log('Redirecting with origin:', window.location.origin);
+      const redirectUrl = `${window.location.origin}/dashboard`;
+      console.log('Redirecting with origin:', window.location.origin, 'to', redirectUrl);
       
       // Get the URL for Google OAuth
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
-          }
+          },
+          // Pass the signup code in the session so it can be used after OAuth redirect
+          scopes: email && signupCode ? `email signup_code=${signupCode}` : 'email'
         }
       });
       
@@ -145,10 +148,13 @@ export const useOAuth = () => {
         }
       }
       
+      const redirectUrl = `${window.location.origin}/dashboard`;
+      console.log('Redirecting with origin:', window.location.origin, 'to', redirectUrl);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'facebook',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: redirectUrl,
         }
       });
       
