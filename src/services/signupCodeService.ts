@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { getAppSettings } from './configurationService';
 
@@ -24,94 +23,12 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
   try {
     console.log(`Validating signup code: ${code} for email: ${email}`);
     
-    // MITIGATION: Always allow signup regardless of code
-    // This ensures users can register even if there are database issues
-    if (!code || !email) {
-      console.log('Missing code or email but allowing registration anyway');
-      return { valid: true, message: 'Proceeding with registration' };
-    }
-    
-    // First check if signup codes are required at all
-    let settings = null;
-    
-    try {
-      settings = await getAppSettings();
-      console.log('Retrieved app settings:', settings);
-    } catch (settingsError) {
-      console.error('Error getting app settings, defaulting to NOT requiring codes:', settingsError);
-      // Default to NOT requiring codes as a failsafe
-      settings = { require_signup_code: false };
-    }
-    
-    // If signup codes are not required, bypass validation
-    if (settings && settings.require_signup_code === false) {
-      console.log('Signup codes not required, bypassing validation');
-      return { valid: true, message: 'Signup code not required' };
-    }
-    
-    // Even if settings say codes are required, we'll still allow registration
-    // but we'll try to validate the code for UI feedback purposes
-    
-    try {
-      // Check if code exists and is unused
-      console.log('Querying signup_codes table for validation');
-      const { data, error } = await supabase
-        .from('signup_codes')
-        .select('*')
-        .eq('code', code)
-        .eq('email', email)
-        .eq('used', false)
-        .eq('status', 'pending')
-        .single();
-  
-      console.log('Signup code validation result:', { data, error });
-  
-      if (error || !data) {
-        // Check if there's any code for this email at all
-        console.log('Initial validation failed, checking for any codes for this email');
-        const anyCodeResult = await supabase
-          .from('signup_codes')
-          .select('*')
-          .eq('email', email)
-          .maybeSingle();
-        
-        console.log('Any code for email check result:', anyCodeResult);
-        
-        // Only access data properties if data exists (not error)
-        if (!anyCodeResult.error && anyCodeResult.data) {
-          const anyCodeData = anyCodeResult.data;
-          
-          if (anyCodeData.used) {
-            console.log('Code already used but allowing registration');
-            return { 
-              valid: true, 
-              message: 'Proceeding with registration (code already used)' 
-            };
-          }
-          
-          if (anyCodeData.code !== code) {
-            console.log('Invalid code but allowing registration');
-            return { 
-              valid: true, 
-              message: 'Proceeding with registration (invalid code)' 
-            };
-          }
-        }
-        
-        // MITIGATION: Allow registration even if code validation fails
-        console.log('No matching code found but allowing registration');
-        return { 
-          valid: true, 
-          message: 'Proceeding with registration (no matching code)' 
-        };
-      }
-  
-      return { valid: true, message: 'Signup code validated successfully' };
-    } catch (dbError) {
-      console.error('Database error during signup code validation:', dbError);
-      // MITIGATION: Allow registration to proceed if there's a database error during validation
-      return { valid: true, message: 'Proceeding despite validation error' };
-    }
+    // MITIGATION: Always return valid=true regardless of code or email
+    console.log('MITIGATION ACTIVE: Bypassing signup code validation');
+    return { 
+      valid: true, 
+      message: 'Proceeding with registration (validation bypassed)' 
+    };
   } catch (error) {
     console.error('Error validating signup code:', error);
     // MITIGATION: Allow registration to proceed if there's an error during validation
@@ -129,25 +46,31 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
  */
 export const markSignupCodeAsUsed = async (code: string, email: string): Promise<void> => {
   try {
-    console.log(`Marking signup code as used: ${code} for email: ${email}`);
+    console.log(`Attempting to mark signup code as used: ${code} for email: ${email}`);
     
-    const { error } = await supabase
-      .from('signup_codes')
-      .update({ 
-        used: true,
-        used_at: new Date().toISOString(),
-        status: 'registered'
-      })
-      .eq('code', code)
-      .eq('email', email);
+    // Only attempt to mark code as used if both values are provided
+    if (code && email) {
+      const { error } = await supabase
+        .from('signup_codes')
+        .update({ 
+          used: true,
+          used_at: new Date().toISOString(),
+          status: 'registered'
+        })
+        .eq('code', code)
+        .eq('email', email);
 
-    if (error) {
-      console.error('Error marking signup code as used:', error);
+      if (error) {
+        console.error('Error marking signup code as used:', error);
+      } else {
+        console.log('Successfully marked signup code as used');
+      }
     } else {
-      console.log('Successfully marked signup code as used');
+      console.log('Skipping signup code update - missing code or email');
     }
   } catch (error) {
     console.error('Error marking signup code as used:', error);
+    // Silently fail - don't block user registration
   }
 };
 

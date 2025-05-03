@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
@@ -44,13 +43,13 @@ const SignUp = () => {
   useEffect(() => {
     const checkSignupRequirements = async () => {
       try {
-        const settings = await getAppSettings();
-        setRequiresSignupCode(settings?.require_signup_code ?? true);
-        console.log('Signup codes required:', settings?.require_signup_code);
+        // MITIGATION: Always set to false
+        setRequiresSignupCode(false);
+        console.log('MITIGATION ACTIVE: Signup codes not required');
       } catch (err) {
         console.error('Error checking signup requirements:', err);
-        // Default to requiring signup codes for security if we can't check
-        setRequiresSignupCode(true);
+        // Default to NOT requiring signup codes
+        setRequiresSignupCode(false);
       }
     };
     
@@ -68,10 +67,8 @@ const SignUp = () => {
         
         try {
           setIsLoading(true);
-          const validationResult = await validateSignupCode(codeFromUrl, emailFromUrl);
-          if (!validationResult.valid) {
-            setError(validationResult.message);
-          }
+          // MITIGATION: Skip actual validation, just log attempt
+          console.log('MITIGATION ACTIVE: Skipping code validation from URL');
         } catch (err) {
           console.error('Error validating code from URL:', err);
         } finally {
@@ -104,30 +101,14 @@ const SignUp = () => {
         return;
       }
       
-      // Check if signup code is required
-      if (requiresSignupCode === true && !signUpCode) {
-        setError('A sign-up code is required');
-        return;
-      }
-      
       // Validate password length
       if (password.length < 8) {
         setError('Password must be at least 8 characters');
         return;
       }
       
-      // Validate signup code if provided or required
-      if (requiresSignupCode === true || signUpCode) {
-        setIsLoading(true);
-        const validationResult = await validateSignupCode(signUpCode, email);
-        setIsLoading(false);
-        
-        if (!validationResult.valid) {
-          setError(validationResult.message);
-          return;
-        }
-      }
-      
+      // MITIGATION: Skip code validation, always proceed to step 2
+      console.log('MITIGATION ACTIVE: Proceeding to step 2 without code validation');
       setStep(2);
     } else if (step === 2) {
       // Validate second step and submit
@@ -144,16 +125,7 @@ const SignUp = () => {
     setError('');
     
     try {
-      // If signup codes are required or provided, validate one more time
-      if (requiresSignupCode === true || signUpCode) {
-        const validationResult = await validateSignupCode(signUpCode, email);
-        
-        if (!validationResult.valid) {
-          setError(validationResult.message);
-          setIsLoading(false);
-          return;
-        }
-      }
+      // MITIGATION: Skip validation completely
       
       // Build user metadata
       const metadata: Record<string, any> = {
@@ -179,9 +151,15 @@ const SignUp = () => {
       
       if (signUpError) throw signUpError;
       
-      // Mark the signup code as used if provided
+      // Try to mark the signup code as used if provided, but don't block on failure
       if (signUpCode) {
-        await markSignupCodeAsUsed(signUpCode, email);
+        try {
+          await markSignupCodeAsUsed(signUpCode, email);
+          console.log('Signup code marked as used');
+        } catch (codeError) {
+          console.error('Failed to mark signup code as used:', codeError);
+          // Don't block registration if this fails
+        }
       }
       
       toast.success('Account created successfully!');

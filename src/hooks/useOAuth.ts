@@ -25,13 +25,12 @@ export const useOAuth = () => {
     const checkSignupRequirements = async () => {
       try {
         setIsCheckingSettings(true);
-        const settings = await getAppSettings();
-        // MITIGATION: Default to false if there's an issue
-        setRequiresSignupCode(settings?.require_signup_code ?? false);
-        console.log('OAuth hook - Signup codes required:', settings?.require_signup_code);
+        // MITIGATION: Always set to false to bypass validation
+        setRequiresSignupCode(false);
+        console.log('OAuth hook - MITIGATION ACTIVE: Signup codes not required');
       } catch (err) {
         console.error('Error checking signup requirements:', err);
-        // MITIGATION: Default to NOT requiring signup codes for security if we can't check
+        // MITIGATION: Default to NOT requiring signup codes
         setRequiresSignupCode(false);
       } finally {
         setIsCheckingSettings(false);
@@ -58,33 +57,12 @@ export const useOAuth = () => {
 
   // Helper function to validate signup code before OAuth
   const validateSignupCodeBeforeOAuth = async (email: string, code: string): Promise<boolean> => {
-    // MITIGATION: Always proceed with OAuth regardless of code validation
-    if (!requiresSignupCode) {
-      // If signup codes aren't required, proceed without validation
-      console.log('Signup codes not required, proceeding with OAuth');
-      return true;
+    // MITIGATION: Always return true
+    console.log('MITIGATION ACTIVE: Proceeding with OAuth without validation');
+    if (code) {
+      saveOAuthSignupInfo(email, code);
     }
-
-    try {
-      // Validate the signup code
-      const validationResult = await validateSignupCode(code, email);
-      console.log('OAuth signup code validation result:', validationResult);
-      
-      if (validationResult.valid) {
-        // Store the validated signup info in session storage
-        saveOAuthSignupInfo(email, code);
-        return true;
-      } else {
-        // MITIGATION: Show warning but still allow to proceed
-        toast.warning('Proceeding despite code validation issues');
-        return true;
-      }
-    } catch (err) {
-      console.error('Error validating signup code before OAuth:', err);
-      // MITIGATION: Allow sign up to proceed if validation fails
-      toast.warning('Proceeding despite validation error');
-      return true;
-    }
+    return true;
   };
 
   const handleGoogleSignUp = async (email?: string, signupCode?: string) => {
@@ -92,20 +70,8 @@ export const useOAuth = () => {
     setError('');
     
     try {
-      // If signup codes are required, validate email and code first
-      if (requiresSignupCode && email && !signupCode) {
-        throw new Error('A signup code is required');
-      }
+      // MITIGATION: Skip validation completely
       
-      // Validate signup code if provided
-      if (requiresSignupCode && email && signupCode) {
-        const isValid = await validateSignupCodeBeforeOAuth(email, signupCode);
-        if (!isValid) {
-          setIsLoading(false);
-          return;
-        }
-      }
-
       // Set up the metadata to include in the OAuth request
       const options: any = {
         redirectTo: `${window.location.origin}/dashboard`,
@@ -159,20 +125,8 @@ export const useOAuth = () => {
     setError('');
     
     try {
-      // If signup codes are required, validate email and code first
-      if (requiresSignupCode && email && !signupCode) {
-        throw new Error('A signup code is required');
-      }
+      // MITIGATION: Skip validation completely
       
-      // Validate signup code if provided
-      if (requiresSignupCode && email && signupCode) {
-        const isValid = await validateSignupCodeBeforeOAuth(email, signupCode);
-        if (!isValid) {
-          setIsLoading(false);
-          return;
-        }
-      }
-
       // Set up the metadata to include in the OAuth request
       const options: any = {
         redirectTo: `${window.location.origin}/dashboard`,
@@ -216,7 +170,7 @@ export const useOAuth = () => {
   return {
     isOAuthLoading: isLoading,
     isCheckingSettings,
-    requiresSignupCode,
+    requiresSignupCode, // Will always be false with our mitigation
     oAuthError: error,
     handleGoogleSignUp,
     handleFacebookSignUp,
