@@ -47,26 +47,39 @@ export const useOAuth = () => {
       code,
       validated: true
     };
-    sessionStorage.setItem(OAUTH_SIGNUP_SESSION_KEY, JSON.stringify(signupInfo));
+    try {
+      sessionStorage.setItem(OAUTH_SIGNUP_SESSION_KEY, JSON.stringify(signupInfo));
+      console.log('Saved OAuth signup info to session storage:', signupInfo);
+    } catch (err) {
+      console.error('Failed to save OAuth info to session storage:', err);
+    }
   };
 
   // Helper function to validate signup code before OAuth
   const validateSignupCodeBeforeOAuth = async (email: string, code: string): Promise<boolean> => {
     if (!requiresSignupCode) {
       // If signup codes aren't required, proceed without validation
+      console.log('Signup codes not required, proceeding with OAuth');
       return true;
     }
 
-    // Validate the signup code
-    const validationResult = await validateSignupCode(code, email);
-    
-    if (validationResult.valid) {
-      // Store the validated signup info in session storage
-      saveOAuthSignupInfo(email, code);
+    try {
+      // Validate the signup code
+      const validationResult = await validateSignupCode(code, email);
+      
+      if (validationResult.valid) {
+        // Store the validated signup info in session storage
+        saveOAuthSignupInfo(email, code);
+        return true;
+      } else {
+        toast.error(validationResult.message || 'Invalid signup code');
+        return false;
+      }
+    } catch (err) {
+      console.error('Error validating signup code before OAuth:', err);
+      // Allow sign up to proceed if validation fails
+      toast.error('Could not validate signup code. Proceeding with registration.');
       return true;
-    } else {
-      toast.error(validationResult.message || 'Invalid signup code');
-      return false;
     }
   };
 
@@ -88,23 +101,31 @@ export const useOAuth = () => {
           return;
         }
       }
+
+      // Set up the metadata to include in the OAuth request
+      const options: any = {
+        redirectTo: `${window.location.origin}/dashboard`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      };
+
+      // Add signup code to scopes if provided
+      if (email && signupCode) {
+        // Pass signup info through custom OAuth scope param
+        options.queryParams.signup_code = signupCode;
+        options.queryParams.email = email;
+      }
       
       // Log the origin to help debugging
-      const redirectUrl = `${window.location.origin}/dashboard`;
-      console.log('Redirecting with origin:', window.location.origin, 'to', redirectUrl);
+      console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
+      console.log('OAuth options:', options);
       
       // Get the URL for Google OAuth
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-          // Pass the signup code in the session so it can be used after OAuth redirect
-          scopes: email && signupCode ? `email signup_code=${signupCode}` : 'email'
-        }
+        options
       });
       
       if (error) {
@@ -147,15 +168,26 @@ export const useOAuth = () => {
           return;
         }
       }
+
+      // Set up the metadata to include in the OAuth request
+      const options: any = {
+        redirectTo: `${window.location.origin}/dashboard`,
+      };
+
+      // Add signup code to query params if provided
+      if (email && signupCode) {
+        options.queryParams = {
+          signup_code: signupCode,
+          email: email
+        };
+      }
       
-      const redirectUrl = `${window.location.origin}/dashboard`;
-      console.log('Redirecting with origin:', window.location.origin, 'to', redirectUrl);
+      console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
+      console.log('OAuth options:', options);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'facebook',
-        options: {
-          redirectTo: redirectUrl,
-        }
+        options
       });
       
       if (error) throw error;

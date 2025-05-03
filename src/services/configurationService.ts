@@ -13,22 +13,31 @@ interface AppSettings {
  */
 export const getAppSettings = async (): Promise<AppSettings | null> => {
   try {
+    // Default settings in case the database query fails
+    const defaultSettings: AppSettings = {
+      require_signup_code: true
+    };
+
     const { data, error } = await supabase
       .from('app_settings')
       .select('value')
       .eq('key', 'signup_requirements')
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching app settings:', error);
-      return null;
+      // Return default settings instead of null
+      return defaultSettings;
     }
 
     console.log('App settings fetched:', data?.value);
-    return data?.value as AppSettings;
+    return data?.value as AppSettings || defaultSettings;
   } catch (error) {
     console.error('Error fetching app settings:', error);
-    return null;
+    // Return default settings instead of null
+    return {
+      require_signup_code: true
+    };
   }
 };
 

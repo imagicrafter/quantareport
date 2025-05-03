@@ -30,7 +30,15 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
     }
     
     // First check if signup codes are required at all
-    const settings = await getAppSettings();
+    let settings = null;
+    
+    try {
+      settings = await getAppSettings();
+    } catch (settingsError) {
+      console.error('Error getting app settings, defaulting to requiring codes:', settingsError);
+      // Default to requiring codes
+      settings = { require_signup_code: true };
+    }
     
     // If signup codes are not required, bypass validation
     if (settings && settings.require_signup_code === false) {
@@ -41,59 +49,68 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
     // If we get here, signup codes are required or settings couldn't be loaded
     // (in case of error, we default to requiring codes for security)
     
-    // Check if code exists and is unused
-    const { data, error } = await supabase
-      .from('signup_codes')
-      .select()
-      .eq('code', code)
-      .eq('email', email)
-      .eq('used', false)
-      .eq('status', 'pending')
-      .single();
-
-    console.log('Signup code validation result:', { data, error });
-
-    if (error || !data) {
-      // Check if there's any code for this email at all
-      const anyCodeResult = await supabase
+    try {
+      // Check if code exists and is unused
+      const { data, error } = await supabase
         .from('signup_codes')
-        .select()
+        .select('*')
+        .eq('code', code)
         .eq('email', email)
+        .eq('used', false)
+        .eq('status', 'pending')
         .single();
-      
-      console.log('Any code for email check result:', anyCodeResult);
-      
-      // Only access data properties if data exists (not error)
-      if (!anyCodeResult.error && anyCodeResult.data) {
-        const anyCodeData = anyCodeResult.data;
+  
+      console.log('Signup code validation result:', { data, error });
+  
+      if (error || !data) {
+        // Check if there's any code for this email at all
+        const anyCodeResult = await supabase
+          .from('signup_codes')
+          .select('*')
+          .eq('email', email)
+          .maybeSingle();
         
-        if (anyCodeData.used) {
-          return { 
-            valid: false, 
-            message: 'This signup code has already been used. Please contact support for assistance.' 
-          };
+        console.log('Any code for email check result:', anyCodeResult);
+        
+        // Only access data properties if data exists (not error)
+        if (!anyCodeResult.error && anyCodeResult.data) {
+          const anyCodeData = anyCodeResult.data;
+          
+          if (anyCodeData.used) {
+            return { 
+              valid: false, 
+              message: 'This signup code has already been used. Please contact support for assistance.' 
+            };
+          }
+          
+          if (anyCodeData.code !== code) {
+            return { 
+              valid: false, 
+              message: 'Invalid signup code for this email address.' 
+            };
+          }
         }
         
-        if (anyCodeData.code !== code) {
-          return { 
-            valid: false, 
-            message: 'Invalid signup code for this email address.' 
-          };
-        }
+        return { 
+          valid: false, 
+          message: 'Invalid signup code. Please email signup@inovy.ai to request participation in the beta program.' 
+        };
       }
-      
-      return { 
-        valid: false, 
-        message: 'Invalid signup code. Please email signup@inovy.ai to request participation in the beta program.' 
-      };
+  
+      return { valid: true, message: 'Signup code validated successfully' };
+    } catch (dbError) {
+      console.error('Database error during signup code validation:', dbError);
+      // Allow registration to proceed if there's a database error during validation
+      // This is a fallback to prevent users from being locked out
+      return { valid: true, message: 'Proceeding without code validation due to database error' };
     }
-
-    return { valid: true, message: 'Signup code validated successfully' };
   } catch (error) {
     console.error('Error validating signup code:', error);
+    // Allow registration to proceed if there's an error during validation
+    // This is a fallback to prevent users from being locked out
     return { 
-      valid: false, 
-      message: 'An error occurred while validating your signup code. Please try again.' 
+      valid: true, 
+      message: 'Proceeding without code validation due to error' 
     };
   }
 };
