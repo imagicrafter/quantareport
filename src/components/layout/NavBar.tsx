@@ -42,10 +42,12 @@ const NavBar = () => {
 
           {isHomePage && (
             <nav className="hidden md:flex items-center space-x-8">
+              {/* Navigation links commented out as requested
               <NavLink to="/features" label="Features" />
               <NavLink to="/pricing" label="Pricing" />
               <NavLink to="/templates" label="Templates" />
               <NavLink to="/about" label="About" />
+              */}
             </nav>
           )}
 

@@ -1,3 +1,4 @@
+
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Button from '../ui-elements/Button';
@@ -33,11 +34,11 @@ const HeroSection = () => {
                 Start Creating Reports Today
               </Button>
             </Link>
-            <Link to="/demo">
+            <a href="https://www.youtube.com/watch?v=vWxMM9BZO-k" target="_blank" rel="noopener noreferrer">
               <Button size="lg" variant="outline">
                 See a live demo
               </Button>
-            </Link>
+            </a>
           </div>
           
           <div className="relative w-full max-w-5xl mx-auto rounded-lg overflow-hidden shadow-glass-lg border border-white/20 animate-scale-in" style={{ animationDelay: '400ms' }}>
