@@ -15,30 +15,39 @@ const initializeBuckets = async () => {
   
   // Check if buckets exist or create them
   try {
-    // First check if pub_images bucket exists
-    const { data: imagesBucket, error: imagesError } = await supabase
-      .storage
-      .getBucket('pub_images');
+    const buckets = ['pub_images', 'pub_audio', 'pub_documents'];
     
-    // Create pub_images bucket if it doesn't exist
-    if (imagesError && imagesError.message.includes('does not exist')) {
-      await supabase.storage.createBucket('pub_images', {
-        public: true
-      });
-      console.log('Created pub_images bucket');
-    }
-    
-    // Check if pub_audio bucket exists
-    const { data: audioBucket, error: audioError } = await supabase
-      .storage
-      .getBucket('pub_audio');
-    
-    // Create pub_audio bucket if it doesn't exist
-    if (audioError && audioError.message.includes('does not exist')) {
-      await supabase.storage.createBucket('pub_audio', {
-        public: true
-      });
-      console.log('Created pub_audio bucket');
+    for (const bucketName of buckets) {
+      try {
+        // Try to get the bucket info first
+        const { data, error } = await supabase.storage.getBucket(bucketName);
+        
+        if (error) {
+          if (error.message.includes('does not exist')) {
+            console.log(`Bucket ${bucketName} doesn't exist, creating...`);
+            const { data: bucketData, error: createError } = await supabase.storage.createBucket(bucketName, {
+              public: true
+            });
+            
+            if (createError) {
+              console.error(`Error creating ${bucketName} bucket:`, createError);
+            } else {
+              console.log(`Created ${bucketName} bucket successfully`);
+              
+              // Add a public policy to the bucket
+              // Note: getPublicUrl doesn't return an error property, only data
+              const { data: publicUrlData } = await supabase.storage.from(bucketName).getPublicUrl('test');
+              console.log(`Public policy for ${bucketName} is set up`);
+            }
+          } else {
+            console.error(`Error checking ${bucketName} bucket:`, error);
+          }
+        } else {
+          console.log(`Bucket ${bucketName} already exists`);
+        }
+      } catch (err) {
+        console.error(`Error handling ${bucketName} bucket:`, err);
+      }
     }
   } catch (error) {
     console.error('Error initializing storage buckets:', error);

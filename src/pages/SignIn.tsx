@@ -1,8 +1,8 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import NavBar from '../components/layout/NavBar';
-import Button from '../components/ui-elements/Button';
+import { Button } from '@/components/ui/button';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
 import { useOAuth } from '../hooks/useOAuth';
@@ -20,8 +20,20 @@ const SignIn = () => {
     isOAuthLoading
   } = useOAuth();
   
-  // Combine loading states
   const isSubmitting = isLoading || isOAuthLoading;
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        console.log('User already logged in, redirecting to dashboard');
+        navigate('/dashboard');
+      }
+    };
+    
+    checkSession();
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,17 +67,17 @@ const SignIn = () => {
     }
   };
 
-  // Custom Google sign-in handler
   const handleGoogleButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log('Google sign-in button clicked, initiating OAuth flow');
+    // For sign in, we don't need to validate signup codes
     handleGoogleSignIn();
   };
 
-  // Custom Facebook sign-in handler
   const handleFacebookButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log('Facebook sign-in button clicked, initiating OAuth flow');
+    // For sign in, we don't need to validate signup codes
     handleFacebookSignIn();
   };
 
@@ -77,7 +89,7 @@ const SignIn = () => {
           <div className="glass-card p-8">
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold mb-2">Welcome back</h1>
-              <p className="text-muted-foreground">Sign in to your Reportify account</p>
+              <p className="text-muted-foreground">Sign in to your QuantaReport account</p>
             </div>
 
             {error && (
@@ -88,7 +100,7 @@ const SignIn = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
+                <label htmlFor="email" className="text-sm font-medium block text-left">
                   Email
                 </label>
                 <input
@@ -126,9 +138,9 @@ const SignIn = () => {
               <Button
                 type="submit"
                 className="w-full"
-                isLoading={isSubmitting}
+                disabled={isSubmitting}
               >
-                Sign In
+                {isSubmitting ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
 
@@ -148,7 +160,7 @@ const SignIn = () => {
                   variant="outline"
                   className="w-full"
                   onClick={handleGoogleButtonClick}
-                  isLoading={isSubmitting}
+                  disabled={isSubmitting}
                 >
                   <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -164,7 +176,7 @@ const SignIn = () => {
                   variant="outline"
                   className="w-full"
                   onClick={handleFacebookButtonClick}
-                  isLoading={isSubmitting}
+                  disabled={isSubmitting}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                   Facebook

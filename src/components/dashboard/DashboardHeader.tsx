@@ -1,5 +1,7 @@
 
-import { Search, Menu, User } from 'lucide-react';
+import { useState } from 'react';
+import { Search, Menu, X } from 'lucide-react';
+import UserAvatar from './UserAvatar';
 
 interface DashboardHeaderProps {
   toggleSidebar: () => void;
@@ -7,6 +9,13 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader = ({ toggleSidebar, title }: DashboardHeaderProps) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+  };
+
   return (
     <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-40">
       <div className="px-4 md:px-6 h-16 flex items-center justify-between">
@@ -22,18 +31,28 @@ const DashboardHeader = ({ toggleSidebar, title }: DashboardHeaderProps) => {
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="relative hidden md:flex">
+          <div className={`relative hidden md:flex ${isSearchFocused ? 'w-80' : 'w-64'} transition-all duration-200`}>
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
             <input 
               type="search" 
               placeholder="Search projects..."
-              className="pl-10 pr-4 py-2 rounded-md border border-input bg-background w-64"
+              className="pl-10 pr-8 py-2 rounded-md border border-input bg-background w-full focus:outline-none focus:ring-2 focus:ring-ring focus:border-input"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
             />
+            {searchTerm && (
+              <button 
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={handleClearSearch}
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
           
-          <button className="p-1 rounded-full bg-secondary/50 hover:bg-secondary transition-colors">
-            <User size={24} className="text-muted-foreground" />
-          </button>
+          <UserAvatar />
         </div>
       </div>
     </header>

@@ -18,7 +18,7 @@ const SignUpContainer = ({ children, error, step }: SignUpContainerProps) => {
           <div className="glass-card p-8">
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold mb-2">Create your account</h1>
-              <p className="text-muted-foreground">Sign up for Reportify to get started</p>
+              <p className="text-muted-foreground">Sign up for QuantaReport to get started</p>
             </div>
             
             {error && (

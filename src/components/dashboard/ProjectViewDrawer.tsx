@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Button from '../ui-elements/Button';
 import NotesSection from './NotesSection';
 import FilesSection from './FilesSection';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ProjectViewDrawerProps {
   open: boolean;
@@ -50,11 +51,18 @@ interface ProjectData {
   status: string;
 }
 
+interface Template {
+  id: string;
+  name: string;
+  is_public: boolean;
+  user_id: string | null;
+}
+
 const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -71,7 +79,6 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
       
       setLoading(true);
       try {
-        // Fetch project details
         const { data: project, error: projectError } = await supabase
           .from('projects')
           .select('*')
@@ -80,22 +87,22 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
 
         if (projectError) throw projectError;
 
-        // Fetch available templates
         const { data: session } = await supabase.auth.getSession();
         
         if (!session.session) {
           return;
         }
 
+        const userId = session.session.user.id;
+
         const { data: templateData, error: templateError } = await supabase
           .from('templates')
           .select('*')
-          .or(`user_id.eq.${session.session.user.id},is_public.eq.true`);
+          .eq('user_id', userId);
 
         if (templateError) throw templateError;
         setTemplates(templateData || []);
 
-        // Set form values
         form.reset({
           name: project.name,
           template_id: project.template_id || '',
@@ -148,22 +155,26 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
 
   return (
     <Sheet open={open} onOpenChange={open => !open && onClose()}>
-      <SheetContent className="w-full sm:max-w-xl md:max-w-2xl overflow-y-auto">
-        <SheetHeader className="mb-6">
-          <SheetTitle>Project Details</SheetTitle>
-        </SheetHeader>
+      <SheetContent className="w-full sm:max-w-xl md:max-w-2xl flex flex-col h-full p-0">
+        <div className="flex-shrink-0 p-6 border-b">
+          <SheetHeader className="mb-0">
+            <SheetTitle>Project Details</SheetTitle>
+          </SheetHeader>
+        </div>
 
         {loading ? (
           <div className="py-8 text-center">Loading project data...</div>
         ) : (
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="mb-4 grid grid-cols-3 w-full">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="notes">Notes</TabsTrigger>
-              <TabsTrigger value="files">Files</TabsTrigger>
-            </TabsList>
+          <Tabs defaultValue="details" className="w-full flex flex-col h-full">
+            <div className="flex-shrink-0 px-6 pt-4">
+              <TabsList className="mb-4 grid grid-cols-3 w-full">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+                <TabsTrigger value="files">Files</TabsTrigger>
+              </TabsList>
+            </div>
 
-            <TabsContent value="details">
+            <TabsContent value="details" className="mt-0 px-6 pb-6 flex-grow overflow-auto">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <FormField
@@ -201,7 +212,7 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
                             ) : (
                               templates.map((template) => (
                                 <SelectItem key={template.id} value={template.id}>
-                                  {template.name} {template.is_public ? '(Public)' : ''}
+                                  {template.name}
                                 </SelectItem>
                               ))
                             )}
@@ -253,12 +264,16 @@ const ProjectViewDrawer = ({ open, onClose, projectId }: ProjectViewDrawerProps)
               </Form>
             </TabsContent>
 
-            <TabsContent value="notes">
-              <NotesSection projectId={projectId} />
+            <TabsContent value="notes" className="mt-0 flex-grow flex flex-col overflow-hidden px-6 pb-6">
+              <div className="flex-grow h-full overflow-hidden">
+                <NotesSection projectId={projectId} />
+              </div>
             </TabsContent>
 
-            <TabsContent value="files">
-              <FilesSection projectId={projectId} />
+            <TabsContent value="files" className="mt-0 flex-grow flex flex-col overflow-hidden px-6 pb-6">
+              <div className="flex-grow h-full overflow-hidden">
+                <FilesSection projectId={projectId} />
+              </div>
             </TabsContent>
           </Tabs>
         )}

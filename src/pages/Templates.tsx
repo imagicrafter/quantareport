@@ -2,66 +2,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-interface Template {
-  id: string;
-  name: string;
-  description: string | null;
-  image_module: string | null;
-  report_module: string | null;
-  is_public: boolean | null;
-  domain_id: string | null;
-  user_id: string | null;
-  created_at: string | null;
-}
-
-interface Profile {
-  id: string;
-  email: string;
-  role: string;
-  domain_id: string | null;
-}
-
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Template name must be at least 2 characters.",
-  }),
-  description: z.string().optional().nullable(),
-  image_module: z.string().optional().nullable(),
-  report_module: z.string().optional().nullable(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Template, Profile } from "@/types/template.types";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import TemplateTable from "@/components/templates/TemplateTable";
+import TemplateSummaryCards from "@/components/templates/TemplateSummaryCards";
+import TemplateEditForm from "@/components/templates/TemplateEditForm";
+import UserTemplateEditForm from "@/components/templates/UserTemplateEditForm";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { loadTemplateNotes } from "@/utils/templateNoteUtils";
 
 const Templates = () => {
   const { toast } = useToast();
@@ -69,50 +20,69 @@ const Templates = () => {
   const [domainTemplates, setDomainTemplates] = useState<Template[]>([]);
   const [myTemplates, setMyTemplates] = useState<Template[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [currentTemplate, setCurrentTemplate] = useState<Template | null>(null);
+  const [domains, setDomains] = useState<Record<string, string>>({});
+  const [justAddedTemplate, setJustAddedTemplate] = useState<Template | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      image_module: "",
-      report_module: "",
-    },
-  });
-
-  // Fetch user profile and templates
   useEffect(() => {
     const fetchUserAndTemplates = async () => {
       setIsLoading(true);
+      setFetchError(null);
       try {
-        // Check if user is authenticated
         const { data: authData } = await supabase.auth.getUser();
         if (!authData.user) {
           navigate("/signin");
           return;
         }
 
-        // Get user profile
+        console.log("Auth user data:", authData.user);
+
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", authData.user.id)
           .single();
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error("Profile error:", profileError);
+          setFetchError(`Error fetching profile: ${profileError.message}`);
+          throw profileError;
+        }
+        
         setProfile(profileData);
+        console.log("User profile:", profileData);
+        setIsAdmin(profileData.role === "admin");
 
-        // Fetch domain templates based on role and domain
+        if (profileData.role === "admin") {
+          const { data: domainsData, error: domainsError } = await supabase
+            .from("domains")
+            .select("id, name");
+          
+          if (domainsError) {
+            console.error("Domains error:", domainsError);
+            setFetchError(`Error fetching domains: ${domainsError.message}`);
+          }
+          
+          if (domainsData) {
+            const domainMap: Record<string, string> = {};
+            domainsData.forEach(domain => {
+              domainMap[domain.id] = domain.name;
+            });
+            setDomains(domainMap);
+          }
+        }
+
+        // Fetch domain templates that are public
         let domainTemplatesQuery = supabase
           .from("templates")
           .select("*")
           .eq("is_public", true);
 
-        // If not admin, filter by domain_id
         if (profileData.role !== "admin") {
           domainTemplatesQuery = domainTemplatesQuery.eq(
             "domain_id",
@@ -123,18 +93,41 @@ const Templates = () => {
         const { data: domainTemplateData, error: domainTemplateError } =
           await domainTemplatesQuery;
 
-        if (domainTemplateError) throw domainTemplateError;
-        setDomainTemplates(domainTemplateData || []);
+        if (domainTemplateError) {
+          console.error("Domain templates error:", domainTemplateError);
+          setFetchError(`Error fetching domain templates: ${domainTemplateError.message}`);
+          throw domainTemplateError;
+        }
+        
+        console.log("Domain templates data:", domainTemplateData);
+        
+        const domainTemplatesWithParentId = (domainTemplateData || []).map(template => ({
+          ...template,
+          parent_template_id: template.parent_template_id || null
+        }));
+        
+        setDomainTemplates(domainTemplatesWithParentId);
 
-        // Fetch user templates
+        // Fetch user's templates
         const { data: myTemplateData, error: myTemplateError } = await supabase
           .from("templates")
           .select("*")
-          .eq("user_id", authData.user.id)
-          .eq("is_public", false);
+          .eq("user_id", authData.user.id);
 
-        if (myTemplateError) throw myTemplateError;
-        setMyTemplates(myTemplateData || []);
+        if (myTemplateError) {
+          console.error("My templates error:", myTemplateError);
+          setFetchError(`Error fetching my templates: ${myTemplateError.message}`);
+          throw myTemplateError;
+        }
+        
+        console.log("My templates data:", myTemplateData);
+        
+        const myTemplatesWithParentId = (myTemplateData || []).map(template => ({
+          ...template,
+          parent_template_id: template.parent_template_id || null
+        }));
+        
+        setMyTemplates(myTemplatesWithParentId);
       } catch (error) {
         console.error("Error fetching templates:", error);
         toast({
@@ -154,15 +147,25 @@ const Templates = () => {
     if (!profile) return;
 
     try {
+      console.log("Copying template:", template);
+      console.log("Original template parent ID:", template.parent_template_id);
+      console.log("Using template ID as parent:", template.id);
+      
+      // When copying a template, we set the original template ID as the parent_template_id
       const newTemplate = {
-        name: template.name,
+        name: `Copy of ${template.name}`,
         description: template.description,
         image_module: template.image_module,
         report_module: template.report_module,
+        layout_module: template.layout_module,
+        html_module: template.html_module,
         is_public: false,
         domain_id: template.domain_id,
         user_id: profile.id,
+        parent_template_id: template.id, // Set the original template as parent
       };
+
+      console.log("New template data with parent_template_id:", newTemplate);
 
       const { data, error } = await supabase
         .from("templates")
@@ -170,13 +173,68 @@ const Templates = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error creating template:", error);
+        throw error;
+      }
+      
+      console.log("New template created from DB:", data);
+      
+      // Double check that parent_template_id is preserved in the response
+      if (!data.parent_template_id) {
+        console.warn("Warning: parent_template_id missing from DB response, adding it back");
+      }
+      
+      // Ensure parent_template_id is preserved
+      const completeTemplate: Template = {
+        ...data,
+        parent_template_id: data.parent_template_id || template.id // Fallback to template.id if missing
+      };
 
-      setMyTemplates([...myTemplates, data]);
+      console.log("Complete template with verified parent ID:", completeTemplate);
+
+      // Copy template notes from the parent template
+      const templateNotes = await loadTemplateNotes(template.id);
+      console.log("Template notes to copy:", templateNotes);
+      
+      if (templateNotes.length > 0) {
+        // Create new template_notes entries for the new template, preserving position values
+        const newTemplateNotes = templateNotes.map(note => ({
+          template_id: completeTemplate.id,
+          title: note.title,
+          name: note.name,
+          custom_content: note.custom_content,
+          position: note.position // Ensure position is copied over
+        }));
+        
+        console.log("Creating new template notes with positions preserved:", newTemplateNotes);
+        
+        const { error: notesError } = await supabase
+          .from("template_notes")
+          .insert(newTemplateNotes);
+          
+        if (notesError) {
+          console.error("Error copying template notes:", notesError);
+          toast({
+            title: "Warning",
+            description: "Template was created but there was an error copying template notes.",
+            variant: "destructive",
+          });
+        } else {
+          console.log("Successfully copied template notes with positions");
+        }
+      }
+
+      setMyTemplates(prevTemplates => [...prevTemplates, completeTemplate]);
       toast({
         title: "Success",
         description: "Template added to your collection.",
       });
+      
+      setJustAddedTemplate(completeTemplate);
+      setCurrentTemplate(completeTemplate);
+      setIsEditing(completeTemplate.id);
+      setIsSheetOpen(true);
     } catch (error) {
       console.error("Error copying template:", error);
       toast({
@@ -188,287 +246,108 @@ const Templates = () => {
   };
 
   const handleEditTemplate = (template: Template) => {
+    console.log("Editing template:", template);
     setCurrentTemplate(template);
-    form.reset({
-      name: template.name,
-      description: template.description || "",
-      image_module: template.image_module || "",
-      report_module: template.report_module || "",
-    });
     setIsEditing(template.id);
     setIsSheetOpen(true);
   };
 
-  const onSubmit = async (values: FormValues) => {
-    if (!currentTemplate) return;
+  const handleTemplateUpdate = (updatedTemplate: Template) => {
+    console.log("Template updated:", updatedTemplate);
+    
+    const updatedTemplates = myTemplates.map((template) =>
+      template.id === updatedTemplate.id ? updatedTemplate : template
+    );
+    
+    setMyTemplates(updatedTemplates);
+    setIsEditing(null);
+    setIsSheetOpen(false);
+    setJustAddedTemplate(null);
+  };
 
-    try {
-      const { error } = await supabase
-        .from("templates")
-        .update({
-          name: values.name,
-          description: values.description,
-          image_module: values.image_module,
-          report_module: values.report_module,
-        })
-        .eq("id", currentTemplate.id);
-
-      if (error) throw error;
-
-      // Update local state
-      const updatedMyTemplates = myTemplates.map((template) =>
-        template.id === currentTemplate.id
-          ? { ...template, ...values }
-          : template
-      );
-      setMyTemplates(updatedMyTemplates);
-
-      toast({
-        title: "Success",
-        description: "Template updated successfully.",
-      });
-      setIsEditing(null);
-      setIsSheetOpen(false);
-    } catch (error) {
-      console.error("Error updating template:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update template. Please try again.",
-        variant: "destructive",
-      });
-    }
+  const handleCancelEdit = () => {
+    setIsSheetOpen(false);
+    setIsEditing(null);
+    setJustAddedTemplate(null);
   };
 
   return (
-    <div className="px-4 py-4">
-      <h1 className="text-2xl font-bold mb-6">Templates</h1>
-
-      {isLoading ? (
-        <div className="flex justify-center items-center h-40">
-          <p>Loading templates...</p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-card p-6 rounded-lg border shadow">
-              <h2 className="text-xl font-semibold mb-2">Domain Templates</h2>
-              <p className="text-4xl font-bold">{domainTemplates.length}</p>
-              <p className="text-muted-foreground">
-                Templates available for your domain
-              </p>
-            </div>
-            <div className="bg-card p-6 rounded-lg border shadow">
-              <h2 className="text-xl font-semibold mb-2">My Templates</h2>
-              <p className="text-4xl font-bold">{myTemplates.length}</p>
-              <p className="text-muted-foreground">Your personal templates</p>
-            </div>
+    <div className="min-h-screen">
+      <DashboardHeader title="Templates" toggleSidebar={() => {}} />
+      
+      <div className="px-4 py-4">
+        {fetchError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{fetchError}</AlertDescription>
+          </Alert>
+        )}
+        
+        {isLoading ? (
+          <div className="flex justify-center items-center h-40">
+            <p>Loading templates...</p>
           </div>
+        ) : (
+          <>
+            <TemplateSummaryCards 
+              domainTemplates={domainTemplates} 
+              myTemplates={myTemplates} 
+            />
 
-          <Tabs defaultValue="domain" className="w-full mb-10">
-            <TabsList className="mb-4">
-              <TabsTrigger value="domain">Domain Templates</TabsTrigger>
-              <TabsTrigger value="personal">My Templates</TabsTrigger>
-            </TabsList>
+            <Tabs defaultValue="domain" className="w-full mb-10">
+              <TabsList className="mb-4">
+                <TabsTrigger value="domain">Domain Templates</TabsTrigger>
+                <TabsTrigger value="personal">My Templates</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="domain">
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="w-[100px]">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {domainTemplates.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={4}
-                          className="h-24 text-center text-muted-foreground"
-                        >
-                          No domain templates available
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      domainTemplates.map((template) => (
-                        <TableRow key={template.id}>
-                          <TableCell className="font-medium">
-                            {template.name}
-                          </TableCell>
-                          <TableCell>{template.description || "—"}</TableCell>
-                          <TableCell>
-                            {template.image_module ? "Image" : "Report"}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              onClick={() => handleCopyTemplate(template)}
-                            >
-                              Add
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
+              <TabsContent value="domain">
+                <TemplateTable 
+                  templates={domainTemplates}
+                  emptyMessage="No domain templates available"
+                  onAction={handleCopyTemplate}
+                  actionLabel="Add"
+                />
+              </TabsContent>
 
-            <TabsContent value="personal">
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="w-[100px]">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {myTemplates.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={4}
-                          className="h-24 text-center text-muted-foreground"
-                        >
-                          No personal templates yet
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      myTemplates.map((template) => (
-                        <TableRow key={template.id}>
-                          <TableCell className="font-medium">
-                            {template.name}
-                          </TableCell>
-                          <TableCell>{template.description || "—"}</TableCell>
-                          <TableCell>
-                            {template.image_module ? "Image" : "Report"}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditTemplate(template)}
-                            >
-                              Edit
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="personal">
+                <TemplateTable 
+                  templates={myTemplates}
+                  emptyMessage="No personal templates yet"
+                  onAction={handleEditTemplate}
+                  actionLabel="Edit"
+                />
+              </TabsContent>
+            </Tabs>
 
-          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-            <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle>Edit Template</SheetTitle>
-                <SheetDescription>
-                  Modify your template details below
-                </SheetDescription>
-              </SheetHeader>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+              <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>
+                    {justAddedTemplate ? "Customize New Template" : "Edit Template"}
+                  </SheetTitle>
+                  <SheetDescription>
+                    {isAdmin ? "Modify template details below" : "Customize your template"}
+                  </SheetDescription>
+                </SheetHeader>
 
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-6 my-6"
-                >
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Template Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Template name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                {isAdmin ? (
+                  <TemplateEditForm 
+                    currentTemplate={currentTemplate}
+                    onSuccess={handleTemplateUpdate}
+                    onCancel={handleCancelEdit}
+                    domains={domains}
                   />
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Template description"
-                            {...field}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                ) : (
+                  <UserTemplateEditForm
+                    currentTemplate={currentTemplate}
+                    onSuccess={handleTemplateUpdate}
+                    onCancel={handleCancelEdit}
                   />
-
-                  <FormField
-                    control={form.control}
-                    name="image_module"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Image Module Content</FormLabel>
-                        <FormControl>
-                          <textarea
-                            className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            placeholder="Image module content"
-                            {...field}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="report_module"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Report Module Content</FormLabel>
-                        <FormControl>
-                          <textarea
-                            className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            placeholder="Report module content"
-                            {...field}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="flex justify-end space-x-4 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setIsSheetOpen(false);
-                        setIsEditing(null);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit">Save Changes</Button>
-                  </div>
-                </form>
-              </Form>
-            </SheetContent>
-          </Sheet>
-        </>
-      )}
+                )}
+              </SheetContent>
+            </Sheet>
+          </>
+        )}
+      </div>
     </div>
   );
 };

@@ -7,11 +7,14 @@ interface SignUpStep1FormProps {
   setEmail: Dispatch<SetStateAction<string>>;
   password: string;
   setPassword: Dispatch<SetStateAction<string>>;
+  signUpCode: string;
+  setSignUpCode: Dispatch<SetStateAction<string>>;
   handleNextStep: (e: FormEvent) => void;
   error: string;
   isLoading: boolean;
-  handleGoogleSignUp: () => Promise<void>;
-  handleFacebookSignUp: () => Promise<void>;
+  handleGoogleSignUp: (email?: string, signupCode?: string) => Promise<void>;
+  handleFacebookSignUp: (email?: string, signupCode?: string) => Promise<void>;
+  requiresSignupCode?: boolean | null;
 }
 
 const SignUpStep1Form = ({
@@ -19,16 +22,19 @@ const SignUpStep1Form = ({
   setEmail,
   password,
   setPassword,
+  signUpCode,
+  setSignUpCode,
   handleNextStep,
   error,
   isLoading,
   handleGoogleSignUp,
-  handleFacebookSignUp
+  handleFacebookSignUp,
+  requiresSignupCode = true
 }: SignUpStep1FormProps) => {
   return (
     <form onSubmit={handleNextStep} className="space-y-6">
       <div className="space-y-2">
-        <label htmlFor="email" className="text-sm font-medium">
+        <label htmlFor="email" className="text-sm font-medium block text-left">
           Email
         </label>
         <input
@@ -57,6 +63,36 @@ const SignUpStep1Form = ({
           Password must be at least 8 characters
         </p>
       </div>
+      
+      {requiresSignupCode !== false && (
+        <div className="space-y-2">
+          <label htmlFor="signUpCode" className="text-sm font-medium">
+            Sign-up Code {requiresSignupCode === null ? "(Optional)" : ""}
+          </label>
+          <input
+            id="signUpCode"
+            type="text"
+            value={signUpCode}
+            onChange={(e) => setSignUpCode(e.target.value)}
+            className="w-full p-2 rounded-md border border-input bg-background"
+            required={requiresSignupCode === true}
+            placeholder={requiresSignupCode === true 
+              ? "Enter your sign-up code" 
+              : "Enter sign-up code if you have one"}
+          />
+          <p className="text-xs text-muted-foreground">
+            {requiresSignupCode === true 
+              ? "A sign-up code is required to register" 
+              : "Enter sign-up code if you have one"}
+          </p>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+          {error}
+        </div>
+      )}
 
       <Button
         type="submit"
@@ -81,7 +117,7 @@ const SignUpStep1Form = ({
             type="button"
             variant="outline"
             className="w-full"
-            onClick={handleGoogleSignUp}
+            onClick={() => handleGoogleSignUp(email, signUpCode)}
             isLoading={isLoading}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -91,7 +127,7 @@ const SignUpStep1Form = ({
             type="button"
             variant="outline"
             className="w-full"
-            onClick={handleFacebookSignUp}
+            onClick={() => handleFacebookSignUp(email, signUpCode)}
             isLoading={isLoading}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>

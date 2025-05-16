@@ -1,7 +1,22 @@
-
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { X, Plus, FolderPlus, Image, FileText, FileCheck, FileArchive, Settings, LogOut } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  LayoutDashboard, 
+  FileText, 
+  Image, 
+  FileEdit, 
+  Settings, 
+  Users, 
+  Menu,
+  ChevronDown,
+  ChevronRight, 
+  Wand2 
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import UserAvatar from './UserAvatar';
 import Logo from '../ui-elements/Logo';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -11,77 +26,232 @@ interface SidebarProps {
 
 const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarProps) => {
   const location = useLocation();
-  const currentPath = location.pathname;
+  const [reportsExpanded, setReportsExpanded] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  const isActive = (path: string) => {
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
+  
+  const isReportsActive = () => {
+    return location.pathname.includes('/reports') || 
+           location.pathname.includes('/report-wizard') ||
+           location.pathname.includes('/dashboard/projects');
+  };
 
-  const menuItems = [
-    { name: 'Projects', icon: <FolderPlus size={20} />, path: '/dashboard/projects' },
-    { name: 'Images', icon: <Image size={20} />, path: '/dashboard/images' },
-    { name: 'Notes', icon: <FileText size={20} />, path: '/dashboard/notes' },
-    { name: 'Templates', icon: <FileCheck size={20} />, path: '/dashboard/templates' },
-    { name: 'Reports', icon: <FileArchive size={20} />, path: '/dashboard/reports' },
-  ];
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+          
+          setIsAdmin(profile?.role === 'admin');
+        }
+      } catch (error) {
+        console.error('Error checking admin role:', error);
+      }
+    };
 
+    checkAdminRole();
+  }, []);
+  
   return (
     <aside 
-      className={`fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-300 ease-in-out ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } md:relative md:translate-x-0`}
+      className={cn(
+        "h-screen bg-white border-r border-gray-200 transition-all duration-300 flex flex-col",
+        sidebarOpen ? "w-64" : "w-20"
+      )}
     >
-      <div className="h-full flex flex-col">
-        <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-          <Logo variant="default" />
-          <button 
-            onClick={toggleSidebar}
-            className="p-1 rounded-md hover:bg-sidebar-accent md:hidden"
-            aria-label="Close sidebar"
-          >
-            <X size={20} />
-          </button>
-        </div>
-        
-        <div className="p-4">
-          <button 
-            onClick={() => setShowCreateProject(true)}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-md py-2 px-4 flex items-center justify-center gap-2 transition-colors"
-          >
-            <Plus size={18} />
-            <span>New Project</span>
-          </button>
-        </div>
-        
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          <div className="space-y-1">
-            {menuItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
-                  currentPath === item.path ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-                }`}
-              >
-                {item.icon}
-                <span>{item.name}</span>
-              </Link>
-            ))}
+      <div className="p-4 border-b">
+        <Link to="/dashboard" className="flex items-center justify-center">
+          <Logo 
+            variant="sidebar" 
+            sidebarCollapsed={!sidebarOpen} 
+            size="md" 
+          />
+        </Link>
+      </div>
+      
+      <div className="flex-1 flex flex-col justify-between py-4 overflow-y-auto">
+        <div className="px-4 space-y-1">
+          <div>
+            <button
+              onClick={() => setReportsExpanded(!reportsExpanded)}
+              className={cn(
+                "w-full flex items-center justify-between rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+                isReportsActive()
+                  ? "bg-quanta-blue text-white"
+                  : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+              )}
+            >
+              <div className="flex items-center">
+                <FileText 
+                  size={20} 
+                  className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+                />
+                {sidebarOpen && <span>Reports</span>}
+              </div>
+              {sidebarOpen && (
+                reportsExpanded ? 
+                <ChevronDown size={16} /> : 
+                <ChevronRight size={16} />
+              )}
+            </button>
+
+            {(sidebarOpen && reportsExpanded) && (
+              <div className="ml-8 mt-1 space-y-1">
+                <Link
+                  to="/dashboard/report-wizard/start"
+                  className={cn(
+                    "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
+                    location.pathname.includes('/dashboard/report-wizard')
+                      ? "bg-accent text-quanta-blue"
+                      : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+                  )}
+                >
+                  <Wand2 size={16} className="mr-2" />
+                  <span>Report Wizard</span>
+                </Link>
+                <Link
+                  to="/dashboard/reports"
+                  className={cn(
+                    "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
+                    isActive('/dashboard/reports')
+                      ? "bg-accent text-quanta-blue"
+                      : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+                  )}
+                >
+                  <FileText size={16} className="mr-2" />
+                  <span>View Reports</span>
+                </Link>
+                <Link
+                  to="/dashboard/projects"
+                  className={cn(
+                    "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
+                    isActive('/dashboard/projects')
+                      ? "bg-accent text-quanta-blue"
+                      : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+                  )}
+                >
+                  <LayoutDashboard size={16} className="mr-2" />
+                  <span>View Projects</span>
+                </Link>
+              </div>
+            )}
           </div>
-        </nav>
-        
-        <div className="border-t border-sidebar-border p-4 space-y-2">
+
+          <Link
+            to="/dashboard/templates"
+            className={cn(
+              "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+              isActive('/dashboard/templates')
+                ? "bg-quanta-blue text-white"
+                : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+            )}
+          >
+            <FileEdit 
+              size={20} 
+              className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+            />
+            {sidebarOpen && <span>Templates</span>}
+          </Link>
+          
+          <Link
+            to="/dashboard/images"
+            className={cn(
+              "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+              isActive('/dashboard/images')
+                ? "bg-quanta-blue text-white"
+                : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+            )}
+          >
+            <Image 
+              size={20} 
+              className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+            />
+            {sidebarOpen && <span>Images</span>}
+          </Link>
+          
+          <Link
+            to="/dashboard/notes"
+            className={cn(
+              "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+              isActive('/dashboard/notes')
+                ? "bg-quanta-blue text-white"
+                : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+            )}
+          >
+            <FileText 
+              size={20} 
+              className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+            />
+            {sidebarOpen && <span>Notes</span>}
+          </Link>
+          
           <Link
             to="/dashboard/settings"
-            className={`flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${
-              currentPath === '/dashboard/settings' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
-            }`}
+            className={cn(
+              "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+              isActive('/dashboard/settings')
+                ? "bg-quanta-blue text-white"
+                : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+            )}
           >
-            <Settings size={20} />
-            <span>Settings</span>
+            <Settings 
+              size={20} 
+              className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+            />
+            {sidebarOpen && <span>Settings</span>}
           </Link>
-          <button 
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-          >
-            <LogOut size={20} />
-            <span>Sign out</span>
-          </button>
+          
+          {isAdmin && (
+            <Link
+              to="/dashboard/admin"
+              className={cn(
+                "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+                isActive('/dashboard/admin')
+                  ? "bg-quanta-blue text-white"
+                  : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
+              )}
+            >
+              <Users 
+                size={20} 
+                className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
+              />
+              {sidebarOpen && <span>Admin</span>}
+            </Link>
+          )}
+        </div>
+        
+        <div className="mt-auto">
+          <div className="px-4 mb-2">
+            <button 
+              onClick={toggleSidebar}
+              className={cn(
+                "w-full flex items-center p-2 rounded-md transition-colors",
+                "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
+                sidebarOpen ? "justify-end" : "justify-center"
+              )}
+            >
+              {sidebarOpen ? (
+                <ArrowLeft size={20} />
+              ) : (
+                <Menu size={20} />
+              )}
+            </button>
+          </div>
+          
+          <div className={cn(
+            "px-4 py-2",
+            sidebarOpen ? "text-left" : "text-center"
+          )}>
+            <UserAvatar showName={sidebarOpen} />
+          </div>
         </div>
       </div>
     </aside>

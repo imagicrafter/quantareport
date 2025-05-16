@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'link';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
   icon?: ReactNode;
   iconPosition?: 'left' | 'right';
@@ -26,15 +26,16 @@ const Button: FC<ButtonProps> = ({
   const sizeClasses = {
     sm: "px-3 py-1.5 text-sm",
     md: "px-4 py-2 text-sm",
-    lg: "px-5 py-2.5 text-base"
+    lg: "px-5 py-2.5 text-base",
+    icon: "p-2"
   };
   
   const variantClasses = {
-    primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
-    secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+    primary: "bg-quanta-blue text-white hover:bg-quanta-blue/90 shadow-sm",
+    secondary: "bg-quanta-teal text-white hover:bg-quanta-teal/90",
     outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
     ghost: "hover:bg-accent hover:text-accent-foreground",
-    link: "text-primary underline-offset-4 hover:underline"
+    link: "text-quanta-blue underline-offset-4 hover:underline"
   };
   
   const disabledClasses = "opacity-50 cursor-not-allowed";
@@ -69,7 +70,7 @@ const Button: FC<ButtonProps> = ({
             className={cn(
               "animate-spin",
               size === "sm" ? "h-4 w-4" : "h-5 w-5",
-              variant === 'primary' ? "text-primary-foreground/70" : "text-foreground/70"
+              variant === 'primary' ? "text-white/70" : "text-foreground/70"
             )}
             xmlns="http://www.w3.org/2000/svg" 
             fill="none" 

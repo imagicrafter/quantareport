@@ -1,53 +1,71 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Index from "./pages/Index";
-import SignIn from "./pages/SignIn";
-import SignUp from "./pages/SignUp";
-import Dashboard from "./pages/Dashboard";
-import Templates from "./pages/Templates";
-import NotFound from "./pages/NotFound";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import DashboardLayout from './components/layout/DashboardLayout';
+import Index from './pages/Index';
+import Dashboard from './pages/Dashboard';
+import SignIn from './pages/SignIn';
+import SignUp from './pages/SignUp';
+import Settings from './pages/Settings';
+import NotFound from './pages/NotFound';
+import Templates from './pages/Templates';
+import Reports from './pages/Reports';
+import ReportEditor from './pages/ReportEditor';
+import Images from './pages/Images';
+import Notes from './pages/Notes';
+import Admin from './pages/Admin';
+import './App.css';
+import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from 'sonner';
 
-const queryClient = new QueryClient();
+// Import the report wizard components
+import ReportWizardContainer from './components/report-workflow/ReportWizardContainer';
+import Step1Start from './components/report-workflow/steps/Step1Start';
+import Step2Files from './components/report-workflow/steps/Step2Files';
+import Step3Process from './components/report-workflow/steps/Step3Process';
+import Step4Notes from './components/report-workflow/steps/Step4Notes';
+import Step5Generate from './components/report-workflow/steps/Step5Generate';
+import Step6Review from './components/report-workflow/steps/Step6Review';
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/signin" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/dashboard" element={<Dashboard />}>
-            <Route index element={<Navigate to="projects" replace />} />
-            <Route path="projects" element={<div className="p-4 md:p-6">
-              <h2 className="text-xl font-semibold mb-6">Projects Dashboard</h2>
-            </div>} />
-            <Route path="images" element={<div className="p-4 md:p-6">
-              <h2 className="text-xl font-semibold mb-6">Images Dashboard</h2>
-            </div>} />
-            <Route path="notes" element={<div className="p-4 md:p-6">
-              <h2 className="text-xl font-semibold mb-6">Notes Dashboard</h2>
-            </div>} />
-            <Route path="templates" element={<Templates />} />
-            <Route path="reports" element={<div className="p-4 md:p-6">
-              <h2 className="text-xl font-semibold mb-6">Reports Dashboard</h2>
-            </div>} />
-            <Route path="settings" element={<div className="p-4 md:p-6">
-              <h2 className="text-xl font-semibold mb-6">Settings</h2>
-            </div>} />
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/signin" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
+        
+        {/* Dashboard and protected routes */}
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          {/* Default redirect to projects when accessing /dashboard */}
+          <Route index element={<Navigate to="/dashboard/projects" replace />} />
+          <Route path="projects" element={<Dashboard />} />
+          <Route path="templates" element={<Templates />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="reports/editor/:id" element={<ReportEditor />} />
+          <Route path="images" element={<Images />} />
+          <Route path="notes" element={<Notes />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="admin" element={<Admin />} />
+          
+          {/* Report Wizard Routes */}
+          <Route path="report-wizard" element={<ReportWizardContainer />}>
+            <Route index element={<Navigate to="/dashboard/report-wizard/start" replace />} />
+            <Route path="start" element={<Step1Start />} />
+            <Route path="files" element={<Step2Files />} />
+            <Route path="process" element={<Step3Process />} />
+            <Route path="notes" element={<Step4Notes />} />
+            <Route path="generate" element={<Step5Generate />} />
+            <Route path="review" element={<Step6Review />} />
           </Route>
-          <Route path="/templates" element={<Navigate to="/dashboard/templates" replace />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+        </Route>
+        
+        {/* 404 route */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <Toaster />
+      <SonnerToaster position="top-right" />
+    </Router>
+  );
+}
 
 export default App;
