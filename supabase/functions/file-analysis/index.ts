@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 
@@ -15,19 +16,19 @@ const DEV_FILE_ANALYSIS_WEBHOOK_URL = Deno.env.get("DEV_FILE_ANALYSIS_WEBHOOK_UR
 const PROD_FILE_ANALYSIS_WEBHOOK_URL = Deno.env.get("PROD_FILE_ANALYSIS_WEBHOOK_URL") || 
   "https://n8n-01.imagicrafterai.com/webhook/d42cb7ac-c4e1-4f0e-a084-0f6f85807b65";
 
-// New function to get webhook URL based on environment
+// Updated function to get webhook URL based on environment using the n8n-webhook-proxy
 const getWebhookUrl = async (env: string): Promise<string> => {
-  // Try to get webhook URL from config endpoint first
+  // Try to get webhook URL from n8n-webhook-proxy/config endpoint first
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const response = await fetch(`${supabaseUrl}/functions/v1/file-analysis-config?env=${env}`);
+    const response = await fetch(`${supabaseUrl}/functions/v1/n8n-webhook-proxy/config?env=${env}`);
     
     if (response.ok) {
       const data = await response.json();
       return data.currentWebhooks["file-analysis"];
     }
   } catch (error) {
-    console.error("Error fetching webhook config, using fallback:", error);
+    console.error("Error fetching webhook config from n8n-webhook-proxy, using fallback:", error);
   }
   
   // Fallback to environment variables or defaults

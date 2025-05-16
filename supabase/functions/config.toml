@@ -4,9 +4,6 @@ project_id = "vtaufnxworztolfdwlll"
 [functions.file-analysis]
 verify_jwt = false
 
-[functions.file-analysis-config]
-verify_jwt = false
-
 [functions.image-analysis]
 verify_jwt = false
 
@@ -30,4 +27,3 @@ verify_jwt = false
 
 [functions.note-analysis]
 verify_jwt = false
-
