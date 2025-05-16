@@ -10,9 +10,6 @@ verify_jwt = false
 [functions.image-analysis]
 verify_jwt = false
 
-[functions.n8n-proxy]
-verify_jwt = false
-
 [functions.n8n-webhook-proxy]
 verify_jwt = false
 
@@ -33,3 +30,4 @@ verify_jwt = false
 
 [functions.note-analysis]
 verify_jwt = false
+

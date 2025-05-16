@@ -1,9 +1,6 @@
 
 project_id = "vtaufnxworztolfdwlll"
 
-[functions.n8n-proxy]
-verify_jwt = false
-
 [functions.file-analysis]
 verify_jwt = false
 
@@ -24,3 +21,4 @@ verify_jwt = false
 
 [functions.send-signup-invite]
 verify_jwt = false
+
