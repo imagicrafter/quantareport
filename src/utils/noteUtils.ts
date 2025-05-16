@@ -1,6 +1,7 @@
+
 import { NoteFileRelationship } from './noteFileRelationshipUtils';
 import { supabase } from '@/integrations/supabase/client';
-import { getWebhookUrl, isDevelopmentEnvironment } from './webhookConfig';
+import { getCurrentEnvironment, isDevelopmentEnvironment } from './webhookConfig';
 
 export interface NoteFileRelationshipWithType extends NoteFileRelationship {
   file_type: string;
@@ -84,9 +85,12 @@ export const submitImageAnalysis = async (
   isTestMode: boolean
 ): Promise<boolean> => {
   try {
+    // Get the current environment
+    const currentEnvironment = getCurrentEnvironment();
+    
     // Only consider isTestMode when in development environment
     const shouldUseTestMode = isDevelopmentEnvironment() && isTestMode;
-    console.log(`Using ${shouldUseTestMode ? 'TEST' : 'REGULAR'} mode for project (App Environment: ${isDevelopmentEnvironment() ? 'Development' : 'Production/Staging'})`);
+    console.log(`Using ${shouldUseTestMode ? 'TEST' : 'REGULAR'} mode for project (App Environment: ${currentEnvironment})`);
     
     const payload = {
       note_id: noteId,
@@ -95,10 +99,10 @@ export const submitImageAnalysis = async (
       timestamp: new Date().toISOString()
     };
     
-    // Use the consolidated n8n-webhook-proxy function directly
+    // Use the consolidated n8n-webhook-proxy function directly with correct environment
     const { error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
       body: {
-        env: shouldUseTestMode ? 'development' : isDevelopmentEnvironment() ? 'development' : 'production',
+        env: shouldUseTestMode ? 'development' : currentEnvironment,
         payload,
         type: 'note',
         isTestMode: shouldUseTestMode
