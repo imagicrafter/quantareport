@@ -13,11 +13,13 @@ const CTASection = () => {
         {/* <p className="text-xl text-muted-foreground mb-8">
           Join thousands of professionals who save time and deliver better reports with QuantaReport
         </p> */}
+        {/* Contact button commented out as requested
         <ContactFormModal>
           <Button variant="primary" size="lg">
             Contact Us Today
           </Button>
         </ContactFormModal>
+        */}
       </div>
     </section>
   );

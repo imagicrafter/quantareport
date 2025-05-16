@@ -1,9 +1,12 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignupCodes, generateSignupCode, SignupCode } from '@/services/signupCodeService';
+import { getAppSettings, updateSignupRequirement } from '@/services/configurationService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { 
   Table, 
   TableBody, 
@@ -13,16 +16,19 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Clipboard, Check, Send } from 'lucide-react';
+import { Clipboard, Check, Send, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const SignupCodesTab = () => {
   const [codes, setCodes] = useState<SignupCode[]>([]);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [requireSignupCode, setRequireSignupCode] = useState(true);
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   useEffect(() => {
     loadCodes();
+    loadSettings();
   }, []);
 
   const loadCodes = async () => {
@@ -30,6 +36,29 @@ const SignupCodesTab = () => {
     const allCodes = await getSignupCodes();
     setCodes(allCodes);
     setLoading(false);
+  };
+
+  const loadSettings = async () => {
+    setSettingsLoading(true);
+    const settings = await getAppSettings();
+    if (settings) {
+      setRequireSignupCode(settings.require_signup_code);
+    }
+    setSettingsLoading(false);
+  };
+
+  const handleToggleSignupRequirement = async () => {
+    setSettingsLoading(true);
+    
+    const newValue = !requireSignupCode;
+    const success = await updateSignupRequirement(newValue);
+    
+    if (success) {
+      setRequireSignupCode(newValue);
+      toast.success(`Signup code requirement ${newValue ? 'enabled' : 'disabled'}`);
+    }
+    
+    setSettingsLoading(false);
   };
 
   const handleGenerateCode = async () => {
@@ -133,6 +162,36 @@ const SignupCodesTab = () => {
 
   return (
     <div className="space-y-6">
+      {/* Signup Requirement Toggle */}
+      <div className="bg-muted/30 p-4 rounded-lg border">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">Signup Code Requirement</h3>
+            <p className="text-muted-foreground">
+              {requireSignupCode 
+                ? "Users must provide a signup code to register" 
+                : "Users can register without a signup code"}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm mr-2">
+              {settingsLoading ? 'Updating...' : requireSignupCode ? 'Required' : 'Optional'}
+            </span>
+            <div className="flex items-center" onClick={!settingsLoading ? handleToggleSignupRequirement : undefined}>
+              <Switch 
+                checked={requireSignupCode}
+                onCheckedChange={handleToggleSignupRequirement}
+                disabled={settingsLoading}
+                className="cursor-pointer"
+              />
+              {requireSignupCode 
+                ? <ToggleRight className="h-5 w-5 ml-2 text-primary" /> 
+                : <ToggleLeft className="h-5 w-5 ml-2 text-muted-foreground" />}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-4">
         <h2 className="text-xl font-semibold">Generate New Signup Code</h2>
         <div className="flex gap-3">

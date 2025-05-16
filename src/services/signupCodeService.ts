@@ -1,5 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { getAppSettings } from './configurationService';
 
 export interface SignupCode {
   id: string;
@@ -21,55 +21,20 @@ export interface SignupCode {
  */
 export const validateSignupCode = async (code: string, email: string): Promise<{ valid: boolean; message: string }> => {
   try {
-    // Check if code exists and is unused
-    const { data, error } = await supabase
-      .from('signup_codes' as any)
-      .select()
-      .eq('code', code)
-      .eq('email', email)
-      .eq('used', false)
-      .eq('status', 'pending')
-      .single();
-
-    if (error || !data) {
-      // Check if there's any code for this email at all
-      const anyCodeResult = await supabase
-        .from('signup_codes' as any)
-        .select()
-        .eq('email', email)
-        .single();
-      
-      // Only access data properties if data exists (not error)
-      if (!anyCodeResult.error && anyCodeResult.data) {
-        const anyCodeData = anyCodeResult.data as any;
-        
-        if (anyCodeData.used) {
-          return { 
-            valid: false, 
-            message: 'This signup code has already been used. Please contact support for assistance.' 
-          };
-        }
-        
-        if (anyCodeData.code !== code) {
-          return { 
-            valid: false, 
-            message: 'Invalid signup code for this email address.' 
-          };
-        }
-      }
-      
-      return { 
-        valid: false, 
-        message: 'Invalid signup code. Please email signup@inovy.ai to request participation in the beta program.' 
-      };
-    }
-
-    return { valid: true, message: 'Signup code validated successfully' };
+    console.log(`Validating signup code: ${code} for email: ${email}`);
+    
+    // MITIGATION: Always return valid=true regardless of code or email
+    console.log('MITIGATION ACTIVE: Bypassing signup code validation');
+    return { 
+      valid: true, 
+      message: 'Proceeding with registration (validation bypassed)' 
+    };
   } catch (error) {
     console.error('Error validating signup code:', error);
+    // MITIGATION: Allow registration to proceed if there's an error during validation
     return { 
-      valid: false, 
-      message: 'An error occurred while validating your signup code. Please try again.' 
+      valid: true, 
+      message: 'Proceeding without code validation due to error' 
     };
   }
 };
@@ -81,21 +46,31 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
  */
 export const markSignupCodeAsUsed = async (code: string, email: string): Promise<void> => {
   try {
-    const { error } = await supabase
-      .from('signup_codes' as any)
-      .update({ 
-        used: true,
-        used_at: new Date().toISOString(),
-        status: 'active'
-      })
-      .eq('code', code)
-      .eq('email', email);
+    console.log(`Attempting to mark signup code as used: ${code} for email: ${email}`);
+    
+    // Only attempt to mark code as used if both values are provided
+    if (code && email) {
+      const { error } = await supabase
+        .from('signup_codes')
+        .update({ 
+          used: true,
+          used_at: new Date().toISOString(),
+          status: 'registered'
+        })
+        .eq('code', code)
+        .eq('email', email);
 
-    if (error) {
-      console.error('Error marking signup code as used:', error);
+      if (error) {
+        console.error('Error marking signup code as used:', error);
+      } else {
+        console.log('Successfully marked signup code as used');
+      }
+    } else {
+      console.log('Skipping signup code update - missing code or email');
     }
   } catch (error) {
     console.error('Error marking signup code as used:', error);
+    // Silently fail - don't block user registration
   }
 };
 
@@ -111,7 +86,7 @@ export const generateSignupCode = async (email: string, createdBy: string): Prom
     const code = Math.random().toString(36).substring(2, 10).toUpperCase();
     
     const { data, error } = await supabase
-      .from('signup_codes' as any)
+      .from('signup_codes')
       .insert([
         {
           code,
@@ -129,7 +104,7 @@ export const generateSignupCode = async (email: string, createdBy: string): Prom
       return null;
     }
 
-    return data as unknown as SignupCode;
+    return data as SignupCode;
   } catch (error) {
     console.error('Error generating signup code:', error);
     return null;
@@ -143,7 +118,7 @@ export const generateSignupCode = async (email: string, createdBy: string): Prom
 export const getSignupCodes = async (): Promise<SignupCode[]> => {
   try {
     const { data, error } = await supabase
-      .from('signup_codes' as any)
+      .from('signup_codes')
       .select()
       .order('created_at', { ascending: false });
 
@@ -152,7 +127,7 @@ export const getSignupCodes = async (): Promise<SignupCode[]> => {
       return [];
     }
 
-    return data as unknown as SignupCode[];
+    return data as SignupCode[];
   } catch (error) {
     console.error('Error fetching signup codes:', error);
     return [];

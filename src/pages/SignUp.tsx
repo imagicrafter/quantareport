@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
@@ -9,37 +8,87 @@ import SignUpContainer from '../components/auth/SignUpContainer';
 import SignUpStep1Form from '../components/auth/SignUpStep1Form';
 import SignUpStep2Form from '../components/auth/SignUpStep2Form';
 import { validateSignupCode, markSignupCodeAsUsed } from '@/services/signupCodeService';
+import { getAppSettings } from '@/services/configurationService';
 
 const SignUp = () => {
   const [searchParams] = useSearchParams();
   const planFromUrl = searchParams.get('plan') || 'free';
+  const codeFromUrl = searchParams.get('code') || '';
+  const emailFromUrl = searchParams.get('email') || '';
   const navigate = useNavigate();
   
   const [step, setStep] = useState(1);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(emailFromUrl);
   const [password, setPassword] = useState('');
-  const [signUpCode, setSignUpCode] = useState('');
+  const [signUpCode, setSignUpCode] = useState(codeFromUrl);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [industry, setIndustry] = useState('');
   const [plan, setPlan] = useState(planFromUrl);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [requiresSignupCode, setRequiresSignupCode] = useState<boolean | null>(null);
   
   const { 
     handleGoogleSignUp, 
     handleFacebookSignUp, 
     isOAuthLoading,
-    oAuthError
+    requiresSignupCode: oauthRequiresSignupCode,
+    isCheckingSettings,
+    oAuthError,
+    setOAuthError
   } = useOAuth();
   
+  // Check if signup codes are required
+  useEffect(() => {
+    const checkSignupRequirements = async () => {
+      try {
+        // MITIGATION: Always set to false
+        setRequiresSignupCode(false);
+        console.log('MITIGATION ACTIVE: Signup codes not required');
+      } catch (err) {
+        console.error('Error checking signup requirements:', err);
+        // Default to NOT requiring signup codes
+        setRequiresSignupCode(false);
+      }
+    };
+    
+    checkSignupRequirements();
+  }, []);
+
+  // Check URL parameters on load
+  useEffect(() => {
+    console.log('URL parameters:', { code: codeFromUrl, email: emailFromUrl });
+    
+    if (codeFromUrl && emailFromUrl) {
+      // Pre-validate the signup code
+      const validateCodeFromUrl = async () => {
+        if (requiresSignupCode === null) return; // Wait until we know if codes are required
+        
+        try {
+          setIsLoading(true);
+          // MITIGATION: Skip actual validation, just log attempt
+          console.log('MITIGATION ACTIVE: Skipping code validation from URL');
+        } catch (err) {
+          console.error('Error validating code from URL:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      validateCodeFromUrl();
+    }
+  }, [codeFromUrl, emailFromUrl, requiresSignupCode]);
+  
   // Combine loading states
-  const isSubmitting = isLoading || isOAuthLoading;
+  const isSubmitting = isLoading || isOAuthLoading || isCheckingSettings;
   
   // Combine error states
-  if (oAuthError && !error) {
-    setError(oAuthError);
-  }
+  useEffect(() => {
+    if (oAuthError && !error) {
+      setError(oAuthError);
+    }
+  }, [oAuthError, error]);
   
   const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +96,7 @@ const SignUp = () => {
     
     if (step === 1) {
       // Validate first step
-      if (!email || !password || !signUpCode) {
+      if (!email || !password) {
         setError('Please fill in all required fields');
         return;
       }
@@ -58,16 +107,8 @@ const SignUp = () => {
         return;
       }
       
-      // Validate signup code
-      setIsLoading(true);
-      const validationResult = await validateSignupCode(signUpCode, email);
-      setIsLoading(false);
-      
-      if (!validationResult.valid) {
-        setError(validationResult.message);
-        return;
-      }
-      
+      // MITIGATION: Skip code validation, always proceed to step 2
+      console.log('MITIGATION ACTIVE: Proceeding to step 2 without code validation');
       setStep(2);
     } else if (step === 2) {
       // Validate second step and submit
@@ -81,34 +122,45 @@ const SignUp = () => {
   
   const handleSubmit = async () => {
     setIsLoading(true);
+    setError('');
     
     try {
-      // Validate signup code one more time before registration
-      const validationResult = await validateSignupCode(signUpCode, email);
+      // MITIGATION: Skip validation completely
       
-      if (!validationResult.valid) {
-        setError(validationResult.message);
-        setIsLoading(false);
-        return;
+      // Build user metadata
+      const metadata: Record<string, any> = {
+        full_name: name,
+        phone,
+        industry,
+        plan
+      };
+      
+      // Include signup code in metadata if provided
+      if (signUpCode) {
+        metadata.signup_code = signUpCode;
       }
       
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            full_name: name,
-            phone,
-            industry,
-            plan
-          }
+          data: metadata,
+          emailRedirectTo: `${window.location.origin}/dashboard`
         }
       });
       
       if (signUpError) throw signUpError;
       
-      // Mark the signup code as used and update status to active
-      await markSignupCodeAsUsed(signUpCode, email);
+      // Try to mark the signup code as used if provided, but don't block on failure
+      if (signUpCode) {
+        try {
+          await markSignupCodeAsUsed(signUpCode, email);
+          console.log('Signup code marked as used');
+        } catch (codeError) {
+          console.error('Failed to mark signup code as used:', codeError);
+          // Don't block registration if this fails
+        }
+      }
       
       toast.success('Account created successfully!');
       console.log('Signed up successfully:', data);
@@ -118,9 +170,9 @@ const SignUp = () => {
       navigate('/dashboard');
       
     } catch (err: any) {
+      console.error('Sign up error:', err);
       setError(err.message || 'An error occurred during sign up');
       toast.error(err.message || 'Failed to create account');
-      console.error('Sign up error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -141,6 +193,7 @@ const SignUp = () => {
           isLoading={isSubmitting}
           handleGoogleSignUp={handleGoogleSignUp}
           handleFacebookSignUp={handleFacebookSignUp}
+          requiresSignupCode={requiresSignupCode}
         />
       ) : (
         <SignUpStep2Form

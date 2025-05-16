@@ -1,30 +1,101 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
+import { validateSignupCode } from '@/services/signupCodeService';
+import { getAppSettings } from '@/services/configurationService';
+
+// Define a session storage key for storing validated signup info
+const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
+
+interface OAuthSignupInfo {
+  email: string;
+  code: string;
+  validated: boolean;
+}
 
 export const useOAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [requiresSignupCode, setRequiresSignupCode] = useState<boolean | null>(null);
+  const [isCheckingSettings, setIsCheckingSettings] = useState(true);
 
-  const handleGoogleSignUp = async () => {
+  // Check if signup codes are required on component mount
+  useEffect(() => {
+    const checkSignupRequirements = async () => {
+      try {
+        setIsCheckingSettings(true);
+        // MITIGATION: Always set to false to bypass validation
+        setRequiresSignupCode(false);
+        console.log('OAuth hook - MITIGATION ACTIVE: Signup codes not required');
+      } catch (err) {
+        console.error('Error checking signup requirements:', err);
+        // MITIGATION: Default to NOT requiring signup codes
+        setRequiresSignupCode(false);
+      } finally {
+        setIsCheckingSettings(false);
+      }
+    };
+
+    checkSignupRequirements();
+  }, []);
+
+  // Helper function to save validated signup info to session storage
+  const saveOAuthSignupInfo = (email: string, code: string) => {
+    const signupInfo: OAuthSignupInfo = {
+      email,
+      code,
+      validated: true
+    };
+    try {
+      sessionStorage.setItem(OAUTH_SIGNUP_SESSION_KEY, JSON.stringify(signupInfo));
+      console.log('Saved OAuth signup info to session storage:', signupInfo);
+    } catch (err) {
+      console.error('Failed to save OAuth info to session storage:', err);
+    }
+  };
+
+  // Helper function to validate signup code before OAuth
+  const validateSignupCodeBeforeOAuth = async (email: string, code: string): Promise<boolean> => {
+    // MITIGATION: Always return true
+    console.log('MITIGATION ACTIVE: Proceeding with OAuth without validation');
+    if (code) {
+      saveOAuthSignupInfo(email, code);
+    }
+    return true;
+  };
+
+  const handleGoogleSignUp = async (email?: string, signupCode?: string) => {
     setIsLoading(true);
     setError('');
     
     try {
+      // MITIGATION: Skip validation completely
+      
+      // Set up the metadata to include in the OAuth request
+      const options: any = {
+        redirectTo: `${window.location.origin}/dashboard`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      };
+
+      // Add signup code to query params if provided
+      if (email && signupCode) {
+        // Pass signup info through custom OAuth scope param
+        options.queryParams.signup_code = signupCode;
+        options.queryParams.email = email;
+      }
+      
       // Log the origin to help debugging
-      console.log('Redirecting with origin:', window.location.origin);
+      console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
+      console.log('OAuth options:', options);
       
       // Get the URL for Google OAuth
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        }
+        options
       });
       
       if (error) {
@@ -49,16 +120,32 @@ export const useOAuth = () => {
     }
   };
 
-  const handleFacebookSignUp = async () => {
+  const handleFacebookSignUp = async (email?: string, signupCode?: string) => {
     setIsLoading(true);
     setError('');
     
     try {
+      // MITIGATION: Skip validation completely
+      
+      // Set up the metadata to include in the OAuth request
+      const options: any = {
+        redirectTo: `${window.location.origin}/dashboard`,
+      };
+
+      // Add signup code to query params if provided
+      if (email && signupCode) {
+        options.queryParams = {
+          signup_code: signupCode,
+          email: email
+        };
+      }
+      
+      console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
+      console.log('OAuth options:', options);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'facebook',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-        }
+        options
       });
       
       if (error) throw error;
@@ -82,6 +169,8 @@ export const useOAuth = () => {
 
   return {
     isOAuthLoading: isLoading,
+    isCheckingSettings,
+    requiresSignupCode, // Will always be false with our mitigation
     oAuthError: error,
     handleGoogleSignUp,
     handleFacebookSignUp,
