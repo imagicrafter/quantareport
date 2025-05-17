@@ -19,9 +19,6 @@ verify_jwt = false
 [functions.transcribe-audio]
 verify_jwt = false
 
-[functions.workflow-management]
-verify_jwt = false
-
 [functions.report-generator]
 verify_jwt = false
 
