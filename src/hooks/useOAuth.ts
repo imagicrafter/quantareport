@@ -25,12 +25,13 @@ export const useOAuth = () => {
     const checkSignupRequirements = async () => {
       try {
         setIsCheckingSettings(true);
-        // MITIGATION: Always set to false to bypass validation
-        setRequiresSignupCode(false);
-        console.log('OAuth hook - MITIGATION ACTIVE: Signup codes not required');
+        const settings = await getAppSettings();
+        const requireCodes = settings?.require_signup_code || false;
+        setRequiresSignupCode(requireCodes);
+        console.log('OAuth hook - Signup codes required:', requireCodes);
       } catch (err) {
         console.error('Error checking signup requirements:', err);
-        // MITIGATION: Default to NOT requiring signup codes
+        // Default to NOT requiring signup codes
         setRequiresSignupCode(false);
       } finally {
         setIsCheckingSettings(false);
@@ -57,12 +58,31 @@ export const useOAuth = () => {
 
   // Helper function to validate signup code before OAuth
   const validateSignupCodeBeforeOAuth = async (email: string, code: string): Promise<boolean> => {
-    // MITIGATION: Always return true
-    console.log('MITIGATION ACTIVE: Proceeding with OAuth without validation');
-    if (code) {
-      saveOAuthSignupInfo(email, code);
+    if (!requiresSignupCode) {
+      console.log('Signup codes not required, proceeding with OAuth');
+      return true;
     }
-    return true;
+
+    if (!code) {
+      setError('Signup code is required');
+      return false;
+    }
+
+    try {
+      const validation = await validateSignupCode(code, email);
+      if (!validation.valid) {
+        setError(validation.message);
+        return false;
+      }
+      
+      // Save validated info for OAuth callback
+      saveOAuthSignupInfo(email, code);
+      return true;
+    } catch (err) {
+      console.error('Error validating signup code:', err);
+      setError('Error validating signup code');
+      return false;
+    }
   };
 
   const handleGoogleSignUp = async (email?: string, signupCode?: string) => {
@@ -70,7 +90,18 @@ export const useOAuth = () => {
     setError('');
     
     try {
-      // MITIGATION: Skip validation completely
+      // Validate signup code if required and provided
+      if (email && signupCode) {
+        const isValid = await validateSignupCodeBeforeOAuth(email, signupCode);
+        if (!isValid) {
+          setIsLoading(false);
+          return;
+        }
+      } else if (requiresSignupCode) {
+        setError('Email and signup code are required');
+        setIsLoading(false);
+        return;
+      }
       
       // Set up the metadata to include in the OAuth request
       const options: any = {
@@ -83,12 +114,10 @@ export const useOAuth = () => {
 
       // Add signup code to query params if provided
       if (email && signupCode) {
-        // Pass signup info through custom OAuth scope param
         options.queryParams.signup_code = signupCode;
         options.queryParams.email = email;
       }
       
-      // Log the origin to help debugging
       console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
       console.log('OAuth options:', options);
       
@@ -125,7 +154,18 @@ export const useOAuth = () => {
     setError('');
     
     try {
-      // MITIGATION: Skip validation completely
+      // Validate signup code if required and provided
+      if (email && signupCode) {
+        const isValid = await validateSignupCodeBeforeOAuth(email, signupCode);
+        if (!isValid) {
+          setIsLoading(false);
+          return;
+        }
+      } else if (requiresSignupCode) {
+        setError('Email and signup code are required');
+        setIsLoading(false);
+        return;
+      }
       
       // Set up the metadata to include in the OAuth request
       const options: any = {
@@ -170,7 +210,7 @@ export const useOAuth = () => {
   return {
     isOAuthLoading: isLoading,
     isCheckingSettings,
-    requiresSignupCode, // Will always be false with our mitigation
+    requiresSignupCode,
     oAuthError: error,
     handleGoogleSignUp,
     handleFacebookSignUp,

@@ -29,7 +29,7 @@ const SignUpStep1Form = ({
   isLoading,
   handleGoogleSignUp,
   handleFacebookSignUp,
-  requiresSignupCode = true
+  requiresSignupCode = false
 }: SignUpStep1FormProps) => {
   return (
     <form onSubmit={handleNextStep} className="space-y-6">
@@ -64,10 +64,10 @@ const SignUpStep1Form = ({
         </p>
       </div>
       
-      {requiresSignupCode !== false && (
+      {requiresSignupCode && (
         <div className="space-y-2">
           <label htmlFor="signUpCode" className="text-sm font-medium">
-            Sign-up Code {requiresSignupCode === null ? "(Optional)" : ""}
+            Sign-up Code
           </label>
           <input
             id="signUpCode"
@@ -76,14 +76,10 @@ const SignUpStep1Form = ({
             onChange={(e) => setSignUpCode(e.target.value)}
             className="w-full p-2 rounded-md border border-input bg-background"
             required={requiresSignupCode === true}
-            placeholder={requiresSignupCode === true 
-              ? "Enter your sign-up code" 
-              : "Enter sign-up code if you have one"}
+            placeholder="Enter your sign-up code"
           />
           <p className="text-xs text-muted-foreground">
-            {requiresSignupCode === true 
-              ? "A sign-up code is required to register" 
-              : "Enter sign-up code if you have one"}
+            A sign-up code is required to register
           </p>
         </div>
       )}
