@@ -10,6 +10,7 @@ import TemplatesTab from '@/components/admin/TemplatesTab';
 import AdminProjectsTab from '@/components/admin/AdminProjectsTab';
 import AdminReportsTab from '@/components/admin/AdminReportsTab';
 import ConfigurationTab from '@/components/admin/ConfigurationTab';
+import DocumentationTab from '@/components/admin/DocumentationTab';
 
 const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -78,6 +79,7 @@ const Admin = () => {
             <TabsTrigger value="signup-codes">Signup Codes</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
             <TabsTrigger value="configuration">Configuration</TabsTrigger>
+            <TabsTrigger value="documentation">Documentation</TabsTrigger>
           </TabsList>
           
           <TabsContent value="projects" className="bg-card border rounded-lg p-6">
@@ -98,6 +100,10 @@ const Admin = () => {
 
           <TabsContent value="configuration" className="bg-card border rounded-lg p-6">
             <ConfigurationTab />
+          </TabsContent>
+
+          <TabsContent value="documentation" className="bg-card border rounded-lg p-6">
+            <DocumentationTab />
           </TabsContent>
         </Tabs>
       </div>
