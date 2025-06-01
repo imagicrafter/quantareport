@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
@@ -43,9 +44,10 @@ const SignUp = () => {
   useEffect(() => {
     const checkSignupRequirements = async () => {
       try {
-        // MITIGATION: Always set to false
-        setRequiresSignupCode(false);
-        console.log('MITIGATION ACTIVE: Signup codes not required');
+        const settings = await getAppSettings();
+        const requireCodes = settings?.require_signup_code || false;
+        setRequiresSignupCode(requireCodes);
+        console.log('Signup codes required:', requireCodes);
       } catch (err) {
         console.error('Error checking signup requirements:', err);
         // Default to NOT requiring signup codes
@@ -67,10 +69,13 @@ const SignUp = () => {
         
         try {
           setIsLoading(true);
-          // MITIGATION: Skip actual validation, just log attempt
-          console.log('MITIGATION ACTIVE: Skipping code validation from URL');
+          const validation = await validateSignupCode(codeFromUrl, emailFromUrl);
+          if (!validation.valid) {
+            setError(validation.message);
+          }
         } catch (err) {
           console.error('Error validating code from URL:', err);
+          setError('Error validating signup code');
         } finally {
           setIsLoading(false);
         }
@@ -107,8 +112,28 @@ const SignUp = () => {
         return;
       }
       
-      // MITIGATION: Skip code validation, always proceed to step 2
-      console.log('MITIGATION ACTIVE: Proceeding to step 2 without code validation');
+      // Validate signup code if required
+      if (requiresSignupCode && !signUpCode) {
+        setError('Signup code is required');
+        return;
+      }
+      
+      if (signUpCode) {
+        try {
+          setIsLoading(true);
+          const validation = await validateSignupCode(signUpCode, email);
+          if (!validation.valid) {
+            setError(validation.message);
+            return;
+          }
+        } catch (err) {
+          setError('Error validating signup code');
+          return;
+        } finally {
+          setIsLoading(false);
+        }
+      }
+      
       setStep(2);
     } else if (step === 2) {
       // Validate second step and submit
@@ -125,8 +150,6 @@ const SignUp = () => {
     setError('');
     
     try {
-      // MITIGATION: Skip validation completely
-      
       // Build user metadata
       const metadata: Record<string, any> = {
         full_name: name,

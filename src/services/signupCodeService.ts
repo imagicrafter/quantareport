@@ -1,5 +1,5 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { getAppSettings } from './configurationService';
 
 export interface SignupCode {
   id: string;
@@ -23,19 +23,30 @@ export const validateSignupCode = async (code: string, email: string): Promise<{
   try {
     console.log(`Validating signup code: ${code} for email: ${email}`);
     
-    // MITIGATION: Always return valid=true regardless of code or email
-    console.log('MITIGATION ACTIVE: Bypassing signup code validation');
-    return { 
-      valid: true, 
-      message: 'Proceeding with registration (validation bypassed)' 
-    };
+    const { data, error } = await supabase
+      .from('signup_codes')
+      .select('*')
+      .eq('code', code)
+      .eq('email', email)
+      .eq('used', false)
+      .single();
+
+    if (error) {
+      console.error('Error validating signup code:', error);
+      if (error.code === 'PGRST116') {
+        return { valid: false, message: 'Invalid signup code or email combination' };
+      }
+      return { valid: false, message: 'Error validating signup code' };
+    }
+
+    if (!data) {
+      return { valid: false, message: 'Invalid signup code or email combination' };
+    }
+
+    return { valid: true, message: 'Signup code is valid' };
   } catch (error) {
     console.error('Error validating signup code:', error);
-    // MITIGATION: Allow registration to proceed if there's an error during validation
-    return { 
-      valid: true, 
-      message: 'Proceeding without code validation due to error' 
-    };
+    return { valid: false, message: 'Error validating signup code' };
   }
 };
 
