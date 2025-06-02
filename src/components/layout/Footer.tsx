@@ -7,11 +7,11 @@ const Footer = () => {
     <footer className="border-t border-border/50 bg-secondary/5">
       <div className="container mx-auto px-4 md:px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-4 text-center md:text-left">
-            <div className="flex justify-center md:justify-start">
+          <div className="space-y-4 text-center md:col-span-4">
+            <div className="flex justify-center">
               <Logo size="md" />
             </div>
-            <p className="text-sm text-muted-foreground max-w-xs mx-auto md:mx-0">
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
               AI-powered reporting platform for professionals across industries. Create professional reports in minutes, not hours.
             </p>
           </div>
