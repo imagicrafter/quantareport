@@ -579,6 +579,51 @@ export type Database = {
           },
         ]
       }
+      prospects: {
+        Row: {
+          company: string | null
+          created_at: string
+          domain_id: string | null
+          email: string
+          followed_up_at: string | null
+          id: string
+          interest_area: string | null
+          name: string | null
+          notes: string | null
+          source: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          domain_id?: string | null
+          email: string
+          followed_up_at?: string | null
+          id?: string
+          interest_area?: string | null
+          name?: string | null
+          notes?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          domain_id?: string | null
+          email?: string
+          followed_up_at?: string | null
+          id?: string
+          interest_area?: string | null
+          name?: string | null
+          notes?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       report_progress: {
         Row: {
           created_at: string

@@ -11,6 +11,7 @@ import AdminProjectsTab from '@/components/admin/AdminProjectsTab';
 import AdminReportsTab from '@/components/admin/AdminReportsTab';
 import ConfigurationTab from '@/components/admin/ConfigurationTab';
 import DocumentationTab from '@/components/admin/DocumentationTab';
+import ProspectsTab from '@/components/admin/ProspectsTab';
 
 const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -72,8 +73,9 @@ const Admin = () => {
       <DashboardHeader title="Admin Panel" toggleSidebar={() => {}} />
       
       <div className="container mx-auto py-8 px-4">
-        <Tabs defaultValue="projects" className="w-full">
+        <Tabs defaultValue="prospects" className="w-full">
           <TabsList className="mb-6">
+            <TabsTrigger value="prospects">Prospects</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="signup-codes">Signup Codes</TabsTrigger>
@@ -81,6 +83,10 @@ const Admin = () => {
             <TabsTrigger value="configuration">Configuration</TabsTrigger>
             <TabsTrigger value="documentation">Documentation</TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="prospects" className="bg-card border rounded-lg p-6">
+            <ProspectsTab />
+          </TabsContent>
           
           <TabsContent value="projects" className="bg-card border rounded-lg p-6">
             <AdminProjectsTab />
