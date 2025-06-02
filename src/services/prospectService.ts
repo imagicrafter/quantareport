@@ -54,14 +54,16 @@ export const createProspect = async (data: CreateProspectData): Promise<{ succes
       return { success: false, error: 'Failed to submit your information. Please try again.' };
     }
 
-    // Send notification email to justin@martins.net
+    // Send notification emails to multiple recipients
+    const notificationEmails = ['justin@martins.net', 'chance@nextworks.ai'];
+    
     try {
-      console.log('Sending notification email for new prospect:', data.email);
+      console.log('Sending notification emails for new prospect:', data.email);
       
       const { error: emailError } = await supabase.functions.invoke('send-signup-invite', {
         body: {
           signupCode: 'PROSPECT_NOTIFICATION',
-          recipientEmail: 'justin@martins.net',
+          recipientEmails: notificationEmails,
           prospectData: {
             email: data.email,
             name: data.name || 'Not provided',
@@ -73,13 +75,13 @@ export const createProspect = async (data: CreateProspectData): Promise<{ succes
       });
 
       if (emailError) {
-        console.error('Error sending notification email:', emailError);
+        console.error('Error sending notification emails:', emailError);
         // Don't fail the prospect creation if email fails
       } else {
-        console.log('Notification email sent successfully');
+        console.log('Notification emails sent successfully');
       }
     } catch (emailError) {
-      console.error('Error sending notification email:', emailError);
+      console.error('Error sending notification emails:', emailError);
       // Don't fail the prospect creation if email fails
     }
 

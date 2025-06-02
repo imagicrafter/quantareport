@@ -23,10 +23,11 @@ serve(async (req) => {
 
   try {
     console.log("Parsing request body");
-    const { signupCode, recipientEmail, prospectData } = await req.json();
+    const { signupCode, recipientEmail, recipientEmails, prospectData } = await req.json();
     console.log("Request data:", {
       signupCode,
       recipientEmail,
+      recipientEmails,
       hasProspectData: !!prospectData
     });
 
@@ -62,6 +63,9 @@ serve(async (req) => {
       try {
         let emailHTML = "";
         let emailSubject = "";
+
+        // Determine recipients - use array for prospect notifications, single email for regular invites
+        const recipients = recipientEmails || [recipientEmail];
 
         // Check if this is a prospect notification
         if (signupCode === 'PROSPECT_NOTIFICATION' && prospectData) {
@@ -163,58 +167,61 @@ serve(async (req) => {
           `;
         }
 
-        console.log("Sending email to:", recipientEmail);
-        
-        // Prepare the MailJet API request payload
-        const mailjetPayload = {
-          Messages: [
-            {
-              From: {
-                Email: mailjetSenderEmail,
-                Name: mailjetSenderName
-              },
-              To: [
-                {
-                  Email: recipientEmail,
-                  Name: recipientEmail.split("@")[0] // Simple name from email
-                }
-              ],
-              Subject: emailSubject,
-              HTMLPart: emailHTML
-            }
-          ]
-        };
+        // Send emails to all recipients
+        for (const email of recipients) {
+          console.log("Sending email to:", email);
+          
+          // Prepare the MailJet API request payload
+          const mailjetPayload = {
+            Messages: [
+              {
+                From: {
+                  Email: mailjetSenderEmail,
+                  Name: mailjetSenderName
+                },
+                To: [
+                  {
+                    Email: email,
+                    Name: email.split("@")[0] // Simple name from email
+                  }
+                ],
+                Subject: emailSubject,
+                HTMLPart: emailHTML
+              }
+            ]
+          };
 
-        // Encode API credentials for Basic Authentication
-        const authHeader = "Basic " + btoa(`${mailjetApiKey}:${mailjetApiSecret}`);
+          // Encode API credentials for Basic Authentication
+          const authHeader = "Basic " + btoa(`${mailjetApiKey}:${mailjetApiSecret}`);
 
-        // Send email using MailJet API
-        const mailjetResponse = await fetch("https://api.mailjet.com/v3.1/send", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": authHeader
-          },
-          body: JSON.stringify(mailjetPayload)
-        });
+          // Send email using MailJet API
+          const mailjetResponse = await fetch("https://api.mailjet.com/v3.1/send", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": authHeader
+            },
+            body: JSON.stringify(mailjetPayload)
+          });
 
-        const mailjetResponseData = await mailjetResponse.json();
+          const mailjetResponseData = await mailjetResponse.json();
 
-        if (!mailjetResponse.ok) {
-          throw new Error(`MailJet API error: ${JSON.stringify(mailjetResponseData)}`);
+          if (!mailjetResponse.ok) {
+            throw new Error(`MailJet API error for ${email}: ${JSON.stringify(mailjetResponseData)}`);
+          }
+
+          console.log(`Email sent successfully to ${email} via MailJet API:`, mailjetResponseData);
         }
-
-        console.log("Email sent successfully via MailJet API:", mailjetResponseData);
       } catch (emailError) {
         console.error("MailJet API error:", emailError);
         throw new Error(`Email sending failed: ${emailError.message}`);
       }
     } else {
-      console.log("MailJet API not configured properly. Email would be sent to:", recipientEmail);
+      console.log("MailJet API not configured properly. Emails would be sent to:", recipients);
     }
 
     // Update the last_invited_at timestamp only for regular signup invitations
-    if (signupCode !== 'PROSPECT_NOTIFICATION') {
+    if (signupCode !== 'PROSPECT_NOTIFICATION' && recipientEmail) {
       console.log("Updating last_invited_at for signup code:", signupCode);
       const { error: updateError } = await supabase.from('signup_codes').update({
         last_invited_at: new Date().toISOString()
