@@ -23,10 +23,11 @@ serve(async (req) => {
 
   try {
     console.log("Parsing request body");
-    const { signupCode, recipientEmail } = await req.json();
+    const { signupCode, recipientEmail, prospectData } = await req.json();
     console.log("Request data:", {
       signupCode,
-      recipientEmail
+      recipientEmail,
+      hasProspectData: !!prospectData
     });
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -48,62 +49,119 @@ serve(async (req) => {
     const mailjetSenderEmail = Deno.env.get("MAILJET_SENDER_EMAIL") || "noreply@example.com";
     const mailjetSenderName = Deno.env.get("MAILJET_SENDER_NAME") || "QuantaReport";
     const frontendUrl = Deno.env.get("FRONTEND_URL") || "http://staging.quantareport.com";
-    
-    const signupUrl = `${frontendUrl}/signup?code=${signupCode}&email=${encodeURIComponent(recipientEmail)}`;
 
     console.log("Email configuration:", {
       hasMailjetApiKey: !!mailjetApiKey,
       hasMailjetApiSecret: !!mailjetApiSecret,
       mailjetSenderEmail,
       mailjetSenderName,
-      frontendUrl,
-      signupUrl
+      frontendUrl
     });
 
     if (mailjetApiKey && mailjetApiSecret) {
       try {
-        // Build the HTML email template
-        const emailHTML = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
-              .content { padding: 20px; }
-              .button { 
-                display: inline-block; 
-                padding: 10px 20px; 
-                background-color: #4CAF50; 
-                color: white; 
-                text-decoration: none; 
-                border-radius: 5px; 
-                margin: 20px 0;
-              }
-              .footer { font-size: 12px; color: #6c757d; margin-top: 30px; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h2>You've been invited to join QuantaReport</h2>
-              </div>
-              <div class="content">
-                <p>Hello,</p>
-                <p>You have been invited to create an account on QuantaReport. Click the button below to sign up:</p>
-                <p><a href="${signupUrl}" class="button">Create Your Account</a></p>
-                <p>Or copy and paste this URL into your browser:</p>
-                <p>${signupUrl}</p>
-                <p>Your signup code is: <strong>${signupCode}</strong></p>
-                <div class="footer">
-                  <p>If you didn't expect this invitation, you can ignore this email.</p>
+        let emailHTML = "";
+        let emailSubject = "";
+
+        // Check if this is a prospect notification
+        if (signupCode === 'PROSPECT_NOTIFICATION' && prospectData) {
+          // Build prospect notification email
+          emailSubject = "New Prospect Signup - QuantaReport";
+          emailHTML = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
+                .content { padding: 20px; }
+                .prospect-info { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                .info-row { margin: 10px 0; }
+                .label { font-weight: bold; color: #333; }
+                .value { color: #666; }
+                .footer { font-size: 12px; color: #6c757d; margin-top: 30px; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h2>New Prospect Signup</h2>
+                </div>
+                <div class="content">
+                  <p>A new prospect has signed up for QuantaReport:</p>
+                  <div class="prospect-info">
+                    <div class="info-row">
+                      <span class="label">Email:</span> <span class="value">${prospectData.email}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Name:</span> <span class="value">${prospectData.name}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Company:</span> <span class="value">${prospectData.company}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Interest Area:</span> <span class="value">${prospectData.interest_area}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="label">Source:</span> <span class="value">${prospectData.source}</span>
+                    </div>
+                  </div>
+                  <p>You can view and manage this prospect in the admin panel.</p>
+                  <div class="footer">
+                    <p>This is an automated notification from QuantaReport.</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </body>
-          </html>
-        `;
+            </body>
+            </html>
+          `;
+        } else {
+          // Build the regular signup invitation email
+          const signupUrl = `${frontendUrl}/signup?code=${signupCode}&email=${encodeURIComponent(recipientEmail)}`;
+          emailSubject = "Invitation to join QuantaReport";
+          emailHTML = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
+                .content { padding: 20px; }
+                .button { 
+                  display: inline-block; 
+                  padding: 10px 20px; 
+                  background-color: #4CAF50; 
+                  color: white; 
+                  text-decoration: none; 
+                  border-radius: 5px; 
+                  margin: 20px 0;
+                }
+                .footer { font-size: 12px; color: #6c757d; margin-top: 30px; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h2>You've been invited to join QuantaReport</h2>
+                </div>
+                <div class="content">
+                  <p>Hello,</p>
+                  <p>You have been invited to create an account on QuantaReport. Click the button below to sign up:</p>
+                  <p><a href="${signupUrl}" class="button">Create Your Account</a></p>
+                  <p>Or copy and paste this URL into your browser:</p>
+                  <p>${signupUrl}</p>
+                  <p>Your signup code is: <strong>${signupCode}</strong></p>
+                  <div class="footer">
+                    <p>If you didn't expect this invitation, you can ignore this email.</p>
+                  </div>
+                </div>
+              </div>
+            </body>
+            </html>
+          `;
+        }
 
         console.log("Sending email to:", recipientEmail);
         
@@ -121,7 +179,7 @@ serve(async (req) => {
                   Name: recipientEmail.split("@")[0] // Simple name from email
                 }
               ],
-              Subject: "Invitation to join QuantaReport",
+              Subject: emailSubject,
               HTMLPart: emailHTML
             }
           ]
@@ -153,21 +211,22 @@ serve(async (req) => {
       }
     } else {
       console.log("MailJet API not configured properly. Email would be sent to:", recipientEmail);
-      console.log("Signup URL:", signupUrl);
     }
 
-    // Update the last_invited_at timestamp
-    console.log("Updating last_invited_at for signup code:", signupCode);
-    const { error: updateError } = await supabase.from('signup_codes').update({
-      last_invited_at: new Date().toISOString()
-    }).eq('code', signupCode).eq('email', recipientEmail);
+    // Update the last_invited_at timestamp only for regular signup invitations
+    if (signupCode !== 'PROSPECT_NOTIFICATION') {
+      console.log("Updating last_invited_at for signup code:", signupCode);
+      const { error: updateError } = await supabase.from('signup_codes').update({
+        last_invited_at: new Date().toISOString()
+      }).eq('code', signupCode).eq('email', recipientEmail);
 
-    if (updateError) {
-      console.error("Error updating signup code:", updateError);
-      throw updateError;
+      if (updateError) {
+        console.error("Error updating signup code:", updateError);
+        throw updateError;
+      }
     }
 
-    console.log("Invitation process completed successfully");
+    console.log("Process completed successfully");
     return new Response(JSON.stringify({
       success: true
     }), {

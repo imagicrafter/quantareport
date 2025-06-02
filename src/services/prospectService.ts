@@ -54,6 +54,35 @@ export const createProspect = async (data: CreateProspectData): Promise<{ succes
       return { success: false, error: 'Failed to submit your information. Please try again.' };
     }
 
+    // Send notification email to justin@martins.net
+    try {
+      console.log('Sending notification email for new prospect:', data.email);
+      
+      const { error: emailError } = await supabase.functions.invoke('send-signup-invite', {
+        body: {
+          signupCode: 'PROSPECT_NOTIFICATION',
+          recipientEmail: 'justin@martins.net',
+          prospectData: {
+            email: data.email,
+            name: data.name || 'Not provided',
+            company: data.company || 'Not provided',
+            source: data.source || 'website',
+            interest_area: data.interest_area || 'Not specified'
+          }
+        }
+      });
+
+      if (emailError) {
+        console.error('Error sending notification email:', emailError);
+        // Don't fail the prospect creation if email fails
+      } else {
+        console.log('Notification email sent successfully');
+      }
+    } catch (emailError) {
+      console.error('Error sending notification email:', emailError);
+      // Don't fail the prospect creation if email fails
+    }
+
     console.log('Prospect created successfully');
     return { success: true };
   } catch (error) {
