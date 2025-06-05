@@ -13,17 +13,8 @@ interface AppSettings {
  */
 export const getAppSettings = async (): Promise<AppSettings | null> => {
   try {
-    console.log('Fetching app settings - BYPASSED');
-    // Return default settings for safety
-    const defaultSettings: AppSettings = {
-      require_signup_code: false
-    };
+    console.log('Fetching app settings from database');
     
-    console.log('Returning default settings: require_signup_code=false');
-    return defaultSettings;
-    
-    // Original code commented out to prevent app_settings table access
-    /*
     const { data, error } = await supabase
       .from('app_settings')
       .select('value')
@@ -32,12 +23,17 @@ export const getAppSettings = async (): Promise<AppSettings | null> => {
 
     if (error) {
       console.error('Error fetching app settings:', error);
+      // Return default settings if there's an error
+      const defaultSettings: AppSettings = {
+        require_signup_code: false
+      };
+      console.log('Returning default settings due to error: require_signup_code=false');
       return defaultSettings;
     }
 
-    console.log('App settings fetched:', data?.value);
-    return data?.value as AppSettings || defaultSettings;
-    */
+    const settings = data?.value as AppSettings || { require_signup_code: false };
+    console.log('App settings fetched:', settings);
+    return settings;
   } catch (error) {
     console.error('Error fetching app settings:', error);
     // Return default settings instead of null
@@ -57,19 +53,14 @@ export const updateSignupRequirement = async (requireSignupCode: boolean): Promi
   try {
     console.log('Updating signup requirement to:', requireSignupCode);
     
-    // Don't actually update anything in database
-    console.log('Database update bypassed, returning success');
-    toast.success('Signup code requirement updated successfully');
-    return true;
-    
-    // Original code commented out to prevent app_settings table access
-    /*
     const { error } = await supabase
       .from('app_settings')
-      .update({
+      .upsert({
+        key: 'signup_requirements',
         value: { require_signup_code: requireSignupCode }
-      })
-      .eq('key', 'signup_requirements');
+      }, {
+        onConflict: 'key'
+      });
 
     if (error) {
       console.error('Error updating signup requirement:', error);
@@ -78,8 +69,8 @@ export const updateSignupRequirement = async (requireSignupCode: boolean): Promi
     }
 
     console.log('Signup requirement updated successfully');
+    toast.success('Signup code requirement updated successfully');
     return true;
-    */
   } catch (error) {
     console.error('Error updating signup requirement:', error);
     toast.error('Failed to update signup code requirement');
