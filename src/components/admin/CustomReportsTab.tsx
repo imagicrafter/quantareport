@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { 
   Select, 
   SelectContent, 
@@ -20,7 +21,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { 
   Dialog, 
   DialogContent, 
@@ -29,7 +29,7 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from '@/components/ui/dialog';
-import { Upload, Edit, Trash2, Eye, Copy, RefreshCw, ExternalLink } from 'lucide-react';
+import { Upload, Edit, Trash2, Copy, RefreshCw, ExternalLink, Clock } from 'lucide-react';
 import { 
   getCustomReports, 
   uploadCustomReport, 
@@ -148,6 +148,23 @@ const CustomReportsTab = () => {
     });
   };
 
+  const getUrlExpirationStatus = (expiresAt?: string) => {
+    if (!expiresAt) return { status: 'unknown', text: 'Unknown', color: 'gray' };
+    
+    const expiration = new Date(expiresAt);
+    const now = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    
+    if (expiration < now) {
+      return { status: 'expired', text: 'Expired', color: 'red' };
+    } else if (expiration < sevenDaysFromNow) {
+      return { status: 'expiring', text: 'Expiring Soon', color: 'yellow' };
+    } else {
+      return { status: 'valid', text: 'Valid', color: 'green' };
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -162,7 +179,7 @@ const CustomReportsTab = () => {
         <div>
           <h2 className="text-2xl font-bold">Custom Reports</h2>
           <p className="text-muted-foreground">
-            Upload and manage custom HTML reports with public access URLs
+            Upload and manage custom HTML reports with secure access URLs
           </p>
         </div>
         <div className="flex gap-2">
@@ -181,7 +198,7 @@ const CustomReportsTab = () => {
               <DialogHeader>
                 <DialogTitle>Upload Custom HTML Report</DialogTitle>
                 <DialogDescription>
-                  Upload an HTML file to create a publicly accessible custom report
+                  Upload an HTML file to create a publicly accessible custom report with secure 30-day access URLs
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -265,11 +282,14 @@ const CustomReportsTab = () => {
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Inactive Reports</CardTitle>
+            <CardTitle className="text-lg">URLs Expiring Soon</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-gray-600">
-              {reports.filter(r => !r.is_active).length}
+            <div className="text-3xl font-bold text-yellow-600">
+              {reports.filter(r => {
+                const status = getUrlExpirationStatus(r.url_expires_at);
+                return status.status === 'expiring' || status.status === 'expired';
+              }).length}
             </div>
           </CardContent>
         </Card>
@@ -280,7 +300,7 @@ const CustomReportsTab = () => {
         <CardHeader>
           <CardTitle>All Custom Reports</CardTitle>
           <CardDescription>
-            Manage your uploaded HTML reports and their public access URLs
+            Manage your uploaded HTML reports and their secure access URLs (30-day expiration)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -291,6 +311,7 @@ const CustomReportsTab = () => {
                   <TableHead>Title</TableHead>
                   <TableHead>File</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>URL Status</TableHead>
                   <TableHead>Views</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Last Accessed</TableHead>
@@ -298,71 +319,92 @@ const CustomReportsTab = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {reports.map((report) => (
-                  <TableRow key={report.id}>
-                    <TableCell className="font-medium">
-                      <div>
-                        <div>{report.title}</div>
-                        {report.description && (
-                          <div className="text-sm text-muted-foreground">
-                            {report.description}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{report.original_filename}</TableCell>
-                    <TableCell>
-                      <Badge variant={report.is_active ? 'default' : 'secondary'}>
-                        {report.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{report.access_count}</TableCell>
-                    <TableCell>{formatDate(report.created_at)}</TableCell>
-                    <TableCell>
-                      {report.last_accessed_at ? formatDate(report.last_accessed_at) : 'Never'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => openReport(report.token)}
-                          title="Open report"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                        
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => copyReportUrl(report.token)}
-                          title="Copy URL"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleEdit(report)}
-                          title="Edit report"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleDelete(report)}
-                          className="text-red-600 hover:text-red-800"
-                          title="Delete report"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {reports.map((report) => {
+                  const urlStatus = getUrlExpirationStatus(report.url_expires_at);
+                  return (
+                    <TableRow key={report.id}>
+                      <TableCell className="font-medium">
+                        <div>
+                          <div>{report.title}</div>
+                          {report.description && (
+                            <div className="text-sm text-muted-foreground">
+                              {report.description}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{report.original_filename}</TableCell>
+                      <TableCell>
+                        <Badge variant={report.is_active ? 'default' : 'secondary'}>
+                          {report.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant={
+                              urlStatus.color === 'green' ? 'default' : 
+                              urlStatus.color === 'yellow' ? 'secondary' : 'destructive'
+                            }
+                          >
+                            {urlStatus.text}
+                          </Badge>
+                          {report.url_expires_at && (
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Expires {formatDate(report.url_expires_at)}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{report.access_count}</TableCell>
+                      <TableCell>{formatDate(report.created_at)}</TableCell>
+                      <TableCell>
+                        {report.last_accessed_at ? formatDate(report.last_accessed_at) : 'Never'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => openReport(report.token)}
+                            title="Open report"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => copyReportUrl(report.token)}
+                            title="Copy URL"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEdit(report)}
+                            title="Edit report"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleDelete(report)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Delete report"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -438,6 +480,25 @@ const CustomReportsTab = () => {
                   </Button>
                 </div>
               </div>
+
+              {selectedReport.url_expires_at && (
+                <div className="space-y-2">
+                  <Label>URL Expiration</Label>
+                  <div className="flex items-center gap-2">
+                    <Badge 
+                      variant={
+                        getUrlExpirationStatus(selectedReport.url_expires_at).color === 'green' ? 'default' : 
+                        getUrlExpirationStatus(selectedReport.url_expires_at).color === 'yellow' ? 'secondary' : 'destructive'
+                      }
+                    >
+                      {getUrlExpirationStatus(selectedReport.url_expires_at).text}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {formatDate(selectedReport.url_expires_at)}
+                    </span>
+                  </div>
+                </div>
+              )}
               
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setEditDialogOpen(false)}>

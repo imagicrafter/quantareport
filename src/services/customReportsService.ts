@@ -15,6 +15,8 @@ export interface CustomReport {
   is_active: boolean;
   access_count: number;
   last_accessed_at?: string;
+  pre_authorized_url?: string;
+  url_expires_at?: string;
 }
 
 export interface CreateCustomReportData {
@@ -33,7 +35,35 @@ export const generateReportToken = (): string => {
 };
 
 /**
- * Upload HTML file to storage and create custom report record
+ * Generate a 30-day pre-authorized URL for a file
+ */
+const generatePreAuthorizedUrl = async (filePath: string): Promise<{ url: string; expiresAt: Date } | null> => {
+  try {
+    const expiresIn = 30 * 24 * 60 * 60; // 30 days in seconds
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    const { data, error } = await supabase.storage
+      .from('custom-reports')
+      .createSignedUrl(filePath, expiresIn);
+
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      return null;
+    }
+
+    return {
+      url: data.signedUrl,
+      expiresAt
+    };
+  } catch (error) {
+    console.error('Error generating pre-authorized URL:', error);
+    return null;
+  }
+};
+
+/**
+ * Upload HTML file to private storage and create custom report record
  */
 export const uploadCustomReport = async (
   file: File,
@@ -43,11 +73,11 @@ export const uploadCustomReport = async (
   try {
     const token = generateReportToken();
     const filename = `${token}.html`;
-    const filePath = `custom-reports/${filename}`;
+    const filePath = filename; // No subfolder needed since bucket is dedicated
 
-    // Upload file to storage
+    // Upload file to private storage
     const { error: uploadError } = await supabase.storage
-      .from('pub_documents')
+      .from('custom-reports')
       .upload(filePath, file, {
         contentType: 'text/html',
         upsert: false
@@ -56,6 +86,14 @@ export const uploadCustomReport = async (
     if (uploadError) {
       console.error('Error uploading file:', uploadError);
       return { success: false, error: 'Failed to upload file' };
+    }
+
+    // Generate pre-authorized URL
+    const urlData = await generatePreAuthorizedUrl(filePath);
+    if (!urlData) {
+      // Clean up uploaded file
+      await supabase.storage.from('custom-reports').remove([filePath]);
+      return { success: false, error: 'Failed to generate access URL' };
     }
 
     // Create database record
@@ -67,13 +105,15 @@ export const uploadCustomReport = async (
         original_filename: file.name,
         title: title || file.name,
         description,
-        uploaded_by: (await supabase.auth.getUser()).data.user?.id
+        uploaded_by: (await supabase.auth.getUser()).data.user?.id,
+        pre_authorized_url: urlData.url,
+        url_expires_at: urlData.expiresAt.toISOString()
       }]);
 
     if (dbError) {
       console.error('Error creating custom report record:', dbError);
       // Clean up uploaded file
-      await supabase.storage.from('pub_documents').remove([filePath]);
+      await supabase.storage.from('custom-reports').remove([filePath]);
       return { success: false, error: 'Failed to create report record' };
     }
 
@@ -82,6 +122,48 @@ export const uploadCustomReport = async (
   } catch (error) {
     console.error('Error uploading custom report:', error);
     return { success: false, error: 'An unexpected error occurred' };
+  }
+};
+
+/**
+ * Refresh pre-authorized URL if it's expired or about to expire
+ */
+const refreshPreAuthorizedUrl = async (report: CustomReport): Promise<string | null> => {
+  try {
+    // Check if URL expires within the next 7 days
+    const expiresAt = new Date(report.url_expires_at || '');
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+    if (expiresAt > sevenDaysFromNow && report.pre_authorized_url) {
+      // URL is still valid for more than 7 days
+      return report.pre_authorized_url;
+    }
+
+    // Generate new pre-authorized URL
+    const urlData = await generatePreAuthorizedUrl(report.file_path);
+    if (!urlData) {
+      return null;
+    }
+
+    // Update database record
+    const { error } = await supabase
+      .from('custom_reports')
+      .update({
+        pre_authorized_url: urlData.url,
+        url_expires_at: urlData.expiresAt.toISOString()
+      })
+      .eq('id', report.id);
+
+    if (error) {
+      console.error('Error updating pre-authorized URL:', error);
+      return null;
+    }
+
+    return urlData.url;
+  } catch (error) {
+    console.error('Error refreshing pre-authorized URL:', error);
+    return null;
   }
 };
 
@@ -143,20 +225,25 @@ export const getCustomReportByToken = async (token: string): Promise<CustomRepor
 };
 
 /**
- * Download HTML content from storage
+ * Download HTML content using pre-authorized URL
  */
-export const downloadCustomReportContent = async (filePath: string): Promise<string | null> => {
+export const downloadCustomReportContent = async (report: CustomReport): Promise<string | null> => {
   try {
-    const { data, error } = await supabase.storage
-      .from('pub_documents')
-      .download(filePath);
-
-    if (error) {
-      console.error('Error downloading file:', error);
+    // Refresh URL if needed
+    const url = await refreshPreAuthorizedUrl(report);
+    if (!url) {
+      console.error('Failed to get valid pre-authorized URL');
       return null;
     }
 
-    return await data.text();
+    // Fetch content using the pre-authorized URL
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error('Failed to fetch report content:', response.statusText);
+      return null;
+    }
+
+    return await response.text();
   } catch (error) {
     console.error('Error downloading custom report content:', error);
     return null;
@@ -210,7 +297,7 @@ export const deleteCustomReport = async (id: string, filePath: string): Promise<
 
     // Delete file from storage
     const { error: storageError } = await supabase.storage
-      .from('pub_documents')
+      .from('custom-reports')
       .remove([filePath]);
 
     if (storageError) {

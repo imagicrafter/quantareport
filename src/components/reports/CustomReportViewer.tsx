@@ -38,8 +38,8 @@ const CustomReportViewer = () => {
 
         setReport(reportData);
 
-        // Download HTML content
-        const content = await downloadCustomReportContent(reportData.file_path);
+        // Download HTML content using pre-authorized URL
+        const content = await downloadCustomReportContent(reportData);
         if (!content) {
           setError('Failed to load report content');
           setLoading(false);
