@@ -52,10 +52,12 @@ export type Database = {
           is_active: boolean
           last_accessed_at: string | null
           original_filename: string
+          pre_authorized_url: string | null
           title: string | null
           token: string
           updated_at: string
           uploaded_by: string | null
+          url_expires_at: string | null
         }
         Insert: {
           access_count?: number
@@ -66,10 +68,12 @@ export type Database = {
           is_active?: boolean
           last_accessed_at?: string | null
           original_filename: string
+          pre_authorized_url?: string | null
           title?: string | null
           token: string
           updated_at?: string
           uploaded_by?: string | null
+          url_expires_at?: string | null
         }
         Update: {
           access_count?: number
@@ -80,10 +84,12 @@ export type Database = {
           is_active?: boolean
           last_accessed_at?: string | null
           original_filename?: string
+          pre_authorized_url?: string | null
           title?: string | null
           token?: string
           updated_at?: string
           uploaded_by?: string | null
+          url_expires_at?: string | null
         }
         Relationships: []
       }

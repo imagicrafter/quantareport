@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -96,21 +95,19 @@ export const uploadCustomReport = async (
       return { success: false, error: 'Failed to generate access URL' };
     }
 
-    // Create database record with explicit type assertion
-    const insertData = {
-      token,
-      file_path: filePath,
-      original_filename: file.name,
-      title: title || file.name,
-      description,
-      uploaded_by: (await supabase.auth.getUser()).data.user?.id,
-      pre_authorized_url: urlData.url,
-      url_expires_at: urlData.expiresAt.toISOString()
-    } as any; // Type assertion to bypass TypeScript check for new columns
-
+    // Create database record
     const { error: dbError } = await supabase
       .from('custom_reports')
-      .insert([insertData]);
+      .insert([{
+        token,
+        file_path: filePath,
+        original_filename: file.name,
+        title: title || file.name,
+        description,
+        uploaded_by: (await supabase.auth.getUser()).data.user?.id,
+        pre_authorized_url: urlData.url,
+        url_expires_at: urlData.expiresAt.toISOString()
+      }]);
 
     if (dbError) {
       console.error('Error creating custom report record:', dbError);
@@ -148,15 +145,13 @@ const refreshPreAuthorizedUrl = async (report: CustomReport): Promise<string | n
       return null;
     }
 
-    // Update database record with explicit type assertion
-    const updateData = {
-      pre_authorized_url: urlData.url,
-      url_expires_at: urlData.expiresAt.toISOString()
-    } as any; // Type assertion to bypass TypeScript check for new columns
-
+    // Update database record
     const { error } = await supabase
       .from('custom_reports')
-      .update(updateData)
+      .update({
+        pre_authorized_url: urlData.url,
+        url_expires_at: urlData.expiresAt.toISOString()
+      })
       .eq('id', report.id);
 
     if (error) {
