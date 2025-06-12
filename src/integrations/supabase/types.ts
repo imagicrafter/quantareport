@@ -42,6 +42,51 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_reports: {
+        Row: {
+          access_count: number
+          created_at: string
+          description: string | null
+          file_path: string
+          id: string
+          is_active: boolean
+          last_accessed_at: string | null
+          original_filename: string
+          title: string | null
+          token: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          access_count?: number
+          created_at?: string
+          description?: string | null
+          file_path: string
+          id?: string
+          is_active?: boolean
+          last_accessed_at?: string | null
+          original_filename: string
+          title?: string | null
+          token: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          access_count?: number
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          id?: string
+          is_active?: boolean
+          last_accessed_at?: string | null
+          original_filename?: string
+          title?: string | null
+          token?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           content: string | null

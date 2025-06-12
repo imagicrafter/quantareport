@@ -12,6 +12,7 @@ import AdminReportsTab from '@/components/admin/AdminReportsTab';
 import ConfigurationTab from '@/components/admin/ConfigurationTab';
 import DocumentationTab from '@/components/admin/DocumentationTab';
 import ProspectsTab from '@/components/admin/ProspectsTab';
+import CustomReportsTab from '@/components/admin/CustomReportsTab';
 
 const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -78,6 +79,7 @@ const Admin = () => {
             <TabsTrigger value="prospects">Prospects</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="custom-reports">Custom Reports</TabsTrigger>
             <TabsTrigger value="signup-codes">Signup Codes</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
             <TabsTrigger value="configuration">Configuration</TabsTrigger>
@@ -94,6 +96,10 @@ const Admin = () => {
           
           <TabsContent value="reports" className="bg-card border rounded-lg p-6">
             <AdminReportsTab />
+          </TabsContent>
+          
+          <TabsContent value="custom-reports" className="bg-card border rounded-lg p-6">
+            <CustomReportsTab />
           </TabsContent>
           
           <TabsContent value="signup-codes" className="bg-card border rounded-lg p-6">
