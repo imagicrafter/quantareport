@@ -1,5 +1,6 @@
 
 import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import NavBar from '../components/layout/NavBar';
 import Footer from '../components/layout/Footer';
 import HeroSection from '../components/landing/HeroSection';
@@ -10,10 +11,25 @@ import ProspectCaptureForm from '../components/landing/ProspectCaptureForm';
 import CTASection from '../components/landing/CTASection';
 
 const Index = () => {
-  // Scroll to top on page load
+  const location = useLocation();
+
+  // Scroll to anchor or top of page
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+    // A small delay to allow the page to render before scrolling
+    const timer = setTimeout(() => {
+      if (location.hash) {
+        const id = location.hash.replace('#', '');
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      } else {
+        window.scrollTo(0, 0);
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [location]);
 
   return (
     <div className="min-h-screen flex flex-col">
