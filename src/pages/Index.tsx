@@ -47,7 +47,7 @@ const Index = () => {
                 Ready to Transform Your Report Creation?
               </h2>
               <p className="text-xl text-gray-600 mb-8">
-                Join our alpha program and be among the first to experience the future of professional report creation.
+                Apply to be become a member of our alpha program and be among the first to experience the future of professional report creation.
               </p>
             </div>
             <ProspectCaptureForm />
