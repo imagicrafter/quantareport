@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -39,7 +38,8 @@ serve(async (req) => {
     const mailjetApiSecret = Deno.env.get("MAILJET_API_SECRET");
     const mailjetSenderEmail = Deno.env.get("MAILJET_SENDER_EMAIL") || "noreply@example.com";
     const mailjetSenderName = Deno.env.get("MAILJET_SENDER_NAME") || "QuantaReport";
-    const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://quantareport.com";
+    const frontendUrlFromEnv = Deno.env.get("FRONTEND_URL") || "https://quantareport.com";
+    const frontendUrl = frontendUrlFromEnv.replace(/\/$/, ""); // Remove trailing slash
 
     if (!mailjetApiKey || !mailjetApiSecret) {
       console.warn("MailJet API keys not configured. Skipping email sending.");
