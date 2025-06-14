@@ -1420,6 +1420,10 @@ export type Database = {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
       }
+      send_custom_email: {
+        Args: { payload: Json }
+        Returns: Json
+      }
       sparsevec_out: {
         Args: { "": unknown }
         Returns: unknown

@@ -21,6 +21,3 @@ verify_jwt = false
 
 [functions.note-analysis]
 verify_jwt = false
-
-[functions.auth-webhook-handler]
-verify_jwt = false
