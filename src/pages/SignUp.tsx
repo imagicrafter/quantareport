@@ -9,7 +9,6 @@ import SignUpContainer from '../components/auth/SignUpContainer';
 import SignUpStep1Form from '../components/auth/SignUpStep1Form';
 import SignUpStep2Form from '../components/auth/SignUpStep2Form';
 import { validateSignupCode, markSignupCodeAsUsed } from '@/services/signupCodeService';
-import { getAppSettings } from '@/services/configurationService';
 
 const SignUp = () => {
   const [searchParams] = useSearchParams();
@@ -28,36 +27,17 @@ const SignUp = () => {
   const [plan, setPlan] = useState(planFromUrl);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [requiresSignupCode, setRequiresSignupCode] = useState<boolean | null>(null);
   
   const { 
     handleGoogleSignUp, 
     handleFacebookSignUp, 
     isOAuthLoading,
-    requiresSignupCode: oauthRequiresSignupCode,
+    requiresSignupCode,
     isCheckingSettings,
     oAuthError,
     setOAuthError
   } = useOAuth();
   
-  // Check if signup codes are required
-  useEffect(() => {
-    const checkSignupRequirements = async () => {
-      try {
-        const settings = await getAppSettings();
-        const requireCodes = settings?.require_signup_code || false;
-        setRequiresSignupCode(requireCodes);
-        console.log('Signup codes required:', requireCodes);
-      } catch (err) {
-        console.error('Error checking signup requirements:', err);
-        // Default to NOT requiring signup codes
-        setRequiresSignupCode(false);
-      }
-    };
-    
-    checkSignupRequirements();
-  }, []);
-
   // Check URL parameters on load
   useEffect(() => {
     console.log('URL parameters:', { code: codeFromUrl, email: emailFromUrl });
@@ -203,7 +183,11 @@ const SignUp = () => {
 
   return (
     <SignUpContainer error={error} step={step}>
-      {step === 1 ? (
+      {isCheckingSettings ? (
+        <div className="flex items-center justify-center p-8">
+          <p>Loading settings...</p>
+        </div>
+      ) : step === 1 ? (
         <SignUpStep1Form
           email={email}
           setEmail={setEmail}
