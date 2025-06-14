@@ -1,5 +1,6 @@
 
 import { Dispatch, FormEvent, SetStateAction } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../ui-elements/Button';
 
 interface SignUpStep1FormProps {
@@ -80,6 +81,13 @@ const SignUpStep1Form = ({
           />
           <p className="text-xs text-muted-foreground">
             A sign-up code is required to register
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Interested in joining our Alpha program? Let us know{' '}
+            <Link to="/#early-access" className="text-primary hover:underline">
+              here
+            </Link>
+            .
           </p>
         </div>
       )}
