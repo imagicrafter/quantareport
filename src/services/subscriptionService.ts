@@ -1,6 +1,12 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
 export interface UserSubscriptionDetails {
   planName: string;
   status: string;
@@ -44,4 +50,18 @@ export const getUserSubscription = async (userId: string): Promise<UserSubscript
     trial_end_at: data.trial_end_at,
     current_period_end_at: data.current_period_end_at,
   };
+};
+
+export const getSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('id, name, description')
+    .order('name');
+
+  if (error) {
+    console.error('Error fetching subscription plans:', error);
+    throw new Error('Could not fetch subscription plans.');
+  }
+
+  return data || [];
 };

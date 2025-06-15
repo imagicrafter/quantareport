@@ -10,12 +10,12 @@ import SignUpStep2Form from '../components/auth/SignUpStep2Form';
 import { validateSignupCode, markSignupCodeAsUsed } from '@/services/signupCodeService';
 import { validateSignupPrerequisites } from '@/services/authValidationService';
 import { checkRegistrationStatus, createUserSubscription } from '@/services/userService';
+import { getSubscriptionPlans, SubscriptionPlan } from '@/services/subscriptionService';
 
 const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
 
 const SignUp = () => {
   const [searchParams] = useSearchParams();
-  const planFromUrl = searchParams.get('plan') || 'free';
   const codeFromUrl = searchParams.get('code') || '';
   const emailFromUrl = searchParams.get('email') || '';
   const navigate = useNavigate();
@@ -27,10 +27,12 @@ const SignUp = () => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [industry, setIndustry] = useState('');
-  const [plan, setPlan] = useState(planFromUrl);
+  const [plan, setPlan] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isOAuthCompletion, setIsOAuthCompletion] = useState(false);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionPlan[]>([]);
+  const [isLoadingSubscriptions, setIsLoadingSubscriptions] = useState(true);
   
   const { 
     handleGoogleSignUp, 
@@ -91,6 +93,34 @@ const SignUp = () => {
   }, [navigate]);
 
   useEffect(() => {
+    const fetchSubscriptions = async () => {
+      try {
+        setIsLoadingSubscriptions(true);
+        const fetchedSubscriptions = await getSubscriptionPlans();
+        setSubscriptions(fetchedSubscriptions);
+
+        if (fetchedSubscriptions.length > 0) {
+          const planKeyFromUrl = searchParams.get('plan') || 'free';
+          const defaultPlan =
+            fetchedSubscriptions.find(s => s.name.toLowerCase() === planKeyFromUrl.toLowerCase()) ||
+            fetchedSubscriptions.find(s => s.name.toLowerCase() === 'free') ||
+            fetchedSubscriptions[0];
+
+          if (defaultPlan) {
+            setPlan(defaultPlan.id);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch subscription plans", err);
+        setError("Could not load subscription plans. Please try again later.");
+      } finally {
+        setIsLoadingSubscriptions(false);
+      }
+    };
+    fetchSubscriptions();
+  }, [searchParams]);
+
+  useEffect(() => {
     if (codeFromUrl && emailFromUrl && !isOAuthCompletion) {
       const validateCodeFromUrl = async () => {
         if (requiresSignupCode === null) return;
@@ -113,7 +143,7 @@ const SignUp = () => {
     }
   }, [codeFromUrl, emailFromUrl, requiresSignupCode, isOAuthCompletion]);
   
-  const isSubmitting = isLoading || isOAuthLoading || isCheckingSettings;
+  const isSubmitting = isLoading || isOAuthLoading || isCheckingSettings || isLoadingSubscriptions;
   
   useEffect(() => {
     if (oAuthError && !error) {
@@ -305,6 +335,7 @@ const SignUp = () => {
           setStep={setStep}
           isLoading={isSubmitting}
           industries={industries}
+          subscriptions={subscriptions}
         />
       )}
     </SignUpContainer>
