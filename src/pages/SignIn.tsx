@@ -29,19 +29,6 @@ const SignIn = () => {
     }
   }, [oAuthError]);
 
-  // Check if user is already logged in
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        console.log('User already logged in, redirecting to dashboard');
-        navigate('/dashboard');
-      }
-    };
-    
-    checkSession();
-  }, [navigate]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
