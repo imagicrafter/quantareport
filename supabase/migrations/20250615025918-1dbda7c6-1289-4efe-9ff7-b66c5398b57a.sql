@@ -1,4 +1,6 @@
 
+-- Step 1: Update the database function with enhanced logging for better debugging.
+-- This version adds more detailed log messages to track the process of marking a code as used.
 CREATE OR REPLACE FUNCTION public.handle_signup_code_usage()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -48,3 +50,20 @@ BEGIN
   RETURN NEW;
 END;
 $function$;
+
+-- Step 2: Drop any old triggers on auth.users to avoid conflicts.
+-- We drop both potential old names to be safe.
+DROP TRIGGER IF EXISTS on_auth_user_created_handle_signup_code ON auth.users;
+DROP TRIGGER IF EXISTS on_auth_user_change_handle_signup_code ON auth.users;
+
+-- Step 3: Create a single, robust trigger on auth.users.
+-- This trigger will now fire on both INSERT (for email signups) and UPDATE (for OAuth signups),
+-- ensuring signup codes are handled in all cases.
+CREATE TRIGGER on_auth_user_change_handle_signup_code
+  AFTER INSERT OR UPDATE ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_signup_code_usage();
+
+-- Step 4: As a final cleanup, remove any lingering, incorrect triggers on the profiles table
+-- that may have been created during previous attempts to fix this issue.
+DROP TRIGGER IF EXISTS on_profile_created_update_signup_code ON public.profiles;

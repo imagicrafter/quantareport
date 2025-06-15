@@ -7,7 +7,7 @@ import { industries } from '../data/industries';
 import SignUpContainer from '../components/auth/SignUpContainer';
 import SignUpStep1Form from '../components/auth/SignUpStep1Form';
 import SignUpStep2Form from '../components/auth/SignUpStep2Form';
-import { validateSignupCode, markSignupCodeAsUsed } from '@/services/signupCodeService';
+import { validateSignupCode } from '@/services/signupCodeService';
 
 const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
 
@@ -188,14 +188,9 @@ const SignUp = () => {
       const { error: updateError } = await supabase.auth.updateUser({ data: metadata });
       if (updateError) throw updateError;
       
-      if (signUpCode && email) {
-        try {
-          await markSignupCodeAsUsed(signUpCode, email);
-          console.log('Signup code marked as used for OAuth user.');
-        } catch (codeError) {
-          console.error('Failed to mark signup code as used:', codeError);
-        }
-      }
+      // The database trigger 'on_auth_user_change_handle_signup_code' now handles this automatically.
+      // The manual call to markSignupCodeAsUsed is removed to rely on the trigger.
+      console.log('Profile updated. The backend trigger will handle the signup code.');
 
       sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
       toast.success('Profile completed successfully!');
@@ -233,14 +228,9 @@ const SignUp = () => {
       
       if (signUpError) throw signUpError;
       
-      if (signUpCode) {
-        try {
-          await markSignupCodeAsUsed(signUpCode, email);
-          console.log('Signup code marked as used');
-        } catch (codeError) {
-          console.error('Failed to mark signup code as used:', codeError);
-        }
-      }
+      // The database trigger 'on_auth_user_change_handle_signup_code' now handles this automatically.
+      // The manual call to markSignupCodeAsUsed is removed to rely on the trigger.
+      console.log('Account created. The backend trigger will handle the signup code.');
       
       toast.success('Account created successfully! Please check your email for a verification link.');
       // The user will be redirected to the dashboard after email verification.
