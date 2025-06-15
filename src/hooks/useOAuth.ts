@@ -3,6 +3,7 @@ import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
 import { validateSignupCode } from '@/services/signupCodeService';
 import { getAppSettings } from '@/services/configurationService';
+import { checkRegistrationStatus } from '@/services/userService';
 
 // Define a session storage key for storing validated signup info
 const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
@@ -57,6 +58,19 @@ export const useOAuth = () => {
 
   // Helper function to validate signup code before OAuth
   const validateSignupCodeBeforeOAuth = async (email: string, code: string): Promise<boolean> => {
+    setError(''); // Clear previous errors
+
+    // Check 1: Is user already registered?
+    const registrationCheck = await checkRegistrationStatus(email);
+    if (registrationCheck.error) {
+      setError(registrationCheck.error);
+      return false;
+    }
+    if (registrationCheck.isRegistered) {
+      setError('An account with this email already exists. Please sign in.');
+      return false;
+    }
+
     if (requiresSignupCode) {
       if (!code || !email) {
         setError('Email and signup code are required');

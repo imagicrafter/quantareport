@@ -8,6 +8,7 @@ import SignUpContainer from '../components/auth/SignUpContainer';
 import SignUpStep1Form from '../components/auth/SignUpStep1Form';
 import SignUpStep2Form from '../components/auth/SignUpStep2Form';
 import { validateSignupCode } from '@/services/signupCodeService';
+import { checkRegistrationStatus } from '@/services/userService';
 
 const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
 
@@ -126,7 +127,7 @@ const SignUp = () => {
   const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (step === 1) {
       if (!email || !password) {
         setError('Please fill in all required fields');
@@ -140,23 +141,37 @@ const SignUp = () => {
         setError('Signup code is required');
         return;
       }
-      
-      if (requiresSignupCode && signUpCode) {
-        try {
-          setIsLoading(true);
+
+      setIsLoading(true);
+      try {
+        // Check 1: Is user already registered?
+        const registrationCheck = await checkRegistrationStatus(email);
+        if (registrationCheck.error) {
+          setError(registrationCheck.error);
+          return;
+        }
+        if (registrationCheck.isRegistered) {
+          setError('An account with this email already exists. Please sign in.');
+          return;
+        }
+
+        // Check 2: If code is required, is it valid?
+        if (requiresSignupCode && signUpCode) {
           const validation = await validateSignupCode(signUpCode, email);
           if (!validation.valid) {
             setError(validation.message);
             return;
           }
-        } catch (err) {
-          setError('Error validating signup code');
-          return;
-        } finally {
-          setIsLoading(false);
         }
+
+        // All checks passed, move to next step
+        setStep(2);
+      } catch (err: any) {
+        console.error('Error during signup step 1 validation:', err);
+        setError(err.message || 'An error occurred during validation.');
+      } finally {
+        setIsLoading(false);
       }
-      setStep(2);
     } else if (step === 2) {
       if (!name || !phone || !industry) {
         setError('Please fill in all required fields');
