@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
-import { validateSignupCode } from '@/services/signupCodeService';
 import { getAppSettings } from '@/services/configurationService';
-import { checkRegistrationStatus } from '@/services/userService';
+import { validateSignupPrerequisites } from '@/services/authValidationService';
 
 // Define a session storage key for storing validated signup info
 const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
@@ -60,36 +59,11 @@ export const useOAuth = () => {
   const validateSignupCodeBeforeOAuth = async (email: string, code: string): Promise<boolean> => {
     setError(''); // Clear previous errors
 
-    // Check 1: Is user already registered?
-    const registrationCheck = await checkRegistrationStatus(email);
-    if (registrationCheck.error) {
-      setError(registrationCheck.error);
-      return false;
-    }
-    if (registrationCheck.isRegistered) {
-      setError('An account with this email already exists. Please sign in.');
-      return false;
-    }
+    const validation = await validateSignupPrerequisites(email, code);
 
-    if (requiresSignupCode) {
-      if (!code || !email) {
-        setError('Email and signup code are required');
-        return false;
-      }
-
-      try {
-        const validation = await validateSignupCode(code, email);
-        if (!validation.valid) {
-          setError(validation.message);
-          return false;
-        }
-      } catch (err) {
-        console.error('Error validating signup code:', err);
-        setError('Error validating signup code');
-        return false;
-      }
-    } else {
-      console.log('Signup codes not required, proceeding with OAuth.');
+    if (!validation.valid) {
+      setError(validation.message);
+      return false;
     }
     
     // Always save info to session storage to handle on callback

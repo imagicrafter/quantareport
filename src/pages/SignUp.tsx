@@ -8,7 +8,7 @@ import SignUpContainer from '../components/auth/SignUpContainer';
 import SignUpStep1Form from '../components/auth/SignUpStep1Form';
 import SignUpStep2Form from '../components/auth/SignUpStep2Form';
 import { validateSignupCode } from '@/services/signupCodeService';
-import { checkRegistrationStatus } from '@/services/userService';
+import { validateSignupPrerequisites } from '@/services/authValidationService';
 
 const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
 
@@ -144,26 +144,12 @@ const SignUp = () => {
 
       setIsLoading(true);
       try {
-        // Check 1: Is user already registered?
-        const registrationCheck = await checkRegistrationStatus(email);
-        if (registrationCheck.error) {
-          setError(registrationCheck.error);
+        const validation = await validateSignupPrerequisites(email, signUpCode);
+        if (!validation.valid) {
+          setError(validation.message);
           return;
         }
-        if (registrationCheck.isRegistered) {
-          setError('An account with this email already exists. Please sign in.');
-          return;
-        }
-
-        // Check 2: If code is required, is it valid?
-        if (requiresSignupCode && signUpCode) {
-          const validation = await validateSignupCode(signUpCode, email);
-          if (!validation.valid) {
-            setError(validation.message);
-            return;
-          }
-        }
-
+        
         // All checks passed, move to next step
         setStep(2);
       } catch (err: any) {
