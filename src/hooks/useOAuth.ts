@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
 import { getAppSettings } from '@/services/configurationService';
-import { validateSignupPrerequisites } from '@/services/authValidationService';
+import { validateSignupPrerequisites, ValidationResult } from '@/services/authValidationService';
 
 // Define a session storage key for storing validated signup info
 const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
@@ -56,27 +56,9 @@ export const useOAuth = () => {
   };
 
   // Helper function to validate signup code before OAuth
-  const validateSignupCodeBeforeOAuth = async (email: string, code: string): Promise<boolean> => {
+  const validateSignupCodeBeforeOAuth = async (email: string, code: string): Promise<ValidationResult> => {
     setError(''); // Clear previous errors
-
-    const validation = await validateSignupPrerequisites(email, code);
-
-    if (validation.status === 'VALIDATION_PASSED') {
-      // It's a valid NEW signup, save info for callback.
-      saveOAuthSignupInfo(email, code);
-      return true;
-    }
-
-    if (validation.status === 'ALREADY_REGISTERED') {
-      // Existing user, it's valid to proceed with OAuth sign-in.
-      // Do NOT save signup info, so the callback is treated as a sign-in.
-      console.log('OAuth Signup: Existing user detected. Proceeding as sign-in.');
-      return true;
-    }
-
-    // For VALIDATION_FAILED or SYSTEM_ERROR
-    setError(validation.message);
-    return false;
+    return await validateSignupPrerequisites(email, code);
   };
 
   const performOAuth = async (
@@ -88,6 +70,8 @@ export const useOAuth = () => {
     setError('');
     setIsLoading(true);
 
+    let effectiveFlow = flow;
+
     try {
       if (flow === 'signup') {
         if (!email) {
@@ -95,21 +79,37 @@ export const useOAuth = () => {
           setIsLoading(false);
           return;
         }
-        const isValid = await validateSignupCodeBeforeOAuth(email, signupCode || '');
-        if (!isValid) {
+        
+        const validation = await validateSignupCodeBeforeOAuth(email, signupCode || '');
+        
+        if (validation.status === 'VALIDATION_PASSED') {
+          // It's a valid NEW signup, save info for callback.
+          saveOAuthSignupInfo(email, signupCode || '');
+          effectiveFlow = 'signup';
+        } else if (validation.status === 'ALREADY_REGISTERED') {
+          // Existing user, treat as sign-in.
+          console.log('OAuth Signup: Existing user detected. Proceeding as sign-in.');
+          effectiveFlow = 'signin';
+          toast.info('You already have an account. Signing you in.');
+          // Clear any lingering signup info as a safeguard
+          sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
+        } else {
+          // For VALIDATION_FAILED or SYSTEM_ERROR
+          setError(validation.message);
           setIsLoading(false);
           return;
         }
+
       } else {
         // For sign-in, ensure any lingering signup info is cleared as a safeguard.
         sessionStorage.removeItem('oauth_signup_info');
       }
 
       const options = {
-        redirectTo: `${window.location.origin}/${flow === 'signup' ? 'signup' : 'dashboard'}`,
+        redirectTo: `${window.location.origin}/${effectiveFlow === 'signup' ? 'signup' : 'dashboard'}`,
       };
 
-      console.log(`Initiating ${provider} ${flow} flow...`, options);
+      console.log(`Initiating ${provider} ${effectiveFlow} flow...`, options);
 
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({ provider, options });
 

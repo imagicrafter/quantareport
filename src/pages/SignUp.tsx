@@ -8,7 +8,7 @@ import { industries } from '../data/industries';
 import SignUpContainer from '../components/auth/SignUpContainer';
 import SignUpStep1Form from '../components/auth/SignUpStep1Form';
 import SignUpStep2Form from '../components/auth/SignUpStep2Form';
-import { validateSignupCode } from '@/services/signupCodeService';
+import { validateSignupCode, markSignupCodeAsUsed } from '@/services/signupCodeService';
 import { validateSignupPrerequisites } from '@/services/authValidationService';
 
 const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
@@ -190,9 +190,10 @@ const SignUp = () => {
       const { error: updateError } = await supabase.auth.updateUser({ data: metadata });
       if (updateError) throw updateError;
       
-      // The database trigger 'on_auth_user_change_handle_signup_code' now handles this automatically.
-      // The manual call to markSignupCodeAsUsed is removed to rely on the trigger.
-      console.log('Profile updated. The backend trigger will handle the signup code.');
+      if (signUpCode) {
+        await markSignupCodeAsUsed(signUpCode, email);
+        console.log('Signup code marked as used.');
+      }
 
       sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
       toast.success('Profile completed successfully!');
@@ -230,6 +231,10 @@ const SignUp = () => {
       
       if (signUpError) throw signUpError;
       
+      if (signUpCode) {
+        await markSignupCodeAsUsed(signUpCode, email);
+      }
+      
       console.log('Sign up process initiated.');
 
       if (data.user && !data.session) {
@@ -239,7 +244,7 @@ const SignUp = () => {
         // Stay on page. User needs to verify email, then they can sign in.
       } else if (data.user && data.session) {
         // This case occurs when email confirmation is NOT required.
-        console.log('Account created and user logged in (email confirmation disabled). The backend trigger will handle the signup code.');
+        console.log('Account created and user logged in (email confirmation disabled).');
         toast.success('Account created successfully!');
         navigate('/dashboard');
       } else {
