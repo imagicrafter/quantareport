@@ -46,6 +46,12 @@ const SignUp = () => {
   
   useEffect(() => {
     const handleSessionState = async () => {
+      // Wait for settings to load before proceeding
+      if (isCheckingSettings) {
+        console.log('Waiting for app settings to load...');
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         // Not logged in. Do nothing.
@@ -67,30 +73,55 @@ const SignUp = () => {
       const signupInfoRaw = sessionStorage.getItem(OAUTH_SIGNUP_SESSION_KEY);
 
       if (signupInfoRaw) {
-        // We are in an OAuth signup flow.
+        // We are in an OAuth signup flow that was initiated from the /signup page.
         console.log('Detected OAuth profile completion flow.');
         const signupInfo = JSON.parse(signupInfoRaw);
         
+        // Security check: if codes are required, ensure one was validated and stored.
+        if (requiresSignupCode && !signupInfo.code) {
+          console.log('OAuth signup requires a code, but none was provided. Redirecting home.');
+          toast.error('A valid signup code is required to create an account. Please use an invite link.');
+          sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
+          await supabase.auth.signOut();
+          navigate('/');
+          return;
+        }
+
         setIsOAuthCompletion(true);
         setEmail(user.email || signupInfo.email || '');
         setName(user.user_metadata.full_name || user.user_metadata.name || ''); 
         setSignUpCode(signupInfo.code || '');
         setStep(2);
+
       } else {
-        // Logged in, but not from OAuth flow (e.g., from email verification link)
-        // and we already established they are not subscribed.
+        // This is a user who is logged in but not yet registered.
+        // Can be from an email verification link OR an OAuth flow started from /signin.
+
+        const isOAuthUser = user.app_metadata.provider === 'google' || user.app_metadata.provider === 'facebook';
+        const signupCode = user.user_metadata?.signup_code;
+        
+        // Security check: This prevents bypassing the code requirement by using OAuth on the signin page.
+        if (requiresSignupCode && isOAuthUser && !signupCode) {
+          console.log('OAuth user without signup code detected, but code is required. Redirecting.');
+          toast.error('A valid signup code is required to create an account. Please use an invite link.');
+          await supabase.auth.signOut();
+          navigate('/');
+          return;
+        }
+        
         console.log('Logged-in user needs to complete profile. Proceeding to Step 2.');
         setIsOAuthCompletion(true); // Re-using this to show Step 2 with "Complete Your Profile" title.
         setEmail(user.email || '');
         setName(user.user_metadata.full_name || '');
         setPhone(user.user_metadata.phone || '');
         setIndustry(user.user_metadata.industry || '');
+        setSignUpCode(signupCode || '');
         setStep(2);
       }
     };
 
     handleSessionState();
-  }, [navigate]);
+  }, [navigate, isCheckingSettings, requiresSignupCode]);
 
   useEffect(() => {
     const fetchSubscriptions = async () => {
