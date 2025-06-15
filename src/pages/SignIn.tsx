@@ -15,12 +15,19 @@ const SignIn = () => {
   const [error, setError] = useState('');
   
   const { 
-    handleGoogleSignUp: handleGoogleSignIn, 
-    handleFacebookSignUp: handleFacebookSignIn,
-    isOAuthLoading
+    handleGoogleSignIn, 
+    handleFacebookSignIn,
+    isOAuthLoading,
+    oAuthError
   } = useOAuth();
   
   const isSubmitting = isLoading || isOAuthLoading;
+
+  useEffect(() => {
+    if (oAuthError) {
+      setError(oAuthError);
+    }
+  }, [oAuthError]);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -70,14 +77,14 @@ const SignIn = () => {
   const handleGoogleButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log('Google sign-in button clicked, initiating OAuth flow');
-    // For sign in, we don't need to validate signup codes
+    sessionStorage.removeItem('oauth_signup_info');
     handleGoogleSignIn();
   };
 
   const handleFacebookButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log('Facebook sign-in button clicked, initiating OAuth flow');
-    // For sign in, we don't need to validate signup codes
+    sessionStorage.removeItem('oauth_signup_info');
     handleFacebookSignIn();
   };
 

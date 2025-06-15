@@ -177,6 +177,77 @@ export const useOAuth = () => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const options = {
+        redirectTo: `${window.location.origin}/dashboard`,
+      };
+      
+      console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
+      console.log('OAuth options (Google Sign In):', options);
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options
+      });
+      
+      if (error) {
+        console.error('Google sign in error details:', error);
+        throw error;
+      }
+      
+      if (data?.url) {
+        window.top.location.href = data.url;
+      } else {
+        throw new Error('No redirect URL returned from Supabase');
+      }
+      
+    } catch (err: any) {
+      console.error('Google sign in error:', err);
+      const message = err.message || 'An error occurred during Google sign in';
+      setError(message);
+      toast.error(message);
+      setIsLoading(false);
+    }
+  };
+
+  const handleFacebookSignIn = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const options = {
+        redirectTo: `${window.location.origin}/dashboard`,
+      };
+      
+      console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
+      console.log('OAuth options (Facebook Sign In):', options);
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options
+      });
+      
+      if (error) throw error;
+      
+      if (data?.url) {
+        window.top.location.href = data.url;
+      } else {
+        throw new Error('No redirect URL returned from Supabase');
+      }
+      
+    } catch (err: any) {
+      const message = err.message || 'An error occurred during Facebook sign in';
+      console.error('Facebook sign in error:', err);
+      setError(message);
+      toast.error(message);
+      setIsLoading(false);
+    }
+  };
+
   return {
     isOAuthLoading: isLoading,
     isCheckingSettings,
@@ -184,6 +255,8 @@ export const useOAuth = () => {
     oAuthError: error,
     handleGoogleSignUp,
     handleFacebookSignUp,
+    handleGoogleSignIn,
+    handleFacebookSignIn,
     setOAuthError: setError
   };
 };
