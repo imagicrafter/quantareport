@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
@@ -217,7 +216,7 @@ const SignUp = () => {
         signup_code: signUpCode || undefined
       };
       
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -228,12 +227,22 @@ const SignUp = () => {
       
       if (signUpError) throw signUpError;
       
-      // The database trigger 'on_auth_user_change_handle_signup_code' now handles this automatically.
-      // The manual call to markSignupCodeAsUsed is removed to rely on the trigger.
-      console.log('Account created. The backend trigger will handle the signup code.');
-      
-      toast.success('Account created successfully! Please check your email for a verification link.');
-      // The user will be redirected to the dashboard after email verification.
+      console.log('Sign up process initiated.');
+
+      if (data.user && !data.session) {
+        // This case occurs when email confirmation is required.
+        console.log('Account created, verification email will be sent.');
+        toast.success('Account created! Please check your email for a verification link to complete your registration.');
+        // Stay on page. User needs to verify email, then they can sign in.
+      } else if (data.user && data.session) {
+        // This case occurs when email confirmation is NOT required.
+        console.log('Account created and user logged in (email confirmation disabled). The backend trigger will handle the signup code.');
+        toast.success('Account created successfully!');
+        navigate('/dashboard');
+      } else {
+        // Fallback for unexpected response from Supabase.
+        throw new Error('An unexpected issue occurred during signup. Please try again.');
+      }
       
     } catch (err: any) {
       console.error('Sign up error:', err);

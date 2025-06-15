@@ -1,5 +1,8 @@
-
 project_id = "vtaufnxworztolfdwlll"
+
+[auth.hook.send_email]
+enabled = true
+uri = "pg-functions://postgres/public/send_custom_email"
 
 [functions.file-analysis]
 verify_jwt = false
