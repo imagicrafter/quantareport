@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
@@ -43,53 +44,52 @@ const SignUp = () => {
   useEffect(() => {
     const checkOAuthCompletion = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
-        // Not logged in, regular signup page visit. Do nothing.
+        // Not an OAuth callback, not logged in. Do nothing.
         return;
       }
-  
-      // User is logged in.
+
+      // User is logged in. Check if it's part of an OAuth signup flow.
       const signupInfoRaw = sessionStorage.getItem(OAUTH_SIGNUP_SESSION_KEY);
-      
+
       if (signupInfoRaw) {
-        // This is an OAuth signup callback.
+        // We are in an OAuth signup flow.
         console.log('Detected OAuth profile completion flow.');
         const user = session.user;
-  
-        // If profile is already complete, just clean up and redirect.
-        if (user.user_metadata?.phone && user.user_metadata?.industry) {
-          console.log('OAuth user profile is already complete. Redirecting to dashboard.');
+
+        // Check if the required fields for step 2 are already filled.
+        const isProfileComplete = user.user_metadata?.phone && user.user_metadata?.industry;
+
+        if (isProfileComplete) {
+          // This can happen if an existing user with a complete profile re-triggers the signup flow.
+          // It's safe to just send them to the dashboard.
+          console.log('OAuth user profile is already complete. Cleaning up and redirecting to dashboard.');
           sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
           navigate('/dashboard');
           return;
         }
-  
-        // If user was created more than 5 mins ago, they are an existing user.
-        const isExistingUser = (new Date().getTime() - new Date(user.created_at).getTime()) > 5 * 60 * 1000;
-        if (isExistingUser) {
-          console.log('Existing user landed in signup flow. Redirecting to dashboard.');
-          sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
-          navigate('/dashboard');
-          return;
-        }
+
+        // Profile is not complete, proceed to Step 2 to gather more details.
+        console.log('Profile is incomplete. Proceeding to Step 2.');
         
-        // Otherwise, this is a new user who needs to complete their profile.
-        setIsOAuthCompletion(true);
         const signupInfo = JSON.parse(signupInfoRaw);
         
+        setIsOAuthCompletion(true);
         setEmail(user.email || signupInfo.email || '');
-        setName(user.user_metadata.full_name || '');
+        // Google can provide 'full_name' or 'name', so check both
+        setName(user.user_metadata.full_name || user.user_metadata.name || ''); 
         setSignUpCode(signupInfo.code || '');
         setStep(2);
-  
+
       } else {
-        // A logged-in user reached /signup without being in an OAuth flow.
+        // User is logged in but not in an OAuth signup flow (no session storage item).
+        // This means an existing user navigated to /signup. Redirect them.
         console.log('Logged-in user accessed /signup directly. Redirecting to dashboard.');
         navigate('/dashboard');
       }
     };
-  
+
     checkOAuthCompletion();
   }, [navigate]);
 
