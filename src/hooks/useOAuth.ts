@@ -132,20 +132,20 @@ export const useOAuth = () => {
     }
   };
 
-  const handleGoogleSignUp = (email?: string, signupCode?: string) => {
-    performOAuth('google', 'signup', email, signupCode);
+  const handleGoogleSignUp = async (email?: string, signupCode?: string) => {
+    await performOAuth('google', 'signup', email, signupCode);
   };
   
-  const handleFacebookSignUp = (email?: string, signupCode?: string) => {
-    performOAuth('facebook', 'signup', email, signupCode);
+  const handleFacebookSignUp = async (email?: string, signupCode?: string) => {
+    await performOAuth('facebook', 'signup', email, signupCode);
   };
 
-  const handleGoogleSignIn = () => {
-    performOAuth('google', 'signin');
+  const handleGoogleSignIn = async () => {
+    await performOAuth('google', 'signin');
   };
 
-  const handleFacebookSignIn = () => {
-    performOAuth('facebook', 'signin');
+  const handleFacebookSignIn = async () => {
+    await performOAuth('facebook', 'signin');
   };
 
   return {
