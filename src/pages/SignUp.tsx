@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
@@ -145,13 +146,14 @@ const SignUp = () => {
       setIsLoading(true);
       try {
         const validation = await validateSignupPrerequisites(email, signUpCode);
-        if (!validation.valid) {
+        if (validation.status === 'VALIDATION_PASSED') {
+          // All checks passed for a new user, move to next step
+          setStep(2);
+        } else {
+          // This will catch ALREADY_REGISTERED, VALIDATION_FAILED, and SYSTEM_ERROR
+          // The message from the service is user-friendly.
           setError(validation.message);
-          return;
         }
-        
-        // All checks passed, move to next step
-        setStep(2);
       } catch (err: any) {
         console.error('Error during signup step 1 validation:', err);
         setError(err.message || 'An error occurred during validation.');

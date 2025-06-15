@@ -61,14 +61,22 @@ export const useOAuth = () => {
 
     const validation = await validateSignupPrerequisites(email, code);
 
-    if (!validation.valid) {
-      setError(validation.message);
-      return false;
+    if (validation.status === 'VALIDATION_PASSED') {
+      // It's a valid NEW signup, save info for callback.
+      saveOAuthSignupInfo(email, code);
+      return true;
     }
-    
-    // Always save info to session storage to handle on callback
-    saveOAuthSignupInfo(email, code);
-    return true;
+
+    if (validation.status === 'ALREADY_REGISTERED') {
+      // Existing user, it's valid to proceed with OAuth sign-in.
+      // Do NOT save signup info, so the callback is treated as a sign-in.
+      console.log('OAuth Signup: Existing user detected. Proceeding as sign-in.');
+      return true;
+    }
+
+    // For VALIDATION_FAILED or SYSTEM_ERROR
+    setError(validation.message);
+    return false;
   };
 
   const performOAuth = async (
@@ -82,7 +90,12 @@ export const useOAuth = () => {
 
     try {
       if (flow === 'signup') {
-        const isValid = await validateSignupCodeBeforeOAuth(email || '', signupCode || '');
+        if (!email) {
+          setError("Email is required for signup.");
+          setIsLoading(false);
+          return;
+        }
+        const isValid = await validateSignupCodeBeforeOAuth(email, signupCode || '');
         if (!isValid) {
           setIsLoading(false);
           return;
