@@ -1,15 +1,11 @@
 
--- This migration script resets and correctly implements the signup code handling logic.
--- It ensures that signup codes are marked as used regardless of the signup method (email or OAuth).
-
 -- Step 1: Clean up all old triggers and functions to ensure a clean state.
--- We use CASCADE to handle any lingering dependencies that caused previous migrations to fail.
+-- We use CASCADE to handle any lingering dependencies that caused the previous migration to fail.
 DROP FUNCTION IF EXISTS public.handle_signup_code_usage() CASCADE;
 DROP FUNCTION IF EXISTS public.handle_profile_change_signup_code() CASCADE;
 DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
 
 -- Step 2: Recreate the function to sync auth.users with public.profiles.
--- This function creates or updates a user's profile whenever their auth entry changes.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -54,13 +50,12 @@ BEGIN
 END;
 $function$;
 
--- Step 3: Recreate the trigger to sync auth.users with public.profiles.
+-- Step 3: Recreate the trigger for the user sync function.
 CREATE TRIGGER on_auth_user_change
   AFTER INSERT OR UPDATE ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Step 4: Recreate the function to handle the signup code logic when a profile is created or updated.
--- This is the core of the fix, as it reliably triggers after any user creation or profile completion.
+-- Step 4: Recreate the function to handle the signup code logic when a profile changes.
 CREATE OR REPLACE FUNCTION public.handle_profile_change_signup_code()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -104,7 +99,7 @@ BEGIN
 END;
 $$;
 
--- Step 5: Recreate the trigger on the public.profiles table.
+-- Step 5: Recreate the trigger on the profiles table. This is the correct, reliable approach.
 CREATE TRIGGER on_profile_change_handle_signup_code
   AFTER INSERT OR UPDATE ON public.profiles
   FOR EACH ROW
