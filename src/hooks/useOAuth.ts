@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { toast } from 'sonner';
@@ -58,31 +57,30 @@ export const useOAuth = () => {
 
   // Helper function to validate signup code before OAuth
   const validateSignupCodeBeforeOAuth = async (email: string, code: string): Promise<boolean> => {
-    if (!requiresSignupCode) {
-      console.log('Signup codes not required, proceeding with OAuth');
-      return true;
-    }
-
-    if (!code) {
-      setError('Signup code is required');
-      return false;
-    }
-
-    try {
-      const validation = await validateSignupCode(code, email);
-      if (!validation.valid) {
-        setError(validation.message);
+    if (requiresSignupCode) {
+      if (!code || !email) {
+        setError('Email and signup code are required');
         return false;
       }
-      
-      // Save validated info for OAuth callback
-      saveOAuthSignupInfo(email, code);
-      return true;
-    } catch (err) {
-      console.error('Error validating signup code:', err);
-      setError('Error validating signup code');
-      return false;
+
+      try {
+        const validation = await validateSignupCode(code, email);
+        if (!validation.valid) {
+          setError(validation.message);
+          return false;
+        }
+      } catch (err) {
+        console.error('Error validating signup code:', err);
+        setError('Error validating signup code');
+        return false;
+      }
+    } else {
+      console.log('Signup codes not required, proceeding with OAuth.');
     }
+    
+    // Always save info to session storage to handle on callback
+    saveOAuthSignupInfo(email, code);
+    return true;
   };
 
   const handleGoogleSignUp = async (email?: string, signupCode?: string) => {
@@ -90,36 +88,21 @@ export const useOAuth = () => {
     setError('');
     
     try {
-      // Validate signup code if required and provided
-      if (email && signupCode) {
-        const isValid = await validateSignupCodeBeforeOAuth(email, signupCode);
-        if (!isValid) {
-          setIsLoading(false);
-          return;
-        }
-      } else if (requiresSignupCode) {
-        setError('Email and signup code are required');
+      // Validate signup code if required. The function will also save data to session storage.
+      const isValid = await validateSignupCodeBeforeOAuth(email || '', signupCode || '');
+      if (!isValid) {
         setIsLoading(false);
         return;
       }
       
-      // Set up the metadata to include in the OAuth request
+      // Set up the options for the OAuth request
       const options: any = {
         redirectTo: `${window.location.origin}/dashboard`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        }
+        // !! CRITICAL FIX: REMOVED queryParams that were causing Google OAuth error
       };
-
-      // Add signup code to query params if provided
-      if (email && signupCode) {
-        options.queryParams.signup_code = signupCode;
-        options.queryParams.email = email;
-      }
       
       console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
-      console.log('OAuth options:', options);
+      console.log('OAuth options (Google):', options);
       
       // Get the URL for Google OAuth
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -135,7 +118,7 @@ export const useOAuth = () => {
       console.log('Google sign up initiated, URL received:', data?.url);
       
       if (data?.url) {
-        // Force navigation to the top frame and clear the URL to prevent any caching issues
+        // Force navigation to the top frame
         window.top.location.href = data.url;
       } else {
         throw new Error('No redirect URL returned from Supabase');
@@ -154,34 +137,21 @@ export const useOAuth = () => {
     setError('');
     
     try {
-      // Validate signup code if required and provided
-      if (email && signupCode) {
-        const isValid = await validateSignupCodeBeforeOAuth(email, signupCode);
-        if (!isValid) {
-          setIsLoading(false);
-          return;
-        }
-      } else if (requiresSignupCode) {
-        setError('Email and signup code are required');
+      // Validate signup code if required. The function will also save data to session storage.
+      const isValid = await validateSignupCodeBeforeOAuth(email || '', signupCode || '');
+      if (!isValid) {
         setIsLoading(false);
         return;
       }
       
-      // Set up the metadata to include in the OAuth request
+      // Set up the options for the OAuth request
       const options: any = {
         redirectTo: `${window.location.origin}/dashboard`,
+        // !! CRITICAL FIX: REMOVED queryParams
       };
-
-      // Add signup code to query params if provided
-      if (email && signupCode) {
-        options.queryParams = {
-          signup_code: signupCode,
-          email: email
-        };
-      }
       
       console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
-      console.log('OAuth options:', options);
+      console.log('OAuth options (Facebook):', options);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'facebook',
