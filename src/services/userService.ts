@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -47,7 +46,7 @@ export const checkRegistrationStatus = async (email: string): Promise<{ isRegist
  * @param planKey The plan key from the signup form (e.g., 'free', 'pro').
  * @returns An object with an optional `error` message.
  */
-export const createSubscriptionForUser = async (userId: string, planKey: string): Promise<{ error: string | null }> => {
+export const createUserSubscription = async (userId: string, planKey: string): Promise<{ error: string | null }> => {
   try {
     if (!userId || !planKey) {
       return { error: 'User ID and plan are required.' };
@@ -94,8 +93,7 @@ export const createSubscriptionForUser = async (userId: string, planKey: string)
     return { error: null };
 
   } catch (err: any) {
-    console.error('Unexpected error in createSubscriptionForUser:', err);
+    console.error('Unexpected error in createUserSubscription:', err);
     return { error: err.message || 'An unexpected error occurred while creating the subscription.' };
   }
 };
-
