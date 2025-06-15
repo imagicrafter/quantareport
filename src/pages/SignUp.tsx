@@ -79,11 +79,11 @@ const SignUp = () => {
         
         // Security check: if codes are required, ensure one was validated and stored.
         if (requiresSignupCode && !signupInfo.code) {
-          console.log('OAuth signup requires a code, but none was provided. Redirecting home.');
+          console.log('OAuth signup requires a code, but none was provided. Redirecting to early access.');
           toast.error('A valid signup code is required to create an account. Please use an invite link.');
           sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
           await supabase.auth.signOut();
-          navigate('/');
+          window.location.href = 'https://quantareport.com/#early-access';
           return;
         }
 
@@ -102,10 +102,10 @@ const SignUp = () => {
         
         // Security check: This prevents bypassing the code requirement by using OAuth on the signin page.
         if (requiresSignupCode && isOAuthUser && !signupCode) {
-          console.log('OAuth user without signup code detected, but code is required. Redirecting.');
+          console.log('OAuth user without signup code detected, but code is required. Redirecting to early access.');
           toast.error('A valid signup code is required to create an account. Please use an invite link.');
           await supabase.auth.signOut();
-          navigate('/');
+          window.location.href = 'https://quantareport.com/#early-access';
           return;
         }
         
