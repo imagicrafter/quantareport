@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
@@ -10,6 +9,7 @@ import SignUpStep1Form from '../components/auth/SignUpStep1Form';
 import SignUpStep2Form from '../components/auth/SignUpStep2Form';
 import { validateSignupCode, markSignupCodeAsUsed } from '@/services/signupCodeService';
 import { validateSignupPrerequisites } from '@/services/authValidationService';
+import { checkRegistrationStatus, createUserSubscription } from '@/services/userService';
 
 const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
 
@@ -43,55 +43,51 @@ const SignUp = () => {
   } = useOAuth();
   
   useEffect(() => {
-    const checkOAuthCompletion = async () => {
+    const handleSessionState = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-
       if (!session) {
-        // Not an OAuth callback, not logged in. Do nothing.
+        // Not logged in. Do nothing.
         return;
       }
 
-      // User is logged in. Check if it's part of an OAuth signup flow.
+      const user = session.user;
+
+      // Check if user is already fully registered first.
+      const { isRegistered } = await checkRegistrationStatus(user.email!);
+      if(isRegistered) {
+        console.log('User is already registered and subscribed. Cleaning up and redirecting to dashboard.');
+        sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
+        navigate('/dashboard');
+        return;
+      }
+
+      // If not registered, check if this is a completion flow.
       const signupInfoRaw = sessionStorage.getItem(OAUTH_SIGNUP_SESSION_KEY);
 
       if (signupInfoRaw) {
         // We are in an OAuth signup flow.
         console.log('Detected OAuth profile completion flow.');
-        const user = session.user;
-
-        // Check if the required fields for step 2 are already filled.
-        const isProfileComplete = user.user_metadata?.phone && user.user_metadata?.industry;
-
-        if (isProfileComplete) {
-          // This can happen if an existing user with a complete profile re-triggers the signup flow.
-          // It's safe to just send them to the dashboard.
-          console.log('OAuth user profile is already complete. Cleaning up and redirecting to dashboard.');
-          sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
-          navigate('/dashboard');
-          return;
-        }
-
-        // Profile is not complete, proceed to Step 2 to gather more details.
-        console.log('Profile is incomplete. Proceeding to Step 2.');
-        
         const signupInfo = JSON.parse(signupInfoRaw);
         
         setIsOAuthCompletion(true);
         setEmail(user.email || signupInfo.email || '');
-        // Google can provide 'full_name' or 'name', so check both
         setName(user.user_metadata.full_name || user.user_metadata.name || ''); 
         setSignUpCode(signupInfo.code || '');
         setStep(2);
-
       } else {
-        // User is logged in but not in an OAuth signup flow (no session storage item).
-        // This means an existing user navigated to /signup. Redirect them.
-        console.log('Logged-in user accessed /signup directly. Redirecting to dashboard.');
-        navigate('/dashboard');
+        // Logged in, but not from OAuth flow (e.g., from email verification link)
+        // and we already established they are not subscribed.
+        console.log('Logged-in user needs to complete profile. Proceeding to Step 2.');
+        setIsOAuthCompletion(true); // Re-using this to show Step 2 with "Complete Your Profile" title.
+        setEmail(user.email || '');
+        setName(user.user_metadata.full_name || '');
+        setPhone(user.user_metadata.phone || '');
+        setIndustry(user.user_metadata.industry || '');
+        setStep(2);
       }
     };
 
-    checkOAuthCompletion();
+    handleSessionState();
   }, [navigate]);
 
   useEffect(() => {
@@ -102,9 +98,9 @@ const SignUp = () => {
         
         try {
           setIsLoading(true);
-          const validation = await validateSignupCode(codeFromUrl, emailFromUrl);
-          if (!validation.valid) {
-            setError(validation.message);
+          const { valid, message } = await validateSignupCode(codeFromUrl, emailFromUrl);
+          if (!valid) {
+            setError(message);
           }
         } catch (err) {
           console.error('Error validating code from URL:', err);
@@ -183,12 +179,11 @@ const SignUp = () => {
         plan
       };
       
-      if (signUpCode) {
-        metadata.signup_code = signUpCode;
-      }
-
       const { error: updateError } = await supabase.auth.updateUser({ data: metadata });
       if (updateError) throw updateError;
+      
+      const { error: subError } = await createUserSubscription(user.id, plan);
+      if (subError) throw new Error(subError);
       
       if (signUpCode) {
         await markSignupCodeAsUsed(signUpCode, email);
@@ -231,19 +226,25 @@ const SignUp = () => {
       
       if (signUpError) throw signUpError;
       
-      if (signUpCode) {
-        await markSignupCodeAsUsed(signUpCode, email);
-      }
-      
       console.log('Sign up process initiated.');
 
       if (data.user && !data.session) {
         // This case occurs when email confirmation is required.
+        if (signUpCode) {
+          await markSignupCodeAsUsed(signUpCode, email);
+        }
         console.log('Account created, verification email will be sent.');
         toast.success('Account created! Please check your email for a verification link to complete your registration.');
-        // Stay on page. User needs to verify email, then they can sign in.
+        // Stay on page. The DashboardLayout/SignUp logic will handle completion flow upon next login.
       } else if (data.user && data.session) {
         // This case occurs when email confirmation is NOT required.
+        const { error: subError } = await createUserSubscription(data.user.id, plan);
+        if (subError) throw subError;
+
+        if (signUpCode) {
+          await markSignupCodeAsUsed(signUpCode, email);
+        }
+        
         console.log('Account created and user logged in (email confirmation disabled).');
         toast.success('Account created successfully!');
         navigate('/dashboard');

@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Checks if a user with the given email is already fully registered.
- * A user is considered registered if they have an entry in the user_subscriptions table.
+ * A user is considered registered if their profile's 'subscribed' flag is true.
  * @param email The email to check.
  * @returns An object with `isRegistered` and an optional `error` message.
  */
@@ -13,9 +13,11 @@ export const checkRegistrationStatus = async (email: string): Promise<{ isRegist
   }
 
   try {
+    // The 'subscribed' column was added via migration.
+    // The auto-generated types might not reflect this yet.
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('id, user_subscriptions(user_id)')
+      .select('subscribed')
       .eq('email', email)
       .single();
 
@@ -25,14 +27,12 @@ export const checkRegistrationStatus = async (email: string): Promise<{ isRegist
       return { isRegistered: false, error: 'Could not verify email. Please try again.' };
     }
 
-    // If profile exists and has a subscription, they are registered.
-    if (profile && Array.isArray(profile.user_subscriptions) && profile.user_subscriptions.length > 0) {
-      console.log(`User with email ${email} is already registered.`);
+    if (profile?.subscribed) {
+      console.log(`User with email ${email} is already registered (subscribed).`);
       return { isRegistered: true, error: null };
     }
 
-    // If profile exists but no subscription, or no profile at all, they are not registered.
-    console.log(`User with email ${email} is not yet registered.`);
+    console.log(`User with email ${email} is not yet registered (not subscribed).`);
     return { isRegistered: false, error: null };
 
   } catch (err: any) {
@@ -40,3 +40,62 @@ export const checkRegistrationStatus = async (email: string): Promise<{ isRegist
     return { isRegistered: false, error: 'An unexpected error occurred. Please try again.' };
   }
 };
+
+/**
+ * Creates a subscription record for a new user.
+ * @param userId The user's ID.
+ * @param planKey The plan key from the signup form (e.g., 'free', 'pro').
+ * @returns An object with an optional `error` message.
+ */
+export const createSubscriptionForUser = async (userId: string, planKey: string): Promise<{ error: string | null }> => {
+  try {
+    if (!userId || !planKey) {
+      return { error: 'User ID and plan are required.' };
+    }
+
+    const planNameMap: { [key: string]: string } = {
+      free: 'Free Demo',
+      pro: 'Professional',
+      enterprise: 'Enterprise',
+    };
+    
+    const planName = planNameMap[planKey.toLowerCase()];
+
+    if (!planName) {
+      console.error(`Invalid plan key provided: ${planKey}`);
+      return { error: 'Invalid subscription plan selected.' };
+    }
+
+    const { data: subscription, error: subError } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('name', planName)
+      .single();
+
+    if (subError) {
+      console.error('Error fetching subscription plan ID:', subError);
+      throw new Error('Could not find the selected subscription plan.');
+    }
+
+    const { error: insertError } = await supabase
+      .from('user_subscriptions')
+      .insert({
+        user_id: userId,
+        subscription_id: subscription.id,
+        status: 'active'
+      });
+    
+    if (insertError) {
+      console.error('Error creating user subscription:', insertError);
+      throw new Error('Failed to create subscription for the user.');
+    }
+
+    console.log(`Successfully created subscription for user ${userId} with plan ${planName}`);
+    return { error: null };
+
+  } catch (err: any) {
+    console.error('Unexpected error in createSubscriptionForUser:', err);
+    return { error: err.message || 'An unexpected error occurred while creating the subscription.' };
+  }
+};
+
