@@ -97,7 +97,7 @@ export const useOAuth = () => {
       
       // Set up the options for the OAuth request
       const options: any = {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/signup`,
         // !! CRITICAL FIX: REMOVED queryParams that were causing Google OAuth error
       };
       
@@ -146,7 +146,7 @@ export const useOAuth = () => {
       
       // Set up the options for the OAuth request
       const options: any = {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/signup`,
         // !! CRITICAL FIX: REMOVED queryParams
       };
       

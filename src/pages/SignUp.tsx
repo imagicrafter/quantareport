@@ -10,6 +10,8 @@ import SignUpStep1Form from '../components/auth/SignUpStep1Form';
 import SignUpStep2Form from '../components/auth/SignUpStep2Form';
 import { validateSignupCode, markSignupCodeAsUsed } from '@/services/signupCodeService';
 
+const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
+
 const SignUp = () => {
   const [searchParams] = useSearchParams();
   const planFromUrl = searchParams.get('plan') || 'free';
@@ -27,6 +29,7 @@ const SignUp = () => {
   const [plan, setPlan] = useState(planFromUrl);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isOAuthCompletion, setIsOAuthCompletion] = useState(false);
   
   const { 
     handleGoogleSignUp, 
@@ -38,14 +41,42 @@ const SignUp = () => {
     setOAuthError
   } = useOAuth();
   
-  // Check URL parameters on load
   useEffect(() => {
-    console.log('URL parameters:', { code: codeFromUrl, email: emailFromUrl });
-    
-    if (codeFromUrl && emailFromUrl) {
-      // Pre-validate the signup code
+    const checkOAuthCompletion = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const signupInfoRaw = sessionStorage.getItem(OAUTH_SIGNUP_SESSION_KEY);
+
+      if (session && signupInfoRaw) {
+        console.log('Detected OAuth profile completion flow.');
+        const user = session.user;
+
+        if (user.user_metadata?.phone && user.user_metadata?.industry) {
+          console.log('OAuth user profile is complete. Redirecting to dashboard.');
+          sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
+          navigate('/dashboard');
+          return;
+        }
+
+        setIsOAuthCompletion(true);
+        const signupInfo = JSON.parse(signupInfoRaw);
+        
+        setEmail(user.email || signupInfo.email || '');
+        setName(user.user_metadata.full_name || '');
+        setSignUpCode(signupInfo.code || '');
+        setStep(2);
+      } else if (session) {
+        console.log('Logged-in user accessed /signup, redirecting to dashboard.');
+        navigate('/dashboard');
+      }
+    };
+    checkOAuthCompletion();
+  }, [navigate]);
+
+  useEffect(() => {
+    if (codeFromUrl && emailFromUrl && !isOAuthCompletion) {
       const validateCodeFromUrl = async () => {
-        if (requiresSignupCode === null) return; // Wait until we know if codes are required
+        if (requiresSignupCode === null) return;
+        if (!requiresSignupCode) return;
         
         try {
           setIsLoading(true);
@@ -60,15 +91,12 @@ const SignUp = () => {
           setIsLoading(false);
         }
       };
-      
       validateCodeFromUrl();
     }
-  }, [codeFromUrl, emailFromUrl, requiresSignupCode]);
+  }, [codeFromUrl, emailFromUrl, requiresSignupCode, isOAuthCompletion]);
   
-  // Combine loading states
   const isSubmitting = isLoading || isOAuthLoading || isCheckingSettings;
   
-  // Combine error states
   useEffect(() => {
     if (oAuthError && !error) {
       setError(oAuthError);
@@ -80,25 +108,20 @@ const SignUp = () => {
     setError('');
     
     if (step === 1) {
-      // Validate first step
       if (!email || !password) {
         setError('Please fill in all required fields');
         return;
       }
-      
-      // Validate password length
       if (password.length < 8) {
         setError('Password must be at least 8 characters');
         return;
       }
-      
-      // Validate signup code if required
       if (requiresSignupCode && !signUpCode) {
         setError('Signup code is required');
         return;
       }
       
-      if (signUpCode) {
+      if (requiresSignupCode && signUpCode) {
         try {
           setIsLoading(true);
           const validation = await validateSignupCode(signUpCode, email);
@@ -113,10 +136,8 @@ const SignUp = () => {
           setIsLoading(false);
         }
       }
-      
       setStep(2);
     } else if (step === 2) {
-      // Validate second step and submit
       if (!name || !phone || !industry) {
         setError('Please fill in all required fields');
         return;
@@ -124,13 +145,14 @@ const SignUp = () => {
       handleSubmit();
     }
   };
-  
-  const handleSubmit = async () => {
+
+  const handleProfileUpdate = async () => {
     setIsLoading(true);
     setError('');
-    
     try {
-      // Build user metadata
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Could not get user. Please sign in again.");
+
       const metadata: Record<string, any> = {
         full_name: name,
         phone,
@@ -138,12 +160,48 @@ const SignUp = () => {
         plan
       };
       
-      // Include signup code in metadata if provided
       if (signUpCode) {
         metadata.signup_code = signUpCode;
       }
+
+      const { error: updateError } = await supabase.auth.updateUser({ data: metadata });
+      if (updateError) throw updateError;
       
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      if (signUpCode && email) {
+        try {
+          await markSignupCodeAsUsed(signUpCode, email);
+          console.log('Signup code marked as used for OAuth user.');
+        } catch (codeError) {
+          console.error('Failed to mark signup code as used:', codeError);
+        }
+      }
+
+      sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
+      toast.success('Profile completed successfully!');
+      navigate('/dashboard');
+
+    } catch (err: any) {
+      console.error('Profile update error:', err);
+      setError(err.message || 'An error occurred during profile update.');
+      toast.error(err.message || 'Failed to update profile.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleEmailSignUp = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const metadata: Record<string, any> = {
+        full_name: name,
+        phone,
+        industry,
+        plan,
+        signup_code: signUpCode || undefined
+      };
+      
+      const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -154,23 +212,17 @@ const SignUp = () => {
       
       if (signUpError) throw signUpError;
       
-      // Try to mark the signup code as used if provided, but don't block on failure
       if (signUpCode) {
         try {
           await markSignupCodeAsUsed(signUpCode, email);
           console.log('Signup code marked as used');
         } catch (codeError) {
           console.error('Failed to mark signup code as used:', codeError);
-          // Don't block registration if this fails
         }
       }
       
-      toast.success('Account created successfully!');
-      console.log('Signed up successfully:', data);
-      
-      // In a real app, you might want to redirect the user to a verification page
-      // or directly to the dashboard if email verification is not required
-      navigate('/dashboard');
+      toast.success('Account created successfully! Please check your email for a verification link.');
+      // The user will be redirected to the dashboard after email verification.
       
     } catch (err: any) {
       console.error('Sign up error:', err);
@@ -181,8 +233,16 @@ const SignUp = () => {
     }
   };
 
+  const handleSubmit = async () => {
+    if (isOAuthCompletion) {
+      await handleProfileUpdate();
+    } else {
+      await handleEmailSignUp();
+    }
+  };
+
   return (
-    <SignUpContainer error={error} step={step}>
+    <SignUpContainer error={error} step={step} isOAuthCompletion={isOAuthCompletion}>
       {isCheckingSettings ? (
         <div className="flex items-center justify-center p-8">
           <p>Loading settings...</p>
