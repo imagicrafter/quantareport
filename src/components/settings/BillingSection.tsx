@@ -1,5 +1,4 @@
 
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,31 +20,11 @@ interface ProfileData {
 
 interface BillingSectionProps {
   profile: ProfileData;
+  subscription: UserSubscriptionDetails | null;
+  isLoading: boolean;
 }
 
-const BillingSection = ({ profile }: BillingSectionProps) => {
-  const [subscription, setSubscription] = useState<UserSubscriptionDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (profile?.id) {
-      setIsLoading(true);
-      getUserSubscription(profile.id)
-        .then(data => {
-          setSubscription(data);
-        })
-        .catch(err => {
-          console.error('Failed to get user subscription', err);
-          setSubscription(null);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    } else {
-        setIsLoading(false);
-    }
-  }, [profile]);
-
+const BillingSection = ({ profile, subscription, isLoading }: BillingSectionProps) => {
   const renderCurrentPlan = () => {
     if (isLoading) {
       return (
