@@ -206,19 +206,23 @@ const SignUp = () => {
         full_name: name,
         phone,
         industry,
-        plan
+        plan,
+        signup_code: signUpCode || undefined
       };
       
+      console.log('Updating user metadata for profile completion:', metadata);
       const { error: updateError } = await supabase.auth.updateUser({ data: metadata });
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error updating user metadata:', updateError);
+        throw updateError;
+      }
+      console.log('User metadata updated successfully. Trigger should handle signup code.');
       
       const { error: subError } = await createUserSubscription(user.id, plan);
       if (subError) throw new Error(subError);
       
-      if (signUpCode) {
-        await markSignupCodeAsUsed(signUpCode, email);
-        console.log('Signup code marked as used.');
-      }
+      // The client-side call to markSignupCodeAsUsed is removed as per the plan.
+      // The DB trigger `handle_profile_change_signup_code` is now responsible for this.
 
       sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
       toast.success('Profile completed successfully!');
@@ -245,6 +249,7 @@ const SignUp = () => {
         signup_code: signUpCode || undefined
       };
       
+      console.log('Initiating email signup with metadata:', metadata);
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -256,13 +261,11 @@ const SignUp = () => {
       
       if (signUpError) throw signUpError;
       
-      console.log('Sign up process initiated.');
+      console.log('Sign up process initiated. DB trigger will handle signup code usage.');
 
       if (data.user && !data.session) {
         // This case occurs when email confirmation is required.
-        if (signUpCode) {
-          await markSignupCodeAsUsed(signUpCode, email);
-        }
+        // The trigger on profile creation will handle marking the signup code as used.
         console.log('Account created, verification email will be sent.');
         toast.success('Account created! Please check your email for a verification link to complete your registration.');
         // Stay on page. The DashboardLayout/SignUp logic will handle completion flow upon next login.
@@ -271,9 +274,7 @@ const SignUp = () => {
         const { error: subError } = await createUserSubscription(data.user.id, plan);
         if (subError) throw subError;
 
-        if (signUpCode) {
-          await markSignupCodeAsUsed(signUpCode, email);
-        }
+        // The trigger on profile creation has already handled the signup code.
         
         console.log('Account created and user logged in (email confirmation disabled).');
         toast.success('Account created successfully!');
