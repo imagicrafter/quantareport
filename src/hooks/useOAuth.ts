@@ -83,173 +83,69 @@ export const useOAuth = () => {
     return true;
   };
 
-  const handleGoogleSignUp = async (email?: string, signupCode?: string) => {
+  const performOAuth = async (
+    provider: 'google' | 'facebook',
+    flow: 'signup' | 'signin',
+    email?: string,
+    signupCode?: string
+  ) => {
     setError('');
     setIsLoading(true);
-    setError('');
-    
-    try {
-      // Validate signup code if required. The function will also save data to session storage.
-      const isValid = await validateSignupCodeBeforeOAuth(email || '', signupCode || '');
-      if (!isValid) {
-        setIsLoading(false);
-        return;
-      }
-      
-      // Set up the options for the OAuth request
-      const options: any = {
-        redirectTo: `${window.location.origin}/signup`,
-        // !! CRITICAL FIX: REMOVED queryParams that were causing Google OAuth error
-      };
-      
-      console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
-      console.log('OAuth options (Google):', options);
-      
-      // Get the URL for Google OAuth
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options
-      });
-      
-      if (error) {
-        console.error('Google sign up error details:', error);
-        throw error;
-      }
-      
-      console.log('Google sign up initiated, URL received:', data?.url);
-      
-      if (data?.url) {
-        // Force navigation to the top frame
-        window.top.location.href = data.url;
-      } else {
-        throw new Error('No redirect URL returned from Supabase');
-      }
-      
-    } catch (err: any) {
-      console.error('Google sign up error:', err);
-      setError(err.message || 'An error occurred during Google sign up');
-      toast.error(err.message || 'Failed to sign up with Google');
-      setIsLoading(false);
-    }
-  };
 
-  const handleFacebookSignUp = async (email?: string, signupCode?: string) => {
-    setError('');
-    setIsLoading(true);
-    setError('');
-    
     try {
-      // Validate signup code if required. The function will also save data to session storage.
-      const isValid = await validateSignupCodeBeforeOAuth(email || '', signupCode || '');
-      if (!isValid) {
-        setIsLoading(false);
-        return;
-      }
-      
-      // Set up the options for the OAuth request
-      const options: any = {
-        redirectTo: `${window.location.origin}/signup`,
-        // !! CRITICAL FIX: REMOVED queryParams
-      };
-      
-      console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
-      console.log('OAuth options (Facebook):', options);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'facebook',
-        options
-      });
-      
-      if (error) throw error;
-      
-      console.log('Facebook sign up initiated:', data);
-      
-      if (data?.url) {
-        // Force navigation to the top frame
-        window.top.location.href = data.url;
+      if (flow === 'signup') {
+        const isValid = await validateSignupCodeBeforeOAuth(email || '', signupCode || '');
+        if (!isValid) {
+          setIsLoading(false);
+          return;
+        }
       } else {
-        throw new Error('No redirect URL returned from Supabase');
+        // For sign-in, ensure any lingering signup info is cleared as a safeguard.
+        sessionStorage.removeItem('oauth_signup_info');
       }
-      
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during Facebook sign up');
-      toast.error(err.message || 'Failed to sign up with Facebook');
-      console.error('Facebook sign up error:', err);
-      setIsLoading(false);
-    }
-  };
 
-  const handleGoogleSignIn = async () => {
-    setError('');
-    setIsLoading(true);
-    setError('');
-    
-    try {
       const options = {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/${flow === 'signup' ? 'signup' : 'dashboard'}`,
       };
-      
-      console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
-      console.log('OAuth options (Google Sign In):', options);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options
-      });
-      
-      if (error) {
-        console.error('Google sign in error details:', error);
-        throw error;
+
+      console.log(`Initiating ${provider} ${flow} flow...`, options);
+
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({ provider, options });
+
+      if (oauthError) {
+        console.error(`${provider} ${flow} error details:`, oauthError);
+        throw oauthError;
       }
-      
+
       if (data?.url) {
+        console.log(`${provider} ${flow} initiated, redirecting to:`, data.url);
         window.top.location.href = data.url;
       } else {
         throw new Error('No redirect URL returned from Supabase');
       }
-      
     } catch (err: any) {
-      console.error('Google sign in error:', err);
-      const message = err.message || 'An error occurred during Google sign in';
+      const message = err.message || `An error occurred during ${provider} ${flow}`;
+      console.error(`${provider} ${flow} error:`, err);
       setError(message);
       toast.error(message);
       setIsLoading(false);
     }
   };
 
-  const handleFacebookSignIn = async () => {
-    setError('');
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      const options = {
-        redirectTo: `${window.location.origin}/dashboard`,
-      };
-      
-      console.log('Redirecting with origin:', window.location.origin, 'to', options.redirectTo);
-      console.log('OAuth options (Facebook Sign In):', options);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'facebook',
-        options
-      });
-      
-      if (error) throw error;
-      
-      if (data?.url) {
-        window.top.location.href = data.url;
-      } else {
-        throw new Error('No redirect URL returned from Supabase');
-      }
-      
-    } catch (err: any) {
-      const message = err.message || 'An error occurred during Facebook sign in';
-      console.error('Facebook sign in error:', err);
-      setError(message);
-      toast.error(message);
-      setIsLoading(false);
-    }
+  const handleGoogleSignUp = (email?: string, signupCode?: string) => {
+    performOAuth('google', 'signup', email, signupCode);
+  };
+  
+  const handleFacebookSignUp = (email?: string, signupCode?: string) => {
+    performOAuth('facebook', 'signup', email, signupCode);
+  };
+
+  const handleGoogleSignIn = () => {
+    performOAuth('google', 'signin');
+  };
+
+  const handleFacebookSignIn = () => {
+    performOAuth('facebook', 'signin');
   };
 
   return {
@@ -261,6 +157,6 @@ export const useOAuth = () => {
     handleFacebookSignUp,
     handleGoogleSignIn,
     handleFacebookSignIn,
-    setOAuthError: setError
+    setOAuthError: setError,
   };
 };

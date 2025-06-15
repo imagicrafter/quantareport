@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../integrations/supabase/client';
@@ -44,28 +43,38 @@ const SignUp = () => {
   useEffect(() => {
     const checkOAuthCompletion = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // Not logged in, regular signup page visit. Do nothing.
+        return;
+      }
+  
+      // User is logged in.
       const signupInfoRaw = sessionStorage.getItem(OAUTH_SIGNUP_SESSION_KEY);
-
-      if (session && signupInfoRaw) {
+      
+      if (signupInfoRaw) {
+        // This is an OAuth signup callback.
         console.log('Detected OAuth profile completion flow.');
         const user = session.user;
-
+  
+        // If profile is already complete, just clean up and redirect.
         if (user.user_metadata?.phone && user.user_metadata?.industry) {
-          console.log('OAuth user profile is complete. Redirecting to dashboard.');
+          console.log('OAuth user profile is already complete. Redirecting to dashboard.');
           sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
           navigate('/dashboard');
           return;
         }
-
-        const isExistingUser = new Date().getTime() - new Date(user.created_at).getTime() > 5 * 60 * 1000; // 5 minute threshold
-
+  
+        // If user was created more than 5 mins ago, they are an existing user.
+        const isExistingUser = (new Date().getTime() - new Date(user.created_at).getTime()) > 5 * 60 * 1000;
         if (isExistingUser) {
-          console.log('Existing user with incomplete profile landed on OAuth signup. Redirecting to dashboard to avoid confusion.');
+          console.log('Existing user landed in signup flow. Redirecting to dashboard.');
           sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
           navigate('/dashboard');
           return;
         }
-
+        
+        // Otherwise, this is a new user who needs to complete their profile.
         setIsOAuthCompletion(true);
         const signupInfo = JSON.parse(signupInfoRaw);
         
@@ -73,11 +82,14 @@ const SignUp = () => {
         setName(user.user_metadata.full_name || '');
         setSignUpCode(signupInfo.code || '');
         setStep(2);
-      } else if (session) {
-        console.log('Logged-in user accessed /signup, redirecting to dashboard.');
+  
+      } else {
+        // A logged-in user reached /signup without being in an OAuth flow.
+        console.log('Logged-in user accessed /signup directly. Redirecting to dashboard.');
         navigate('/dashboard');
       }
     };
+  
     checkOAuthCompletion();
   }, [navigate]);
 
