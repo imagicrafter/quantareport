@@ -84,6 +84,7 @@ export const useOAuth = () => {
   };
 
   const handleGoogleSignUp = async (email?: string, signupCode?: string) => {
+    setError('');
     setIsLoading(true);
     setError('');
     
@@ -133,6 +134,7 @@ export const useOAuth = () => {
   };
 
   const handleFacebookSignUp = async (email?: string, signupCode?: string) => {
+    setError('');
     setIsLoading(true);
     setError('');
     
@@ -178,6 +180,7 @@ export const useOAuth = () => {
   };
 
   const handleGoogleSignIn = async () => {
+    setError('');
     setIsLoading(true);
     setError('');
     
@@ -215,6 +218,7 @@ export const useOAuth = () => {
   };
 
   const handleFacebookSignIn = async () => {
+    setError('');
     setIsLoading(true);
     setError('');
     

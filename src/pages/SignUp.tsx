@@ -57,6 +57,15 @@ const SignUp = () => {
           return;
         }
 
+        const isExistingUser = new Date().getTime() - new Date(user.created_at).getTime() > 5 * 60 * 1000; // 5 minute threshold
+
+        if (isExistingUser) {
+          console.log('Existing user with incomplete profile landed on OAuth signup. Redirecting to dashboard to avoid confusion.');
+          sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
+          navigate('/dashboard');
+          return;
+        }
+
         setIsOAuthCompletion(true);
         const signupInfo = JSON.parse(signupInfoRaw);
         
