@@ -50,93 +50,40 @@ const DeleteProjectDialog = ({
     try {
       console.log(`Starting deletion process for project ${projectId}`);
       
-      // Delete associated files from storage buckets
-      const deleteStorageFiles = async (bucketName: string) => {
-        try {
-          console.log(`Attempting to delete files from bucket: ${bucketName} for project: ${projectId}`);
-          
-          // List all files in the project folder
-          const { data: files, error: listError } = await supabase.storage
-            .from(bucketName)
-            .list(projectId, { 
-              limit: 1000,
-              sortBy: { column: 'name', order: 'asc' }
-            });
-
-          if (listError) {
-            console.error(`Error listing files in ${bucketName}/${projectId}:`, listError);
-            throw new Error(`Failed to list files in ${bucketName}: ${listError.message}`);
-          }
-
-          if (files && files.length > 0) {
-            console.log(`Found ${files.length} files in ${bucketName}/${projectId}`);
-            
-            // Create array of file paths to delete (include the project folder prefix)
-            const filePaths = files.map(file => `${projectId}/${file.name}`);
-            
-            console.log(`Deleting files from ${bucketName}:`, filePaths);
-            
-            // Delete all files in the folder
-            const { error: deleteError } = await supabase.storage
-              .from(bucketName)
-              .remove(filePaths);
-
-            if (deleteError) {
-              console.error(`Error deleting files from ${bucketName}:`, deleteError);
-              throw new Error(`Failed to delete files from ${bucketName}: ${deleteError.message}`);
-            }
-
-            console.log(`Successfully deleted ${filePaths.length} files from ${bucketName}/${projectId}`);
-          } else {
-            console.log(`No files found in ${bucketName}/${projectId}`);
-          }
-        } catch (error) {
-          console.error(`Error processing ${bucketName} deletion:`, error);
-          throw error; // Re-throw to be caught by outer try-catch
-        }
-      };
-
-      // Delete from both storage buckets - if one fails, we still want to try the other
-      const storageErrors = [];
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
       
-      try {
-        await deleteStorageFiles('pub_images');
-      } catch (error) {
-        console.error('Failed to delete from pub_images:', error);
-        storageErrors.push(`pub_images: ${error.message}`);
+      if (!session) {
+        throw new Error('Not authenticated');
       }
 
-      try {
-        await deleteStorageFiles('pub_documents');
-      } catch (error) {
-        console.error('Failed to delete from pub_documents:', error);
-        storageErrors.push(`pub_documents: ${error.message}`);
+      // Call the delete-project edge function
+      const { data, error } = await supabase.functions.invoke('delete-project', {
+        body: { projectId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to delete project');
       }
 
-      // Log storage errors but don't fail the entire operation
-      if (storageErrors.length > 0) {
-        console.warn('Some storage files could not be deleted:', storageErrors);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete project');
+      }
+
+      console.log(`Successfully deleted project ${projectId}`);
+      
+      // Show appropriate success message
+      if (data.storageWarnings && data.storageWarnings.length > 0) {
         toast('Project deleted, but some storage files may remain', {
           description: 'The project was removed from the database, but some files in storage could not be deleted.'
         });
+      } else {
+        toast.success('Project deleted successfully');
       }
-
-      // Delete the project from the database
-      // This will cascade delete related records (notes, files, reports, etc.) due to foreign key constraints
-      console.log(`Deleting project ${projectId} from database`);
       
-      const { error: dbError } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', projectId);
-
-      if (dbError) {
-        throw new Error(`Failed to delete project from database: ${dbError.message}`);
-      }
-
-      console.log(`Successfully deleted project ${projectId} from database`);
-      
-      toast.success('Project deleted successfully');
       onProjectDeleted();
       handleClose();
       
