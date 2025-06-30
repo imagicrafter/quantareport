@@ -51,8 +51,7 @@ const DeleteReportDialog = ({
       console.log(`Starting deletion process for report ${reportId}`);
       
       // Delete the report from the database
-      // Note: Storage files are organized by project_id, not report_id
-      // So we only delete the report record, not storage files
+      // Reports don't have associated storage folders - files are organized by project_id
       const { error: dbError } = await supabase
         .from('reports')
         .delete()
