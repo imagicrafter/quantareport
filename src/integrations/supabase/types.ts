@@ -9,6 +9,90 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      custom_reports: {
+        Row: {
+          access_count: number
+          created_at: string
+          description: string | null
+          file_path: string
+          id: string
+          is_active: boolean
+          last_accessed_at: string | null
+          original_filename: string
+          pre_authorized_url: string | null
+          title: string | null
+          token: string
+          updated_at: string
+          uploaded_by: string | null
+          url_expires_at: string | null
+        }
+        Insert: {
+          access_count?: number
+          created_at?: string
+          description?: string | null
+          file_path: string
+          id?: string
+          is_active?: boolean
+          last_accessed_at?: string | null
+          original_filename: string
+          pre_authorized_url?: string | null
+          title?: string | null
+          token: string
+          updated_at?: string
+          uploaded_by?: string | null
+          url_expires_at?: string | null
+        }
+        Update: {
+          access_count?: number
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          id?: string
+          is_active?: boolean
+          last_accessed_at?: string | null
+          original_filename?: string
+          pre_authorized_url?: string | null
+          title?: string | null
+          token?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          url_expires_at?: string | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           content: string | null
@@ -170,6 +254,27 @@ export type Database = {
             referencedRelation: "project_images"
             referencedColumns: ["files_id"]
           },
+          {
+            foreignKeyName: "image_descriptions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: true
+            referencedRelation: "v_files_most_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_descriptions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: true
+            referencedRelation: "v_files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_descriptions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: true
+            referencedRelation: "v_project_images"
+            referencedColumns: ["files_id"]
+          },
         ]
       }
       note_file_relationships: {
@@ -214,6 +319,27 @@ export type Database = {
             columns: ["file_id"]
             isOneToOne: false
             referencedRelation: "project_images"
+            referencedColumns: ["files_id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_most_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_images"
             referencedColumns: ["files_id"]
           },
           {
@@ -310,9 +436,7 @@ export type Database = {
           id: string
           phone: string | null
           role: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
-          subscription_status: string | null
+          subscribed: boolean
           updated_at: string | null
         }
         Insert: {
@@ -325,9 +449,7 @@ export type Database = {
           id: string
           phone?: string | null
           role?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_status?: string | null
+          subscribed?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -340,9 +462,7 @@ export type Database = {
           id?: string
           phone?: string | null
           role?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_status?: string | null
+          subscribed?: boolean
           updated_at?: string | null
         }
         Relationships: []
@@ -386,6 +506,27 @@ export type Database = {
             columns: ["file_id"]
             isOneToOne: false
             referencedRelation: "project_images"
+            referencedColumns: ["files_id"]
+          },
+          {
+            foreignKeyName: "project_transcript_insights_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_most_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_transcript_insights_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_transcript_insights_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_images"
             referencedColumns: ["files_id"]
           },
         ]
@@ -482,6 +623,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      prospects: {
+        Row: {
+          company: string | null
+          created_at: string
+          domain_id: string | null
+          email: string
+          followed_up_at: string | null
+          id: string
+          interest_area: string | null
+          name: string | null
+          notes: string | null
+          source: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          domain_id?: string | null
+          email: string
+          followed_up_at?: string | null
+          id?: string
+          interest_area?: string | null
+          name?: string | null
+          notes?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          domain_id?: string | null
+          email?: string
+          followed_up_at?: string | null
+          id?: string
+          interest_area?: string | null
+          name?: string | null
+          notes?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       report_progress: {
         Row: {
@@ -599,6 +785,7 @@ export type Database = {
           created_by: string
           email: string
           id: string
+          last_invited_at: string | null
           status: string
           used: boolean
           used_at: string | null
@@ -609,6 +796,7 @@ export type Database = {
           created_by: string
           email: string
           id?: string
+          last_invited_at?: string | null
           status?: string
           used?: boolean
           used_at?: string | null
@@ -619,9 +807,34 @@ export type Database = {
           created_by?: string
           email?: string
           id?: string
+          last_invited_at?: string | null
           status?: string
           used?: boolean
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          stripe_price_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          stripe_price_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          stripe_price_id?: string | null
         }
         Relationships: []
       }
@@ -722,6 +935,69 @@ export type Database = {
           },
           {
             foreignKeyName: "templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_subscriptions: {
+        Row: {
+          canceled_at: string | null
+          created_at: string
+          current_period_end_at: string | null
+          current_period_start_at: string | null
+          id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_id: string
+          trial_end_at: string | null
+          trial_start_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end_at?: string | null
+          current_period_start_at?: string | null
+          id?: string
+          status: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_id: string
+          trial_end_at?: string | null
+          trial_start_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end_at?: string | null
+          current_period_start_at?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_id?: string
+          trial_end_at?: string | null
+          trial_start_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_subscriptions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -845,6 +1121,104 @@ export type Database = {
           },
         ]
       }
+      v_files_most_current: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          file_path: string | null
+          id: string | null
+          metadata: Json | null
+          name: string | null
+          position: number | null
+          project_id: string | null
+          size: number | null
+          title: string | null
+          type: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "files_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_files_not_processed: {
+        Row: {
+          file_path: string | null
+          id: string | null
+          name: string | null
+          project_id: string | null
+          type: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "files_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_image_descriptions_related_to_note: {
+        Row: {
+          content: string | null
+          file_path: string | null
+          image_description: Json | null
+          name: string | null
+          note_id: string | null
+          title: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_notes_excluding_template"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_lower_priority_related_notes_with_images: {
         Row: {
           created_at: string | null
@@ -888,6 +1262,27 @@ export type Database = {
             columns: ["file_id"]
             isOneToOne: false
             referencedRelation: "project_images"
+            referencedColumns: ["files_id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_most_current"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_files_not_processed"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_file_relationships_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_images"
             referencedColumns: ["files_id"]
           },
           {
@@ -938,6 +1333,31 @@ export type Database = {
           },
           {
             foreignKeyName: "notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_projects_last_update"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      v_project_images: {
+        Row: {
+          file_path: string | null
+          files_id: string | null
+          image_description: Json | null
+          name: string | null
+          project_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "v_projects_last_update"
@@ -1022,8 +1442,12 @@ export type Database = {
     }
     Functions: {
       binary_quantize: {
-        Args: { "": unknown } | { "": string }
+        Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      check_user_role: {
+        Args: { p_role: string }
+        Returns: boolean
       }
       halfvec_avg: {
         Args: { "": number[] }
@@ -1074,8 +1498,12 @@ export type Database = {
         Returns: number
       }
       l2_normalize: {
-        Args: { "": unknown } | { "": string } | { "": unknown }
+        Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
+      }
+      send_custom_email: {
+        Args: { payload: Json }
+        Returns: Json
       }
       sparsevec_out: {
         Args: { "": unknown }
@@ -1094,7 +1522,7 @@ export type Database = {
         Returns: string
       }
       vector_dims: {
-        Args: { "": unknown } | { "": string }
+        Args: { "": string } | { "": unknown }
         Returns: number
       }
       vector_norm: {

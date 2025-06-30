@@ -1,116 +1,57 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import FileUploadArea from '../file-upload/FileUploadArea';
-import UploadedFilesTable from '../file-upload/UploadedFilesTable';
-import StepBanner from '../StepBanner';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { ProjectFile, FileType } from '@/components/dashboard/files/FileItem';
+import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { ProjectFile } from '@/components/dashboard/files/FileItem';
+import StepBanner from '../StepBanner';
+import ImageAnnotationModal from '../file-upload/ImageAnnotationModal';
+import { FilesProvider, useFiles } from '../file-upload/context/FilesContext';
+import FileUploadTabs from '../file-upload/components/FileUploadTabs';
+import FilesPreview from '../file-upload/components/FilesPreview';
+import { removeImageExtension } from '@/utils/fileUtils';
+import { deleteFile } from '@/components/dashboard/files/services/DeleteFileService';
 
-const Step2Files = () => {
+const Step2FilesContent = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [uploadedFiles, setUploadedFiles] = useState<ProjectFile[]>([]);
-  const [pastedText, setPastedText] = useState('');
+  const [selectedImage, setSelectedImage] = useState<ProjectFile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  const fetchActiveWorkflow = async () => {
-    try {
-      console.log('Step2Files - Fetching current user and active workflow');
-      
-      const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData.user) {
-        console.error('Step2Files - No authenticated user found');
-        return null;
-      }
-      
-      const userId = userData.user.id;
-      
-      const { data: workflowData, error: workflowError } = await supabase
-        .from('project_workflow')
-        .select('project_id')
-        .eq('user_id', userId)
-        .eq('workflow_state', 2)
-        .order('last_edited_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (workflowError) {
-        console.error('Step2Files - Error fetching workflow data:', workflowError);
-        return null;
-      }
-      
-      console.log('Step2Files - Found active workflow with project ID:', workflowData?.project_id);
-      return workflowData?.project_id || null;
-    } catch (error) {
-      console.error('Step2Files - Error in fetchActiveWorkflow:', error);
-      return null;
-    }
-  };
+  const { files, isLoading, fetchFiles, handleFilesUploaded } = useFiles();
 
   useEffect(() => {
     const setupStep = async () => {
-      setIsLoading(true);
-      
       try {
-        const activeProjectId = await fetchActiveWorkflow();
-        
-        if (activeProjectId) {
-          console.log('Step2Files - Using project ID from database:', activeProjectId);
-          setProjectId(activeProjectId);
-          
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData.user) {
+          throw new Error('No authenticated user found');
+        }
+
+        const { data: workflowData } = await supabase
+          .from('project_workflow')
+          .select('project_id')
+          .eq('user_id', userData.user.id)
+          .eq('workflow_state', 2)
+          .order('last_edited_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (workflowData?.project_id) {
+          setProjectId(workflowData.project_id);
+          await fetchFiles(workflowData.project_id);
+
           const { data: projectData } = await supabase
             .from('projects')
             .select('name')
-            .eq('id', activeProjectId)
+            .eq('id', workflowData.project_id)
             .single();
-            
+
           if (projectData) {
             setProjectName(projectData.name);
           }
-          
-          const { data: userData } = await supabase.auth.getUser();
-          
-          if (userData.user) {
-            const { data: existingWorkflow } = await supabase
-              .from('project_workflow')
-              .select('id')
-              .eq('project_id', activeProjectId)
-              .eq('user_id', userData.user.id)
-              .maybeSingle();
-              
-            if (existingWorkflow) {
-              await supabase
-                .from('project_workflow')
-                .update({ 
-                  workflow_state: 2,
-                  last_edited_at: new Date().toISOString()
-                })
-                .eq('project_id', activeProjectId)
-                .eq('user_id', userData.user.id);
-              
-              console.log('Step2Files - Updated workflow state to 2');
-            } else {
-              await supabase
-                .from('project_workflow')
-                .insert({
-                  project_id: activeProjectId,
-                  user_id: userData.user.id,
-                  workflow_state: 2,
-                  last_edited_at: new Date().toISOString()
-                });
-              
-              console.log('Step2Files - Created new workflow with state 2');
-            }
-          }
         } else {
-          console.error('Step2Files - No project ID found in database');
           toast({
             title: "Missing Project",
             description: "Could not find an active project. Please start a new report.",
@@ -118,77 +59,79 @@ const Step2Files = () => {
           });
         }
       } catch (error) {
-        console.error('Step2Files - Error setting up step:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('Error setting up step:', error);
       }
     };
-    
+
     setupStep();
-  }, [toast]);
+  }, [toast, fetchFiles]);
 
-  const fetchFiles = async () => {
-    if (!projectId) return;
-    
+  const handleSaveAnnotation = async (annotatedImageBlob: Blob) => {
+    if (!projectId || !selectedImage) {
+      toast({
+        title: "Error",
+        description: "Missing project or image information.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      console.log(`Fetching files for project: ${projectId}`);
-      const { data, error } = await supabase
+      const originalName = selectedImage.name;
+      const fileExtension = 'png';
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const newFileName = `${Date.now()}-${originalName}.${fileExtension}`;
+      const annotatedFile = new File([annotatedImageBlob], newFileName, { type: 'image/png' });
+      const filePath = `${projectId}/${newFileName}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('pub_images')
+        .upload(filePath, annotatedFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = await supabase.storage
+        .from('pub_images')
+        .getPublicUrl(filePath);
+
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error('No authenticated user found');
+
+      const displayName = `${removeImageExtension(originalName)}`;
+
+      await supabase
         .from('files')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
-        
-      if (error) {
-        console.error('Step2Files - Error fetching files:', error);
-        return;
-      }
+        .insert({
+          name: displayName,
+          file_path: urlData.publicUrl,
+          type: 'image',
+          project_id: projectId,
+          user_id: userData.user.id,
+          size: annotatedFile.size,
+          metadata: { 
+            annotated: true,
+            original_file_id: selectedImage.id 
+          }
+        });
+
+      toast({
+        title: "Success",
+        description: "Annotated image saved successfully!",
+      });
       
-      console.log('Step2Files - Fetched files:', data);
-      
-      if (data) {
-        const mappedFiles: ProjectFile[] = data.map(file => ({
-          id: file.id,
-          name: file.name,
-          title: file.title || '',
-          description: file.description || '',
-          file_path: file.file_path,
-          type: file.type as FileType,
-          size: file.size,
-          created_at: file.created_at,
-          project_id: file.project_id,
-          user_id: file.user_id,
-          position: file.position || 0,
-          metadata: file.metadata || {}
-        }));
-        
-        setUploadedFiles(mappedFiles);
-      }
+      await fetchFiles(projectId);
     } catch (error) {
-      console.error('Step2Files - Error in fetchFiles:', error);
+      console.error('Error saving annotated image:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save annotated image. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
-  useEffect(() => {
-    if (projectId) {
-      fetchFiles();
-    }
-  }, [projectId]);
-
-  const handleFilesUploaded = (newFiles: ProjectFile[]) => {
-    console.log("Files uploaded:", newFiles);
-    if (projectId) {
-      fetchFiles();
-    } else {
-      setUploadedFiles((prev) => [...newFiles, ...prev]);
-    }
-  };
-
-  const handleFileDeleted = () => {
-    fetchFiles();
-  };
-
-  const handleSaveText = async () => {
-    if (!projectId || !pastedText.trim()) {
+  const handleSaveText = async (text: string) => {
+    if (!projectId || !text.trim()) {
       toast({
         title: "Error",
         description: "Please enter some text before saving.",
@@ -200,34 +143,26 @@ const Step2Files = () => {
     try {
       const now = new Date();
       const datePart = now.toISOString().split('T')[0];
-      const randomNumber = Math.floor(Math.random() * 100)
-        .toString()
-        .padStart(2, '0');
-      
+      const randomNumber = Math.floor(Math.random() * 100).toString().padStart(2, '0');
       const fileName = `${projectName}_${datePart}_${randomNumber}.txt`;
       const filePath = `${projectId}/${fileName}`;
-
-      const file = new File([pastedText], fileName, { type: 'text/plain' });
+      const blob = new Blob([text], { type: 'text/plain' });
+      const fileObject = new File([blob], fileName, { type: 'text/plain' });
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('pub_documents')
-        .upload(filePath, file);
+        .upload(filePath, fileObject);
 
-      if (uploadError) {
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
       const { data: urlData } = await supabase.storage
         .from('pub_documents')
         .getPublicUrl(filePath);
 
       const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData.user) {
-        throw new Error('No authenticated user found');
-      }
+      if (!userData.user) throw new Error('No authenticated user found');
 
-      const { data: fileData, error: fileError } = await supabase
+      await supabase
         .from('files')
         .insert({
           name: fileName,
@@ -235,23 +170,16 @@ const Step2Files = () => {
           type: 'text',
           project_id: projectId,
           user_id: userData.user.id,
-          size: file.size,
-          metadata: { content: pastedText }
-        })
-        .select()
-        .single();
-
-      if (fileError) {
-        throw fileError;
-      }
+          size: fileObject.size,
+          metadata: { content: text }
+        });
 
       toast({
         title: "Success",
         description: "Text file saved successfully!",
       });
 
-      setPastedText('');
-      fetchFiles();
+      fetchFiles(projectId);
     } catch (error) {
       console.error('Error saving text file:', error);
       toast({
@@ -259,6 +187,31 @@ const Step2Files = () => {
         description: "Failed to save text file. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleFileDeleted = async (file: ProjectFile) => {
+    try {
+      setIsDeleting(true);
+      await deleteFile(file);
+      
+      if (projectId) {
+        await fetchFiles(projectId);
+      }
+      
+      toast({
+        title: "Success",
+        description: "File deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete file. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -271,20 +224,12 @@ const Step2Files = () => {
       });
       return;
     }
-    
+
     try {
       const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData.user) {
-        toast({
-          title: "Authentication Error",
-          description: "You must be signed in to proceed.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      const { error } = await supabase
+      if (!userData.user) throw new Error('No authenticated user found');
+
+      await supabase
         .from('project_workflow')
         .update({ 
           workflow_state: 3,
@@ -292,22 +237,10 @@ const Step2Files = () => {
         })
         .eq('project_id', projectId)
         .eq('user_id', userData.user.id);
-        
-      if (error) {
-        console.error('Step2Files - Error updating workflow state:', error);
-        toast({
-          title: "Error",
-          description: "Failed to proceed to next step. Please try again.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      console.log('Step2Files - Successfully updated workflow state to 3');
-      
+
       navigate('/dashboard/report-wizard/process');
     } catch (error) {
-      console.error('Step2Files - Error in handleNextStep:', error);
+      console.error('Error proceeding to next step:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -352,56 +285,45 @@ const Step2Files = () => {
         <p className="text-muted-foreground">Add photos, documents, or audio files to your report.</p>
       </div>
 
-      <Tabs defaultValue="upload" className="w-full">
-        <TabsList className="grid w-[400px] grid-cols-2">
-          <TabsTrigger value="upload">Upload Files</TabsTrigger>
-          <TabsTrigger value="text">Paste Text</TabsTrigger>
-        </TabsList>
+      <FileUploadTabs
+        projectId={projectId}
+        onTextSave={handleSaveText}
+        onFilesUploaded={handleFilesUploaded}
+      />
 
-        <TabsContent value="upload">
-          <FileUploadArea 
-            onFilesSelected={handleFilesUploaded} 
-            acceptedFileTypes=".jpg,.jpeg,.png,.pdf,.doc,.docx,.txt"
-            files={[]}
-            projectId={projectId}
-          />
-        </TabsContent>
-
-        <TabsContent value="text">
-          <div className="space-y-4">
-            <Textarea
-              placeholder="Paste your text here..."
-              value={pastedText}
-              onChange={(e) => setPastedText(e.target.value)}
-              className="min-h-[200px] w-full p-4"
-            />
-            <Button
-              onClick={handleSaveText}
-              disabled={!pastedText.trim()}
-              className="w-full"
-            >
-              Save Text as File
-            </Button>
-          </div>
-        </TabsContent>
-      </Tabs>
+      <div className="mt-8">
+        <FilesPreview
+          files={files}
+          onFileClick={setSelectedImage}
+          onFileDelete={handleFileDeleted}
+        />
+      </div>
       
-      <UploadedFilesTable 
-        files={uploadedFiles} 
-        loading={false}
-        onFileDeleted={handleFileDeleted}
+      <ImageAnnotationModal
+        imageUrl={selectedImage?.file_path || ''}
+        isOpen={!!selectedImage}
+        onClose={() => setSelectedImage(null)}
+        onSave={handleSaveAnnotation}
       />
       
       <div className="flex justify-end max-w-4xl mx-auto mt-8">
         <Button
           onClick={handleNextStep}
-          disabled={uploadedFiles.length === 0}
+          disabled={files.length === 0}
           className="next-step-button"
         >
           Next: Process Files
         </Button>
       </div>
     </div>
+  );
+};
+
+const Step2Files = () => {
+  return (
+    <FilesProvider>
+      <Step2FilesContent />
+    </FilesProvider>
   );
 };
 

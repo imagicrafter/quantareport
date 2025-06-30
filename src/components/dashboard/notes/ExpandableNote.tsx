@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Expand, Trash, Sparkles } from 'lucide-react';
 import { Note, NoteFileRelationshipWithType } from '@/utils/noteUtils';
@@ -44,6 +45,7 @@ const ExpandableNote = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [loadedFiles, setLoadedFiles] = useState<NoteFileRelationshipWithType[]>(relatedFiles);
   const [isLoading, setIsLoading] = useState(false);
+  const [showFilePicker, setShowFilePicker] = useState(false);
 
   useEffect(() => {
     setTitle(note.title);
@@ -99,6 +101,10 @@ const ExpandableNote = ({
       setIsLoading(false);
     }
   };
+
+  // Opens FilePicker modal
+  const handleOpenFilePicker = () => setShowFilePicker(true);
+  const handleCloseFilePicker = () => setShowFilePicker(false);
 
   return (
     <Collapsible
@@ -221,25 +227,33 @@ const ExpandableNote = ({
               <label className="text-sm font-medium">
                 Related Files ({isLoading ? '...' : loadedFiles.length})
               </label>
-              <FilePicker
-                projectId={projectId}
-                noteId={note.id}
-                onFileAdded={handleFileChange}
-                relatedFiles={loadedFiles}
-                isLocked={isLocked}
-                onLockToggle={handleLockToggle}
-                buttonLabel="Manage Files"
-              />
             </div>
+            {/* RelatedFiles handles previews and dashed square UI */}
             <RelatedFiles 
               files={loadedFiles}
               onRelationshipsChanged={handleFileChange}
+              onManageFilesClick={handleOpenFilePicker}
             />
           </div>
         </div>
+        <FilePicker
+          projectId={projectId}
+          noteId={note.id}
+          onFileAdded={handleFileChange}
+          relatedFiles={loadedFiles}
+          isLocked={isLocked}
+          onLockToggle={handleLockToggle}
+          buttonLabel="Manage Files"
+          open={showFilePicker}
+          onOpenChange={(open) => {
+            if (!open) handleCloseFilePicker();
+          }}
+        />
       </CollapsibleContent>
     </Collapsible>
   );
 };
 
 export default ExpandableNote;
+
+// ---- FILE GETTING LONG!

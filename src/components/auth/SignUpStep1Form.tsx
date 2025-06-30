@@ -1,5 +1,6 @@
 
 import { Dispatch, FormEvent, SetStateAction } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../ui-elements/Button';
 
 interface SignUpStep1FormProps {
@@ -12,8 +13,9 @@ interface SignUpStep1FormProps {
   handleNextStep: (e: FormEvent) => void;
   error: string;
   isLoading: boolean;
-  handleGoogleSignUp: () => Promise<void>;
-  handleFacebookSignUp: () => Promise<void>;
+  handleGoogleSignUp: (email?: string, signupCode?: string) => Promise<void>;
+  handleFacebookSignUp: (email?: string, signupCode?: string) => Promise<void>;
+  requiresSignupCode?: boolean | null;
 }
 
 const SignUpStep1Form = ({
@@ -27,8 +29,11 @@ const SignUpStep1Form = ({
   error,
   isLoading,
   handleGoogleSignUp,
-  handleFacebookSignUp
+  handleFacebookSignUp,
+  requiresSignupCode,
 }: SignUpStep1FormProps) => {
+  const showSignupCode = requiresSignupCode === true;
+
   return (
     <form onSubmit={handleNextStep} className="space-y-6">
       <div className="space-y-2">
@@ -62,23 +67,32 @@ const SignUpStep1Form = ({
         </p>
       </div>
       
-      <div className="space-y-2">
-        <label htmlFor="signUpCode" className="text-sm font-medium">
-          Sign-up Code
-        </label>
-        <input
-          id="signUpCode"
-          type="text"
-          value={signUpCode}
-          onChange={(e) => setSignUpCode(e.target.value)}
-          className="w-full p-2 rounded-md border border-input bg-background"
-          required
-          placeholder="Enter your sign-up code"
-        />
-        <p className="text-xs text-muted-foreground">
-          A sign-up code is required to register
-        </p>
-      </div>
+      {showSignupCode && (
+        <div className="space-y-2">
+          <label htmlFor="signUpCode" className="text-sm font-medium">
+            Sign-up Code
+          </label>
+          <input
+            id="signUpCode"
+            type="text"
+            value={signUpCode}
+            onChange={(e) => setSignUpCode(e.target.value)}
+            className="w-full p-2 rounded-md border border-input bg-background"
+            required={showSignupCode}
+            placeholder="Enter your sign-up code"
+          />
+          <p className="text-xs text-muted-foreground">
+            A sign-up code is required to register
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Interested in joining our Alpha program? Let us know{' '}
+            <Link to="/#early-access" className="text-primary hover:underline">
+              here
+            </Link>
+            .
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
@@ -109,7 +123,7 @@ const SignUpStep1Form = ({
             type="button"
             variant="outline"
             className="w-full"
-            onClick={handleGoogleSignUp}
+            onClick={() => handleGoogleSignUp(email, signUpCode)}
             isLoading={isLoading}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -119,7 +133,7 @@ const SignUpStep1Form = ({
             type="button"
             variant="outline"
             className="w-full"
-            onClick={handleFacebookSignUp}
+            onClick={() => handleFacebookSignUp(email, signUpCode)}
             isLoading={isLoading}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>

@@ -7,13 +7,16 @@ const Footer = () => {
     <footer className="border-t border-border/50 bg-secondary/5">
       <div className="container mx-auto px-4 md:px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-4">
-            <Logo size="md" />
-            <p className="text-sm text-muted-foreground max-w-xs">
+          <div className="space-y-4 text-center md:col-span-4">
+            <div className="flex justify-center">
+              <Logo size="md" />
+            </div>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
               AI-powered reporting platform for professionals across industries. Create professional reports in minutes, not hours.
             </p>
           </div>
           
+          {/* Footer navigation links commented out as requested
           <div>
             <h4 className="font-medium text-sm mb-4">Product</h4>
             <ul className="space-y-3">
@@ -42,8 +45,10 @@ const Footer = () => {
               <FooterLink to="/cookies">Cookie Policy</FooterLink>
             </ul>
           </div>
+          */}
         </div>
         
+        {/* Bottom social links section commented out as requested
         <div className="border-t border-border/50 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} QuantaReport. All rights reserved.
@@ -60,6 +65,13 @@ const Footer = () => {
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
             </a>
           </div>
+        </div>
+        */}
+        
+        <div className="text-center mt-8 pt-8 border-t border-border/50">
+          <p className="text-sm text-muted-foreground font-medium">
+            © {new Date().getFullYear()} QuantaReport. All rights reserved.
+          </p>
         </div>
       </div>
     </footer>

@@ -1,0 +1,23 @@
+
+project_id = "vtaufnxworztolfdwlll"
+
+[functions.file-analysis]
+verify_jwt = false
+
+[functions.n8n-webhook-proxy]
+verify_jwt = false
+
+[functions.report-progress]
+verify_jwt = false
+
+[functions.send-signup-invite]
+verify_jwt = false
+
+[functions.transcribe-audio]
+verify_jwt = false
+
+[functions.report-generator]
+verify_jwt = false
+
+[functions.note-analysis]
+verify_jwt = false

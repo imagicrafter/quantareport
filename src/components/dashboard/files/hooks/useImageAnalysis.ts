@@ -3,7 +3,7 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
-import { isDevelopmentEnvironment } from '@/utils/webhookConfig';
+import { getCurrentEnvironment, isDevelopmentEnvironment } from '@/utils/webhookConfig';
 
 export const useImageAnalysis = (projectId?: string, projectName?: string) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -19,7 +19,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
     
     try {
       const { data, error } = await supabase
-        .from('files_not_processed')
+        .from('v_files_not_processed')
         .select('id')
         .eq('project_id', projectId);
 
@@ -75,7 +75,10 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       // Only apply test mode in development environment
       const shouldUseTestMode = isDevelopmentEnvironment() && isTestMode;
       
-      console.log(`Using ${shouldUseTestMode ? 'TEST' : 'REGULAR'} mode for project: ${projectName} (App Environment: ${isDevelopmentEnvironment() ? 'Development' : 'Production/Staging'})`);
+      // Get the current environment using the utility function
+      const currentEnv = getCurrentEnvironment();
+      
+      console.log(`Using ${shouldUseTestMode ? 'TEST' : 'REGULAR'} mode for project: ${projectName} (App Environment: ${currentEnv})`);
       
       // Generate a new job ID using uuid package
       const jobId = uuidv4();
@@ -105,7 +108,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
           isTestMode: shouldUseTestMode,
           job: jobId,
           type: 'file-analysis',
-          env: shouldUseTestMode ? 'development' : isDevelopmentEnvironment() ? 'development' : 'production',
+          env: shouldUseTestMode ? 'development' : currentEnv, // Use current environment instead of hardcoding
           payload: {
             project_id: projectId,
             user_id: userId, // Include the user_id in the payload
@@ -170,6 +173,9 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
         return;
       }
       
+      // Get the current environment using the utility function
+      const currentEnv = getCurrentEnvironment();
+      
       // Call the image-analysis edge function using the new consolidated proxy
       const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
         body: {
@@ -177,7 +183,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
           project_id: projectId,
           user_id: userId, // Include the user_id in the payload
           type: 'file-analysis', // Using file-analysis webhook type
-          env: isDevelopmentEnvironment() ? 'development' : 'production',
+          env: currentEnv, // Use current environment instead of hardcoding
           payload: {
             file_id: fileId,
             project_id: projectId,

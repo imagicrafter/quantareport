@@ -7,9 +7,10 @@ interface SignUpContainerProps {
   children: ReactNode;
   error?: string;
   step: number;
+  isOAuthCompletion?: boolean;
 }
 
-const SignUpContainer = ({ children, error, step }: SignUpContainerProps) => {
+const SignUpContainer = ({ children, error, step, isOAuthCompletion }: SignUpContainerProps) => {
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
@@ -17,8 +18,14 @@ const SignUpContainer = ({ children, error, step }: SignUpContainerProps) => {
         <div className="w-full max-w-md animate-fade-in">
           <div className="glass-card p-8">
             <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold mb-2">Create your account</h1>
-              <p className="text-muted-foreground">Sign up for Reportify to get started</p>
+              <h1 className="text-2xl font-bold mb-2">
+                {isOAuthCompletion ? 'Complete Your Profile' : 'Create your account'}
+              </h1>
+              <p className="text-muted-foreground">
+                {isOAuthCompletion
+                  ? 'Just a few more details to get you started'
+                  : 'Sign up for QuantaReport to get started'}
+              </p>
             </div>
             
             {error && (
@@ -29,7 +36,7 @@ const SignUpContainer = ({ children, error, step }: SignUpContainerProps) => {
             
             {children}
             
-            {step === 1 && (
+            {step === 1 && !isOAuthCompletion && (
               <p className="mt-8 text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
                 <Link to="/signin" className="text-primary hover:underline">

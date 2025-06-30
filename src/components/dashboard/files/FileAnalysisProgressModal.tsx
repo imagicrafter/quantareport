@@ -198,7 +198,7 @@ const FileAnalysisProgressModal = ({
     try {
       // Check if we still have unprocessed files
       const { data: filesData, error: filesError } = await supabase
-        .from('files_not_processed')
+        .from('v_files_not_processed')
         .select('id')
         .eq('project_id', projectId)
         .limit(1);

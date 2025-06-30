@@ -1,16 +1,16 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Share2, Printer, Mail, Edit, AlertCircle, Loader2 } from 'lucide-react';
-import InstructionsPanel from '../start-report/InstructionsPanel';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import { fetchReportById, updateReport } from '@/components/reports/ReportService';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import InstructionsPanel from '../start-report/InstructionsPanel';
+import ReportActions from '../review/ReportActions';
+import ReportPreview from '../review/ReportPreview';
+import ReportSections from '../review/ReportSections';
+import ExitReviewDialog from '../review/ExitReviewDialog';
 
 const Step6Review = () => {
   const navigate = useNavigate();
@@ -112,9 +112,7 @@ const Step6Review = () => {
     }
   };
   
-  // Handle navigation attempts for any action that would navigate away
   const handleNavigationAttempt = async (target: string) => {
-    // Skip dialog for Edit, Print, and Finish actions
     if (target === 'edit' || target === 'print' || target === 'finish') {
       return false;
     }
@@ -124,7 +122,6 @@ const Step6Review = () => {
     return true;
   };
   
-  // Handle download with navigation check
   const handleDownload = async () => {
     const shouldShowDialog = await handleNavigationAttempt('download');
     
@@ -159,7 +156,6 @@ const Step6Review = () => {
     }
   };
   
-  // Handle share with navigation check
   const handleShare = async () => {
     const shouldShowDialog = await handleNavigationAttempt('share');
     
@@ -215,17 +211,13 @@ const Step6Review = () => {
     }
   };
 
-  // Handle exit confirmation
   const handleExitConfirm = async () => {
     if (reportId && projectId) {
       try {
-        // Update report status to completed
         await updateReport(reportId, { status: 'completed' });
         
-        // Reset workflow state to 0
         await updateWorkflowState(projectId, 0);
         
-        // Navigate to dashboard reports
         navigate('/dashboard/reports');
       } catch (error) {
         console.error('Error updating report status:', error);
@@ -237,7 +229,6 @@ const Step6Review = () => {
     setShowExitDialog(false);
   };
 
-  // Add click handler to document
   useEffect(() => {
     const handleClick = async (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -250,7 +241,6 @@ const Step6Review = () => {
           return;
         }
 
-        // Allow normal operation for edit and print actions
         if (
           anchor.classList.contains('edit-action') ||
           anchor.classList.contains('print-action')
@@ -270,24 +260,6 @@ const Step6Review = () => {
     return () => document.removeEventListener('click', handleClick, true);
   }, [navigate, reportId, projectId]);
 
-  // Exit Dialog component
-  const ExitDialog = () => (
-    <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Exit Report Creation?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will mark your report as completed. Are you sure you want to proceed?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleExitConfirm}>Yes, Exit</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-  
   return (
     <div>
       <InstructionsPanel stepNumber={6} />
@@ -295,25 +267,12 @@ const Step6Review = () => {
       <div className="max-w-4xl mx-auto mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">{reportTitle}</h2>
-          
-          <div className="flex space-x-2">
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download className="h-4 w-4 mr-1" />
-              Download
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleShare}>
-              <Share2 className="h-4 w-4 mr-1" />
-              Share
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint} className="print-action">
-              <Printer className="h-4 w-4 mr-1" />
-              Print
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleEdit} className="edit-action">
-              <Edit className="h-4 w-4 mr-1" />
-              Edit
-            </Button>
-          </div>
+          <ReportActions
+            onDownload={handleDownload}
+            onShare={handleShare}
+            onPrint={handlePrint}
+            onEdit={handleEdit}
+          />
         </div>
         
         <Tabs defaultValue="preview">
@@ -323,111 +282,21 @@ const Step6Review = () => {
           </TabsList>
           
           <TabsContent value="preview" className="mt-4">
-            <Card className="border shadow-md">
-              <CardContent className="p-0">
-                {loading ? (
-                  <div className="aspect-[8.5/11] bg-white p-8 border-b flex items-center justify-center">
-                    <div className="flex flex-col items-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                      <p className="text-muted-foreground">Loading report content...</p>
-                    </div>
-                  </div>
-                ) : error ? (
-                  <div className="aspect-[8.5/11] bg-white p-8 border-b flex items-center justify-center">
-                    <div className="flex flex-col items-center">
-                      <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-                      <p className="text-destructive">{error}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="aspect-[8.5/11] bg-white p-8 border-b relative" style={{ textAlign: 'left' }}>
-                    <div dangerouslySetInnerHTML={{ __html: reportContent || '' }} />
-                    
-                    <div className="absolute bottom-4 right-4 text-muted-foreground text-sm">
-                      Page {currentPage} of {totalPages}
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex justify-between items-center p-4 bg-muted/30">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => changePage('prev')}
-                    disabled={currentPage === 1 || loading || !!error}
-                  >
-                    Previous Page
-                  </Button>
-                  
-                  <span className="text-sm">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => changePage('next')}
-                    disabled={currentPage === totalPages || loading || !!error}
-                  >
-                    Next Page
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <ReportPreview
+              loading={loading}
+              error={error}
+              reportContent={reportContent}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={changePage}
+            />
           </TabsContent>
           
           <TabsContent value="sections" className="mt-4">
-            <Card>
-              <CardContent className="pt-6">
-                {loading ? (
-                  <div className="flex justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : error ? (
-                  <div className="flex flex-col items-center p-8">
-                    <AlertCircle className="h-8 w-8 text-destructive mb-2" />
-                    <p className="text-destructive">{error}</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="border rounded-md p-4 hover:bg-muted/40 cursor-pointer transition-colors">
-                      <h3 className="font-medium">1. Executive Summary</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Overview of the property and inspection findings
-                      </p>
-                    </div>
-                    
-                    <div className="border rounded-md p-4 hover:bg-muted/40 cursor-pointer transition-colors">
-                      <h3 className="font-medium">2. Assessment</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Evaluation of key areas and components
-                      </p>
-                    </div>
-                    
-                    <div className="border rounded-md p-4 hover:bg-muted/40 cursor-pointer transition-colors">
-                      <h3 className="font-medium">3. Findings</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Detailed review of issues and observations
-                      </p>
-                    </div>
-                    
-                    <div className="border rounded-md p-4 hover:bg-muted/40 cursor-pointer transition-colors">
-                      <h3 className="font-medium">4. Recommendations</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Suggested actions and improvements
-                      </p>
-                    </div>
-                    
-                    <div className="border rounded-md p-4 hover:bg-muted/40 cursor-pointer transition-colors">
-                      <h3 className="font-medium">5. Appendices</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Additional documentation and reference materials
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <ReportSections
+              loading={loading}
+              error={error}
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -445,7 +314,11 @@ const Step6Review = () => {
         </Button>
       </div>
       
-      <ExitDialog />
+      <ExitReviewDialog
+        open={showExitDialog}
+        onOpenChange={setShowExitDialog}
+        onConfirm={handleExitConfirm}
+      />
     </div>
   );
 };

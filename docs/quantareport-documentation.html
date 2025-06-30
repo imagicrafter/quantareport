@@ -1,0 +1,1031 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuantaReport - Project Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8fafc;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 0;
+            text-align: center;
+            margin-bottom: 40px;
+            border-radius: 10px;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .nav {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+        
+        .nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .nav a {
+            color: #4f46e5;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+        
+        .nav a:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            color: #1f2937;
+            font-size: 2rem;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #4f46e5;
+            padding-bottom: 10px;
+        }
+        
+        .section h3 {
+            color: #374151;
+            font-size: 1.5rem;
+            margin: 25px 0 15px 0;
+        }
+        
+        .section h4 {
+            color: #4b5563;
+            font-size: 1.2rem;
+            margin: 20px 0 10px 0;
+        }
+        
+        .file-tree {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        
+        .file-tree .folder {
+            color: #059669;
+            font-weight: bold;
+        }
+        
+        .file-tree .file {
+            color: #4b5563;
+        }
+        
+        .file-tree .description {
+            color: #6b7280;
+            font-style: italic;
+        }
+        
+        .workflow-step {
+            background: #f0f9ff;
+            border-left: 4px solid #0ea5e9;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .workflow-step h4 {
+            color: #0369a1;
+            margin-bottom: 10px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        th {
+            background: #f8fafc;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        tr:hover {
+            background: #fafafa;
+        }
+        
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .tech-item {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #4f46e5;
+        }
+        
+        .tech-item h4 {
+            color: #4f46e5;
+            margin-bottom: 10px;
+        }
+        
+        .entity-diagram {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .entity-box {
+            display: inline-block;
+            background: #f0f9ff;
+            border: 2px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px;
+            min-width: 150px;
+        }
+        
+        .entity-box h5 {
+            color: #0369a1;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .entity-fields {
+            font-size: 12px;
+            color: #4b5563;
+            text-align: left;
+        }
+        
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            margin: 15px 0;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: #4f46e5;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin: 2px;
+        }
+        
+        .badge.frontend { background: #059669; }
+        .badge.backend { background: #dc2626; }
+        .badge.database { background: #7c3aed; }
+        .badge.integration { background: #ea580c; }
+        
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2rem; }
+            .nav ul { flex-direction: column; }
+            .tech-stack { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>QuantaReport</h1>
+            <p>Professional Report Creation Platform - Technical Documentation</p>
+        </div>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#file-inventory">File Inventory</a></li>
+                <li><a href="#database">Database Schema</a></li>
+                <li><a href="#workflows">Workflows</a></li>
+                <li><a href="#api-integrations">API Integrations</a></li>
+                <li><a href="#deployment">Deployment</a></li>
+            </ul>
+        </nav>
+
+        <section id="overview" class="section">
+            <h2>Project Overview</h2>
+            <p>QuantaReport is a sophisticated web application designed to streamline the creation of professional reports from uploaded images and notes. The platform leverages AI assistance for analysis and report generation while maintaining user control over content review and customization.</p>
+            
+            <h3>Core Features</h3>
+            <ul style="margin: 15px 0; padding-left: 20px;">
+                <li><strong>Multi-Step Report Creation:</strong> Guided 6-step workflow for report generation</li>
+                <li><strong>File Management:</strong> Upload, organize, and annotate images and documents</li>
+                <li><strong>AI-Powered Analysis:</strong> Automated image analysis and content generation</li>
+                <li><strong>Template System:</strong> Customizable report templates with structured notes</li>
+                <li><strong>Real-time Collaboration:</strong> Live progress tracking and updates</li>
+                <li><strong>User Management:</strong> Role-based access control and domain isolation</li>
+            </ul>
+
+            <div class="tech-stack">
+                <div class="tech-item">
+                    <h4>Frontend Technologies</h4>
+                    <div class="badge frontend">React 18</div>
+                    <div class="badge frontend">TypeScript</div>
+                    <div class="badge frontend">Tailwind CSS</div>
+                    <div class="badge frontend">Shadcn/UI</div>
+                    <div class="badge frontend">React Router</div>
+                    <div class="badge frontend">React Query</div>
+                </div>
+                <div class="tech-item">
+                    <h4>Backend Services</h4>
+                    <div class="badge backend">Supabase</div>
+                    <div class="badge backend">Edge Functions</div>
+                    <div class="badge backend">PostgreSQL</div>
+                    <div class="badge backend">Row Level Security</div>
+                </div>
+                <div class="tech-item">
+                    <h4>External Integrations</h4>
+                    <div class="badge integration">n8n Workflows</div>
+                    <div class="badge integration">OpenAI API</div>
+                    <div class="badge integration">File Storage</div>
+                    <div class="badge integration">Webhook System</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="architecture" class="section">
+            <h2>System Architecture</h2>
+            
+            <h3>Application Structure</h3>
+            <p>QuantaReport follows a modern React architecture with clean separation of concerns:</p>
+            
+            <div class="tech-stack">
+                <div class="tech-item">
+                    <h4>Presentation Layer</h4>
+                    <p>React components using shadcn/ui for consistent design, organized by feature domains with shared UI components.</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Business Logic</h4>
+                    <p>Custom React hooks managing state, API calls, and business rules. Service classes handle complex operations.</p>
+                </div>
+                <div class="tech-item">
+                    <h4>Data Layer</h4>
+                    <p>Supabase client for database operations, file storage, and real-time subscriptions.</p>
+                </div>
+            </div>
+
+            <h3>Key Architectural Patterns</h3>
+            <ul style="margin: 15px 0; padding-left: 20px;">
+                <li><strong>Feature-based Organization:</strong> Code organized by business features (reports, files, notes)</li>
+                <li><strong>Custom Hooks Pattern:</strong> Reusable state management and side effects</li>
+                <li><strong>Service Layer:</strong> Dedicated services for complex business operations</li>
+                <li><strong>Real-time Updates:</strong> WebSocket connections for live progress tracking</li>
+                <li><strong>Type Safety:</strong> Comprehensive TypeScript coverage</li>
+            </ul>
+        </section>
+
+        <section id="file-inventory" class="section">
+            <h2>File Inventory</h2>
+            
+            <div class="file-tree">
+<pre>
+src/
+├── 📁 components/
+│   ├── 📁 admin/                     <span class="description"># Admin panel components</span>
+│   │   ├── 📄 AdminProjectsTab.tsx   <span class="description"># Project management interface</span>
+│   │   ├── 📄 AdminReportsTab.tsx    <span class="description"># Report administration</span>
+│   │   ├── 📄 ConfigurationTab.tsx   <span class="description"># System configuration</span>
+│   │   └── 📄 TemplatesTab.tsx       <span class="description"># Template management</span>
+│   │
+│   ├── 📁 dashboard/                 <span class="description"># Main dashboard components</span>
+│   │   ├── 📁 files/                 <span class="description"># File management system</span>
+│   │   │   ├── 📄 FileItem.tsx       <span class="description"># Individual file component</span>
+│   │   │   ├── 📄 FilesList.tsx      <span class="description"># File listing interface</span>
+│   │   │   ├── 📄 BulkUploadDialog.tsx <span class="description"># Batch file upload</span>
+│   │   │   └── 📁 services/          <span class="description"># File operation services</span>
+│   │   │
+│   │   ├── 📁 notes/                 <span class="description"># Note management system</span>
+│   │   │   ├── 📄 NotesContainer.tsx <span class="description"># Notes display container</span>
+│   │   │   ├── 📄 EditNoteDialog.tsx <span class="description"># Note editing interface</span>
+│   │   │   └── 📁 hooks/             <span class="description"># Notes-related hooks</span>
+│   │   │
+│   │   └── 📄 ProjectsTable.tsx      <span class="description"># Project listing table</span>
+│   │
+│   ├── 📁 report-workflow/           <span class="description"># Report creation workflow</span>
+│   │   ├── 📄 StepIndicator.tsx      <span class="description"># Progress indicator</span>
+│   │   ├── 📄 ReportWizardContainer.tsx <span class="description"># Main workflow container</span>
+│   │   ├── 📁 steps/                 <span class="description"># Individual workflow steps</span>
+│   │   │   ├── 📄 Step1Start.tsx     <span class="description"># Project initialization</span>
+│   │   │   ├── 📄 Step2Files.tsx     <span class="description"># File upload and management</span>
+│   │   │   ├── 📄 Step3Process.tsx   <span class="description"># File processing</span>
+│   │   │   ├── 📄 Step4Notes.tsx     <span class="description"># Note creation and editing</span>
+│   │   │   ├── 📄 Step5Generate.tsx  <span class="description"># Report generation</span>
+│   │   │   └── 📄 Step6Review.tsx    <span class="description"># Final review and export</span>
+│   │   │
+│   │   └── 📁 file-upload/           <span class="description"># File upload components</span>
+│   │       ├── 📄 FileUploadArea.tsx <span class="description"># Drag-drop upload zone</span>
+│   │       ├── 📄 ImageAnnotationModal.tsx <span class="description"># Image annotation tools</span>
+│   │       └── 📁 annotation/        <span class="description"># Image annotation system</span>
+│   │
+│   ├── 📁 reports/                   <span class="description"># Report management</span>
+│   │   ├── 📄 ReportEditor.tsx       <span class="description"># WYSIWYG report editor</span>
+│   │   ├── 📄 ReportsTable.tsx       <span class="description"># Report listing interface</span>
+│   │   └── 📁 services/              <span class="description"># Report generation services</span>
+│   │       └── 📄 ReportGenerationService.ts <span class="description"># Core report generation logic</span>
+│   │
+│   └── 📁 ui/                        <span class="description"># Reusable UI components (shadcn/ui)</span>
+│       ├── 📄 button.tsx             <span class="description"># Button component</span>
+│       ├── 📄 dialog.tsx             <span class="description"># Modal dialogs</span>
+│       ├── 📄 table.tsx              <span class="description"># Table components</span>
+│       └── ...                       <span class="description"># Additional UI components</span>
+│
+├── 📁 hooks/                         <span class="description"># Custom React hooks</span>
+│   ├── 📁 report-workflow/           <span class="description"># Workflow-specific hooks</span>
+│   │   ├── 📄 useTemplateData.ts     <span class="description"># Template management hook</span>
+│   │   ├── 📄 useProjectData.ts      <span class="description"># Project data management</span>
+│   │   ├── 📄 useNotesManagement.ts  <span class="description"># Notes CRUD operations</span>
+│   │   ├── 📄 useWorkflowNavigation.ts <span class="description"># Workflow state management</span>
+│   │   └── 📄 useReportSave.ts       <span class="description"># Report saving logic</span>
+│   │
+│   └── 📁 reports/                   <span class="description"># Report-specific hooks</span>
+│       └── 📄 useReportGeneration.ts <span class="description"># Report generation state</span>
+│
+├── 📁 pages/                         <span class="description"># Top-level page components</span>
+│   ├── 📄 Dashboard.tsx              <span class="description"># Main dashboard page</span>
+│   ├── 📄 Reports.tsx                <span class="description"># Reports listing page</span>
+│   ├── 📄 StartNewReport.tsx         <span class="description"># Report creation entry point</span>
+│   └── 📄 Admin.tsx                  <span class="description"># Admin panel page</span>
+│
+├── 📁 utils/                         <span class="description"># Utility functions</span>
+│   ├── 📄 noteUtils.ts               <span class="description"># Note manipulation utilities</span>
+│   ├── 📄 fileUtils.ts               <span class="description"># File processing utilities</span>
+│   ├── 📄 webhookConfig.ts           <span class="description"># Webhook configuration</span>
+│   └── 📄 templateNoteUtils.ts       <span class="description"># Template note utilities</span>
+│
+├── 📁 types/                         <span class="description"># TypeScript type definitions</span>
+│   ├── 📄 template.types.ts          <span class="description"># Template-related types</span>
+│   └── 📄 workflow.types.ts          <span class="description"># Workflow state types</span>
+│
+└── 📁 integrations/                  <span class="description"># External service integrations</span>
+    └── 📁 supabase/                  <span class="description"># Supabase configuration</span>
+        ├── 📄 client.ts              <span class="description"># Supabase client setup</span>
+        └── 📄 types.ts               <span class="description"># Database type definitions</span>
+
+supabase/
+├── 📁 functions/                     <span class="description"># Supabase Edge Functions</span>
+│   ├── 📄 file-analysis/             <span class="description"># File processing service</span>
+│   ├── 📄 n8n-webhook-proxy/         <span class="description"># Webhook management service</span>
+│   ├── 📄 report-generator/          <span class="description"># Report generation service</span>
+│   ├── 📄 report-progress/           <span class="description"># Progress tracking service</span>
+│   └── 📄 transcribe-audio/          <span class="description"># Audio transcription service</span>
+│
+└── 📄 config.toml                    <span class="description"># Supabase configuration</span>
+</pre>
+            </div>
+
+            <h3>Key File Categories</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Purpose</th>
+                            <th>Key Files</th>
+                            <th>Dependencies</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Workflow Components</strong></td>
+                            <td>6-step report creation process</td>
+                            <td>Step1Start.tsx through Step6Review.tsx</td>
+                            <td>React, Custom Hooks, Supabase</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Service Layer</strong></td>
+                            <td>Business logic and API integration</td>
+                            <td>ReportGenerationService.ts, File Services</td>
+                            <td>Supabase Client, n8n Webhooks</td>
+                        </tr>
+                        <tr>
+                            <td><strong>State Management</strong></td>
+                            <td>React hooks for complex state</td>
+                            <td>useTemplateData.ts, useWorkflowNavigation.ts</td>
+                            <td>React, Supabase, React Query</td>
+                        </tr>
+                        <tr>
+                            <td><strong>UI Components</strong></td>
+                            <td>Reusable interface elements</td>
+                            <td>shadcn/ui components, Custom components</td>
+                            <td>Radix UI, Tailwind CSS</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Edge Functions</strong></td>
+                            <td>Server-side processing</td>
+                            <td>file-analysis, report-generator, n8n-webhook-proxy</td>
+                            <td>Deno, Supabase Runtime</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="database" class="section">
+            <h2>Database Schema</h2>
+            
+            <h3>Core Tables</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Table</th>
+                            <th>Purpose</th>
+                            <th>Key Columns</th>
+                            <th>Relationships</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>projects</strong></td>
+                            <td>Main project entity</td>
+                            <td>id, name, description, user_id, template_id, status</td>
+                            <td>→ users, → templates</td>
+                        </tr>
+                        <tr>
+                            <td><strong>files</strong></td>
+                            <td>File storage metadata</td>
+                            <td>id, name, file_path, type, project_id, position</td>
+                            <td>→ projects</td>
+                        </tr>
+                        <tr>
+                            <td><strong>notes</strong></td>
+                            <td>Project notes and content</td>
+                            <td>id, title, content, analysis, project_id, position</td>
+                            <td>→ projects</td>
+                        </tr>
+                        <tr>
+                            <td><strong>reports</strong></td>
+                            <td>Generated reports</td>
+                            <td>id, title, content, status, project_id, template_id</td>
+                            <td>→ projects, → templates</td>
+                        </tr>
+                        <tr>
+                            <td><strong>templates</strong></td>
+                            <td>Report templates</td>
+                            <td>id, name, description, modules, is_default, domain_id</td>
+                            <td>→ domains</td>
+                        </tr>
+                        <tr>
+                            <td><strong>template_notes</strong></td>
+                            <td>Template note structure</td>
+                            <td>id, title, name, template_id, position</td>
+                            <td>→ templates</td>
+                        </tr>
+                        <tr>
+                            <td><strong>project_workflow</strong></td>
+                            <td>Workflow state tracking</td>
+                            <td>id, project_id, user_id, workflow_state</td>
+                            <td>→ projects, → users</td>
+                        </tr>
+                        <tr>
+                            <td><strong>note_file_relationships</strong></td>
+                            <td>Links notes to related files</td>
+                            <td>id, note_id, file_id, match_score</td>
+                            <td>→ notes, → files</td>
+                        </tr>
+                        <tr>
+                            <td><strong>report_progress</strong></td>
+                            <td>Report generation progress</td>
+                            <td>id, report_id, status, progress, message, job</td>
+                            <td>→ reports</td>
+                        </tr>
+                        <tr>
+                            <td><strong>profiles</strong></td>
+                            <td>User profile information</td>
+                            <td>id, email, full_name, role, domain_id</td>
+                            <td>→ auth.users, → domains</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Entity Relationship Diagram</h3>
+            <div class="entity-diagram">
+                <div class="entity-box">
+                    <h5>Users</h5>
+                    <div class="entity-fields">
+                        • id (PK)<br>
+                        • email<br>
+                        • role<br>
+                        • domain_id (FK)
+                    </div>
+                </div>
+                
+                <div class="entity-box">
+                    <h5>Projects</h5>
+                    <div class="entity-fields">
+                        • id (PK)<br>
+                        • name<br>
+                        • user_id (FK)<br>
+                        • template_id (FK)<br>
+                        • status
+                    </div>
+                </div>
+                
+                <div class="entity-box">
+                    <h5>Files</h5>
+                    <div class="entity-fields">
+                        • id (PK)<br>
+                        • name<br>
+                        • file_path<br>
+                        • project_id (FK)<br>
+                        • type<br>
+                        • position
+                    </div>
+                </div>
+                
+                <div class="entity-box">
+                    <h5>Notes</h5>
+                    <div class="entity-fields">
+                        • id (PK)<br>
+                        • title<br>
+                        • content<br>
+                        • project_id (FK)<br>
+                        • analysis<br>
+                        • position
+                    </div>
+                </div>
+                
+                <div class="entity-box">
+                    <h5>Reports</h5>
+                    <div class="entity-fields">
+                        • id (PK)<br>
+                        • title<br>
+                        • content<br>
+                        • project_id (FK)<br>
+                        • template_id (FK)<br>
+                        • status
+                    </div>
+                </div>
+                
+                <div class="entity-box">
+                    <h5>Templates</h5>
+                    <div class="entity-fields">
+                        • id (PK)<br>
+                        • name<br>
+                        • description<br>
+                        • modules<br>
+                        • is_default<br>
+                        • domain_id (FK)
+                    </div>
+                </div>
+            </div>
+
+            <h3>Key Database Views</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>View Name</th>
+                            <th>Purpose</th>
+                            <th>Key Features</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>v_files_not_processed</strong></td>
+                            <td>Identifies files pending AI analysis</td>
+                            <td>Used by file-analysis edge function</td>
+                        </tr>
+                        <tr>
+                            <td><strong>v_project_notes_excluding_template</strong></td>
+                            <td>User-created notes (excludes template notes)</td>
+                            <td>Filters out system-generated template content</td>
+                        </tr>
+                        <tr>
+                            <td><strong>v_image_descriptions_related_to_note</strong></td>
+                            <td>Links image analysis to specific notes</td>
+                            <td>Supports AI-powered content suggestions</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="workflows" class="section">
+            <h2>Report Creation Workflow</h2>
+            
+            <p>The QuantaReport platform uses a structured 6-step workflow to guide users through the report creation process. The workflow state is tracked in the <code>project_workflow</code> table and enables seamless navigation between steps.</p>
+
+            <div class="workflow-step">
+                <h4>Step 1: Initiate New Report</h4>
+                <p><strong>Purpose:</strong> Project setup and template selection</p>
+                <p><strong>Key Actions:</strong></p>
+                <ul>
+                    <li>Create new project or select existing project for update</li>
+                    <li>Apply default template based on user's domain</li>
+                    <li>Initialize template notes structure</li>
+                    <li>Set workflow_state = 1</li>
+                </ul>
+                <p><strong>Files:</strong> StartNewReport.tsx, useTemplateData.ts, useReportSave.ts</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>Step 2: Upload and Prepare Files</h4>
+                <p><strong>Purpose:</strong> File collection and organization</p>
+                <p><strong>Key Actions:</strong></p>
+                <ul>
+                    <li>Upload images, documents, and audio files</li>
+                    <li>Organize files with drag-and-drop positioning</li>
+                    <li>Add file annotations and metadata</li>
+                    <li>Set workflow_state = 2</li>
+                </ul>
+                <p><strong>Files:</strong> Step2Files.tsx, FileUploadArea.tsx, file upload services</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>Step 3: File Processing and Analysis</h4>
+                <p><strong>Purpose:</strong> AI-powered file analysis</p>
+                <p><strong>Key Actions:</strong></p>
+                <ul>
+                    <li>Trigger file-analysis edge function</li>
+                    <li>Process images through n8n workflows</li>
+                    <li>Generate image descriptions and insights</li>
+                    <li>Track progress with real-time updates</li>
+                    <li>Set workflow_state = 3</li>
+                </ul>
+                <p><strong>Files:</strong> Step3Process.tsx, file-analysis edge function, useImageAnalysis.ts</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>Step 4: Review and Edit Notes</h4>
+                <p><strong>Purpose:</strong> Content creation and refinement</p>
+                <p><strong>Key Actions:</strong></p>
+                <ul>
+                    <li>Review template notes populated from Step 1</li>
+                    <li>Add custom notes and observations</li>
+                    <li>Link notes to related files</li>
+                    <li>Incorporate AI analysis results</li>
+                    <li>Set workflow_state = 4</li>
+                </ul>
+                <p><strong>Files:</strong> Step4Notes.tsx, useNotesManagement.ts, note editing components</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>Step 5: Write Report</h4>
+                <p><strong>Purpose:</strong> AI-assisted report generation</p>
+                <p><strong>Key Actions:</strong></p>
+                <ul>
+                    <li>Initiate report generation process</li>
+                    <li>Send project data to n8n report generation workflow</li>
+                    <li>Monitor generation progress in real-time</li>
+                    <li>Create initial report structure</li>
+                    <li>Set workflow_state = 5</li>
+                </ul>
+                <p><strong>Files:</strong> Step5Generate.tsx, ReportGenerationService.ts, useReportGeneration.ts</p>
+            </div>
+
+            <div class="workflow-step">
+                <h4>Step 6: View and Edit Report</h4>
+                <p><strong>Purpose:</strong> Final review and customization</p>
+                <p><strong>Key Actions:</strong></p>
+                <ul>
+                    <li>Review generated report content</li>
+                    <li>Edit report using rich text editor</li>
+                    <li>Export report in various formats</li>
+                    <li>Finalize and publish report</li>
+                    <li>Set workflow_state = 6</li>
+                </ul>
+                <p><strong>Files:</strong> Step6Review.tsx, ReportEditor.tsx, report services</p>
+            </div>
+
+            <h3>Workflow State Management</h3>
+            <div class="code-block">
+// Workflow state values
+1 = Step 1: Initiate New Report
+2 = Step 2: Upload and Prepare Files  
+3 = Step 3: File Processing and Analysis
+4 = Step 4: Review and Edit Notes
+5 = Step 5: Write Report
+6 = Step 6: View and Edit Report
+0 = Workflow exited/reset
+
+// Navigation rules
+- Users can navigate backward to any previous step
+- Forward navigation requires completion of current step
+- Workflow state persists in project_workflow table
+- Exit confirmation shown when leaving workflow
+            </div>
+        </section>
+
+        <section id="api-integrations" class="section">
+            <h2>API Integrations & External Services</h2>
+            
+            <h3>n8n Workflow Integration</h3>
+            <p>QuantaReport integrates with n8n workflows for AI-powered processing and report generation. The integration uses a centralized webhook proxy system to manage different environments and workflow types.</p>
+            
+            <h4>Webhook Management</h4>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Purpose</th>
+                            <th>Environments</th>
+                            <th>Configuration</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>n8n-webhook-proxy</strong></td>
+                            <td>Centralized webhook management</td>
+                            <td>Development, Staging, Production</td>
+                            <td>Environment-specific URL routing</td>
+                        </tr>
+                        <tr>
+                            <td><strong>file-analysis</strong></td>
+                            <td>Image and document processing</td>
+                            <td>Test and Production modes</td>
+                            <td>Automatic environment detection</td>
+                        </tr>
+                        <tr>
+                            <td><strong>report-generator</strong></td>
+                            <td>AI report generation</td>
+                            <td>Test and Production modes</td>
+                            <td>Template-based generation</td>
+                        </tr>
+                        <tr>
+                            <td><strong>note-analysis</strong></td>
+                            <td>AI-powered note enhancement</td>
+                            <td>Development and Production</td>
+                            <td>Context-aware processing</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h4>Environment Configuration</h4>
+            <div class="code-block">
+// Webhook configuration structure
+{
+  "development": {
+    "file-analysis": "https://n8n-01.imagicrafterai.com/webhook-test/...",
+    "report": "https://n8n-01.imagicrafterai.com/webhook-test/...",
+    "note": "https://n8n-01.imagicrafterai.com/webhook-test/..."
+  },
+  "production": {
+    "file-analysis": "https://n8n-01.imagicrafterai.com/webhook/...",
+    "report": "https://n8n-01.imagicrafterai.com/webhook/...",
+    "note": "https://n8n-01.imagicrafterai.com/webhook/..."
+  }
+}
+            </div>
+
+            <h3>Supabase Edge Functions</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Function</th>
+                            <th>Purpose</th>
+                            <th>Trigger</th>
+                            <th>Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>file-analysis</strong></td>
+                            <td>Process uploaded files through AI workflows</td>
+                            <td>Step 3 workflow or manual trigger</td>
+                            <td>Progress updates via report_progress table</td>
+                        </tr>
+                        <tr>
+                            <td><strong>n8n-webhook-proxy</strong></td>
+                            <td>Route webhook calls to appropriate n8n instances</td>
+                            <td>Internal service calls</td>
+                            <td>Webhook configuration and proxy routing</td>
+                        </tr>
+                        <tr>
+                            <td><strong>report-generator</strong></td>
+                            <td>Generate reports using AI and templates</td>
+                            <td>Step 5 workflow</td>
+                            <td>Real-time progress and final report content</td>
+                        </tr>
+                        <tr>
+                            <td><strong>report-progress</strong></td>
+                            <td>Track and update generation progress</td>
+                            <td>Webhook callbacks from n8n</td>
+                            <td>Database updates and client notifications</td>
+                        </tr>
+                        <tr>
+                            <td><strong>transcribe-audio</strong></td>
+                            <td>Convert audio files to text transcripts</td>
+                            <td>Audio file upload</td>
+                            <td>Transcript text and metadata</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Real-time Progress Tracking</h3>
+            <p>The application uses Supabase real-time subscriptions to provide live updates during long-running operations:</p>
+            
+            <div class="code-block">
+// Progress tracking implementation
+const subscription = supabase
+  .channel(`report-progress-${reportId}`)
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public', 
+    table: 'report_progress',
+    filter: `report_id=eq.${reportId}`
+  }, (payload) => {
+    // Update UI with progress
+    updateProgressUI(payload.new);
+  })
+  .subscribe();
+            </div>
+        </section>
+
+        <section id="deployment" class="section">
+            <h2>Deployment & Configuration</h2>
+            
+            <h3>Environment Setup</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Environment</th>
+                            <th>Purpose</th>
+                            <th>Database</th>
+                            <th>Webhooks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Development</strong></td>
+                            <td>Local development and testing</td>
+                            <td>Supabase project: vtaufnxworztolfdwlll</td>
+                            <td>n8n test webhooks</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Staging</strong></td>
+                            <td>Pre-production testing</td>
+                            <td>Separate Supabase project</td>
+                            <td>n8n staging webhooks</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Production</strong></td>
+                            <td>Live application</td>
+                            <td>Production Supabase project</td>
+                            <td>n8n production webhooks</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Edge Function Configuration</h3>
+            <div class="code-block">
+# supabase/config.toml
+project_id = "vtaufnxworztolfdwlll"
+
+[functions.file-analysis]
+verify_jwt = false
+
+[functions.n8n-webhook-proxy]  
+verify_jwt = false
+
+[functions.report-progress]
+verify_jwt = false
+
+[functions.report-generator]
+verify_jwt = false
+
+[functions.transcribe-audio]
+verify_jwt = false
+
+[functions.note-analysis]
+verify_jwt = false
+            </div>
+
+            <h3>Key Configuration Files</h3>
+            <ul style="margin: 15px 0; padding-left: 20px;">
+                <li><strong>supabase/config.toml:</strong> Supabase project configuration and edge function settings</li>
+                <li><strong>src/integrations/supabase/client.ts:</strong> Supabase client initialization</li>
+                <li><strong>src/utils/webhookConfig.ts:</strong> Webhook URL configuration and environment detection</li>
+                <li><strong>package.json:</strong> Dependencies and build scripts</li>
+                <li><strong>tailwind.config.js:</strong> Tailwind CSS customization</li>
+                <li><strong>tsconfig.json:</strong> TypeScript compiler configuration</li>
+            </ul>
+
+            <h3>Deployment Checklist</h3>
+            <ol style="margin: 15px 0; padding-left: 20px;">
+                <li>Set up Supabase project and configure authentication</li>
+                <li>Deploy edge functions using Supabase CLI</li>
+                <li>Configure n8n workflows and webhook URLs</li>
+                <li>Set up environment-specific webhook configurations</li>
+                <li>Configure Row Level Security (RLS) policies</li>
+                <li>Set up file storage buckets and policies</li>
+                <li>Configure domain settings and user roles</li>
+                <li>Test workflow end-to-end functionality</li>
+            </ol>
+
+            <h3>Security Considerations</h3>
+            <ul style="margin: 15px 0; padding-left: 20px;">
+                <li><strong>Row Level Security:</strong> All tables implement RLS for multi-tenant data isolation</li>
+                <li><strong>JWT Verification:</strong> Edge functions can optionally verify JWT tokens</li>
+                <li><strong>Domain Isolation:</strong> Users are isolated by domain_id in profiles table</li>
+                <li><strong>Role-based Access:</strong> Admin, user, and domain-specific role management</li>
+                <li><strong>File Access Control:</strong> Secure file storage with access policies</li>
+            </ul>
+        </section>
+
+        <footer style="text-align: center; margin-top: 40px; padding: 20px; color: #6b7280; border-top: 1px solid #e5e7eb;">
+            <p>QuantaReport Technical Documentation - Generated: <span id="generated-date"></span></p>
+            <p>Professional Report Creation Platform</p>
+        </footer>
+    </div>
+
+    <script>
+        // Set the current date
+        document.getElementById('generated-date').textContent = new Date().toLocaleDateString();
+        
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('.nav a').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

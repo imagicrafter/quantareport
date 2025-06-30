@@ -1,7 +1,9 @@
+
 import { useState } from 'react';
-import { File, X, Music, Folder, FileText } from 'lucide-react';
+import { File, X, Music, Folder, FileText, Plus } from 'lucide-react';
 import { removeFileFromNote } from '@/utils/noteFileRelationshipUtils';
 import { NoteFileRelationshipWithType } from '@/utils/noteUtils';
+import ImagePreviewModal from '@/components/report-workflow/file-upload/ImagePreviewModal';
 
 interface RelatedFilesProps {
   files: NoteFileRelationshipWithType[];
@@ -9,10 +11,17 @@ interface RelatedFilesProps {
   projectId?: string;
   onRelationshipsChanged?: (newRelationship?: NoteFileRelationshipWithType) => void;
   compact?: boolean;
+  onManageFilesClick?: () => void; // allow opening the Manage Files modal via dashed square
 }
 
-const RelatedFiles = ({ files, onRelationshipsChanged, compact = false }: RelatedFilesProps) => {
+const RelatedFiles = ({ 
+  files, 
+  onRelationshipsChanged, 
+  compact = false,
+  onManageFilesClick
+}: RelatedFilesProps) => {
   const [removingFileId, setRemovingFileId] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const handleRemoveFile = async (relationshipId: string) => {
     try {
@@ -39,7 +48,6 @@ const RelatedFiles = ({ files, onRelationshipsChanged, compact = false }: Relate
     }
   };
 
-  // Render compact version (only file count)
   if (compact) {
     return (
       <div className="flex items-center">
@@ -51,27 +59,36 @@ const RelatedFiles = ({ files, onRelationshipsChanged, compact = false }: Relate
     );
   }
 
-  // Render full version with image previews
   if (files.length === 0) {
     return (
-      <div className="text-muted-foreground text-sm italic">
-        No files associated with this note
+      <div className="flex items-center gap-4">
+        {onManageFilesClick && (
+          <button
+            type="button"
+            className="h-32 w-32 flex items-center justify-center border-2 border-dashed border-primary/40 rounded-md bg-background/80 text-primary hover:bg-secondary/30 text-4xl transition focus:outline-none"
+            aria-label="Add or Manage Related Files"
+            onClick={onManageFilesClick}
+          >
+            <Plus size={36} />
+          </button>
+        )}
       </div>
     );
   }
 
-  // Group files by type
   const imageFiles = files.filter(rel => rel.file_type === 'image');
   const otherFiles = files.filter(rel => rel.file_type !== 'image');
 
   return (
     <div className="space-y-4">
-      {/* Image previews */}
       {imageFiles.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {imageFiles.map((rel) => (
             <div key={rel.id} className="relative group">
-              <div className="h-32 w-32 rounded-md overflow-hidden border border-border">
+              <div 
+                className="h-32 w-32 rounded-md overflow-hidden border border-border cursor-pointer"
+                onClick={() => setSelectedImage(rel.file_path)}
+              >
                 <img
                   src={rel.file_path}
                   alt={rel.file?.name || 'Image preview'}
@@ -92,10 +109,19 @@ const RelatedFiles = ({ files, onRelationshipsChanged, compact = false }: Relate
               )}
             </div>
           ))}
+          {onManageFilesClick && (
+            <button
+              type="button"
+              className="h-32 w-32 flex items-center justify-center border-2 border-dashed border-primary/40 rounded-md bg-background/80 text-primary hover:bg-secondary/30 text-4xl transition focus:outline-none"
+              aria-label="Add or Manage Related Files"
+              onClick={onManageFilesClick}
+            >
+              <Plus size={36} />
+            </button>
+          )}
         </div>
       )}
       
-      {/* Other files list */}
       {otherFiles.length > 0 && (
         <div className="space-y-2">
           {otherFiles.map((rel) => (
@@ -133,6 +159,12 @@ const RelatedFiles = ({ files, onRelationshipsChanged, compact = false }: Relate
           ))}
         </div>
       )}
+      
+      <ImagePreviewModal
+        imageUrl={selectedImage || ''}
+        isOpen={!!selectedImage}
+        onClose={() => setSelectedImage(null)}
+      />
     </div>
   );
 };
