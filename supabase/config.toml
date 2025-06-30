@@ -21,3 +21,6 @@ verify_jwt = false
 
 [functions.note-analysis]
 verify_jwt = false
+
+[functions.delete-project]
+verify_jwt = false

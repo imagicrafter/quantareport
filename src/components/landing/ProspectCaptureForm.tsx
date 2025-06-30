@@ -79,7 +79,7 @@ const ProspectCaptureForm = () => {
       <CardHeader className="text-center">
         <CardTitle>Get Early Access</CardTitle>
         <CardDescription>
-          Join our alpha program and be among the first to experience the future of professional report creation.
+          Apply to join our alpha program and be one of the first to experience the future of professional report creation.
         </CardDescription>
       </CardHeader>
       <CardContent>

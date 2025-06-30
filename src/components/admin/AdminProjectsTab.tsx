@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, Copy } from 'lucide-react';
+import { Search, Copy, Trash2 } from 'lucide-react';
 import { 
   Table, 
   TableBody, 
@@ -24,6 +23,7 @@ import Button from '../ui-elements/Button';
 import ProjectViewDrawer from '../dashboard/ProjectViewDrawer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import DeleteProjectDialog from './DeleteProjectDialog';
 
 interface Template {
   id: string;
@@ -68,6 +68,17 @@ const AdminProjectsTab = () => {
   const [owners, setOwners] = useState<{email: string, id: string}[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [statuses, setStatuses] = useState<string[]>([]);
+
+  // Delete dialog state
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    projectId: string;
+    projectName: string;
+  }>({
+    isOpen: false,
+    projectId: '',
+    projectName: ''
+  });
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -212,6 +223,27 @@ const AdminProjectsTab = () => {
   const handleCloseView = () => {
     setIsViewOpen(false);
     // Refresh projects after closing the view drawer
+    fetchProjects();
+  };
+  
+  const handleDeleteProject = (projectId: string, projectName: string) => {
+    setDeleteDialog({
+      isOpen: true,
+      projectId,
+      projectName
+    });
+  };
+
+  const handleDeleteDialogClose = () => {
+    setDeleteDialog({
+      isOpen: false,
+      projectId: '',
+      projectName: ''
+    });
+  };
+
+  const handleProjectDeleted = () => {
+    // Refresh the projects list
     fetchProjects();
   };
   
@@ -421,13 +453,23 @@ const AdminProjectsTab = () => {
                       </span>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleViewProject(project.id)}
-                      >
-                        View
-                      </Button>
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleViewProject(project.id)}
+                        >
+                          View
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeleteProject(project.id, project.name)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" /> Delete
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -509,6 +551,15 @@ const AdminProjectsTab = () => {
           projectId={selectedProject}
         />
       )}
+
+      {/* Delete Project Dialog */}
+      <DeleteProjectDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={handleDeleteDialogClose}
+        projectId={deleteDialog.projectId}
+        projectName={deleteDialog.projectName}
+        onProjectDeleted={handleProjectDeleted}
+      />
     </>
   );
 };

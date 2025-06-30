@@ -1,6 +1,6 @@
-
 import { Dispatch, FormEvent, SetStateAction } from 'react';
 import Button from '../ui-elements/Button';
+import { SubscriptionPlan } from '@/services/subscriptionService';
 
 interface Industry {
   id: string;
@@ -20,6 +20,7 @@ interface SignUpStep2FormProps {
   setStep: Dispatch<SetStateAction<number>>;
   isLoading: boolean;
   industries: Industry[];
+  subscriptions: SubscriptionPlan[];
 }
 
 const SignUpStep2Form = ({
@@ -34,7 +35,8 @@ const SignUpStep2Form = ({
   handleNextStep,
   setStep,
   isLoading,
-  industries
+  industries,
+  subscriptions,
 }: SignUpStep2FormProps) => {
   return (
     <form onSubmit={handleNextStep} className="space-y-6">
@@ -101,10 +103,19 @@ const SignUpStep2Form = ({
           onChange={(e) => setPlan(e.target.value)}
           className="w-full p-2 rounded-md border border-input bg-background"
           required
+          disabled={subscriptions.length === 0 || isLoading}
         >
-          <option value="free">Free Demo</option>
-          <option value="pro">Professional</option>
-          <option value="enterprise">Enterprise</option>
+          {subscriptions.length === 0 ? (
+            <option value="" disabled>
+              Loading plans...
+            </option>
+          ) : (
+            subscriptions.map((sub) => (
+              <option key={sub.id} value={sub.id}>
+                {sub.name}
+              </option>
+            ))
+          )}
         </select>
       </div>
 
