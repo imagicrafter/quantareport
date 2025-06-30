@@ -50,46 +50,9 @@ const DeleteReportDialog = ({
     try {
       console.log(`Starting deletion process for report ${reportId}`);
       
-      // Delete associated files from storage buckets
-      const deleteStorageFiles = async (bucketName: string, prefix: string) => {
-        try {
-          // List files in the report folder
-          const { data: files, error: listError } = await supabase.storage
-            .from(bucketName)
-            .list(prefix, { limit: 1000 });
-
-          if (listError) {
-            console.warn(`Error listing files in ${bucketName}/${prefix}:`, listError);
-            return;
-          }
-
-          if (files && files.length > 0) {
-            // Create array of file paths to delete
-            const filePaths = files.map(file => `${prefix}/${file.name}`);
-            
-            // Delete all files in the folder
-            const { error: deleteError } = await supabase.storage
-              .from(bucketName)
-              .remove(filePaths);
-
-            if (deleteError) {
-              console.warn(`Error deleting files from ${bucketName}:`, deleteError);
-            } else {
-              console.log(`Successfully deleted ${filePaths.length} files from ${bucketName}/${prefix}`);
-            }
-          }
-        } catch (error) {
-          console.warn(`Error processing ${bucketName} deletion:`, error);
-        }
-      };
-
-      // Delete from both storage buckets
-      await Promise.all([
-        deleteStorageFiles('pub_images', reportId),
-        deleteStorageFiles('pub_documents', reportId)
-      ]);
-
       // Delete the report from the database
+      // Note: Storage files are organized by project_id, not report_id
+      // So we only delete the report record, not storage files
       const { error: dbError } = await supabase
         .from('reports')
         .delete()
@@ -125,7 +88,7 @@ const DeleteReportDialog = ({
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-3">
             <p>
-              This action cannot be undone. This will permanently delete the report and all associated files.
+              This action cannot be undone. This will permanently delete the report from the database.
             </p>
             <p className="font-medium">
               Report: <span className="font-normal italic">"{reportTitle}"</span>
