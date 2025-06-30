@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -38,17 +37,16 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
     }
   }, [projectId]);
 
-  const analyzeFiles = useCallback(async () => {
+  const analyzeFiles = useCallback(async (onProgressSetup?: (jobId: string) => void) => {
     if (!projectId || !projectName) {
       toast.error('Project information is missing');
-      return;
+      return null;
     }
     
     try {
       setIsAnalyzing(true);
       setAnalysisInProgress(true);
       
-      // Get the current user to include the user_id in the payload
       const { data: userData, error: userError } = await supabase.auth.getUser();
       
       if (userError) {
@@ -56,7 +54,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
         toast.error('Unable to authenticate user for file analysis');
         setIsAnalyzing(false);
         setAnalysisInProgress(false);
-        return;
+        return null;
       }
       
       const userId = userData.user?.id;
@@ -66,21 +64,15 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
         toast.error('User authentication required for file analysis');
         setIsAnalyzing(false);
         setAnalysisInProgress(false);
-        return;
+        return null;
       }
       
-      // Determine if this is a test project based on name
       const isTestMode = projectName.toLowerCase().includes('test');
-      
-      // Only apply test mode in development environment
       const shouldUseTestMode = isDevelopmentEnvironment() && isTestMode;
-      
-      // Get the current environment using the utility function
       const currentEnv = getCurrentEnvironment();
       
       console.log(`Using ${shouldUseTestMode ? 'TEST' : 'REGULAR'} mode for project: ${projectName} (App Environment: ${currentEnv})`);
       
-      // Generate a new job ID using uuid package
       const jobId = uuidv4();
       setAnalysisJobId(jobId);
       
@@ -99,19 +91,23 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       if (progressError) {
         console.error('Error creating initial progress record:', progressError);
       }
+
+      // Setup real-time subscription if callback provided
+      if (onProgressSetup) {
+        onProgressSetup(jobId);
+      }
       
-      // Call the file-analysis edge function using the new consolidated proxy
       const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
         body: {
           project_id: projectId,
-          user_id: userId, // Include the user_id in the payload
+          user_id: userId,
           isTestMode: shouldUseTestMode,
           job: jobId,
           type: 'file-analysis',
-          env: shouldUseTestMode ? 'development' : currentEnv, // Use current environment instead of hardcoding
+          env: shouldUseTestMode ? 'development' : currentEnv,
           payload: {
             project_id: projectId,
-            user_id: userId, // Include the user_id in the payload
+            user_id: userId,
             isTestMode: shouldUseTestMode,
             job: jobId
           }
@@ -123,20 +119,22 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
         toast.error('Failed to start file analysis');
         setIsAnalyzing(false);
         setAnalysisInProgress(false);
-        return;
+        return null;
       }
       
       console.log('File analysis response:', data);
       
       if (data.success) {
-        setIsProgressModalOpen(true);
         toast.success('File analysis started');
+        return jobId;
       } else {
         toast.error(data.message || 'Failed to start file analysis');
+        return null;
       }
     } catch (error) {
       console.error('Error analyzing files:', error);
       toast.error('An error occurred while analyzing files');
+      return null;
     } finally {
       setIsAnalyzing(false);
       setTimeout(() => {
@@ -220,7 +218,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
   
   const handleAnalysisComplete = useCallback(() => {
     if (refreshInProgressRef.current) {
-      return; // Prevent multiple refreshes
+      return;
     }
     
     console.log("Analysis complete, refreshing files list (once)");
