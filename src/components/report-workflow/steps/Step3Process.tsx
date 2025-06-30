@@ -22,8 +22,12 @@ const Step3Process = () => {
   const [imageCount, setImageCount] = useState(0);
   const [notesCount, setNotesCount] = useState(0);
   const [subscription, setSubscription] = useState<any>(null);
+  const [analysisStarted, setAnalysisStarted] = useState(false);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
   const hasRefreshedRef = useRef(false);
+  const completionHandledRef = useRef(false);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const {
     hasUnprocessedFiles,
@@ -64,6 +68,8 @@ const Step3Process = () => {
         }
       } catch (error) {
         console.error('Error fetching workflow data:', error);
+        setProcessingStatus('error');
+        setMessage('Failed to load workflow data. Please try again.');
       }
     };
     
@@ -71,33 +77,63 @@ const Step3Process = () => {
   }, [fetchCurrentWorkflow, navigate, updateWorkflowState]);
 
   useEffect(() => {
-    if (projectId) {
+    if (projectId && !analysisStarted) {
       checkUnprocessedFiles();
-      fetchAnalyzedFiles();
+      fetchFileCounts();
     }
-  }, [projectId, checkUnprocessedFiles]);
+  }, [projectId, checkUnprocessedFiles, analysisStarted]);
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || analysisStarted) return;
     
     const startProcessing = async () => {
-      setProcessingStatus('generating');
-      setMessage('Initializing analysis...');
-      
-      if (hasUnprocessedFiles) {
-        console.log('Unprocessed files found, starting analysis...');
-        await analyzeFiles();
-      } else {
-        console.log('No unprocessed files found, completing processing');
-        await completeProcessing();
+      try {
+        setAnalysisStarted(true);
+        setProcessingStatus('generating');
+        setMessage('Checking files for analysis...');
+        setProgress(5);
+        
+        // Check if files need processing
+        await checkUnprocessedFiles();
+        
+        if (hasUnprocessedFiles && unprocessedFileCount > 0) {
+          console.log(`Found ${unprocessedFileCount} unprocessed files, starting analysis...`);
+          setMessage(`Analyzing ${unprocessedFileCount} files...`);
+          setProgress(10);
+          
+          // Start file analysis with proper callback setup
+          const jobId = await analyzeFiles((jobId: string) => {
+            console.log('Setting up real-time subscription for job:', jobId);
+            setCurrentJobId(jobId);
+            setupRealtimeSubscription(jobId);
+          });
+          
+          if (!jobId) {
+            throw new Error('Failed to start file analysis');
+          }
+        } else {
+          console.log('No unprocessed files found, completing processing immediately');
+          await completeProcessing();
+        }
+      } catch (error) {
+        console.error('Error starting processing:', error);
+        setProcessingStatus('error');
+        setMessage('Failed to start file analysis. Please try again.');
+        setProgress(0);
       }
     };
     
     startProcessing();
-  }, [projectId, hasUnprocessedFiles, analyzeFiles]);
+  }, [projectId, hasUnprocessedFiles, unprocessedFileCount, analyzeFiles, analysisStarted]);
 
   const setupRealtimeSubscription = (jobId: string) => {
-    if (!jobId) return;
+    if (!jobId) {
+      console.error('Cannot setup subscription without job ID');
+      return;
+    }
+    
+    // Clean up existing subscription
+    cleanupSubscriptions();
     
     const channelName = `file-analysis-progress-${jobId}-${Date.now()}`;
     console.log(`Setting up realtime subscription on channel: ${channelName} for job: ${jobId}`);
@@ -107,7 +143,7 @@ const Step3Process = () => {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'report_progress',
           filter: `job=eq.${jobId}`
@@ -115,19 +151,36 @@ const Step3Process = () => {
         (payload) => {
           console.log('Received progress update for file analysis:', payload);
           const latestProgress = payload.new;
-          setMessage(latestProgress.message || 'Processing files...');
-          setProgress(latestProgress.progress || 0);
-          setProcessingStatus(latestProgress.status as any);
+          
+          if (latestProgress) {
+            setMessage(latestProgress.message || 'Processing files...');
+            setProgress(latestProgress.progress || 0);
+            setProcessingStatus(latestProgress.status as any);
 
-          if (latestProgress.status === 'completed' || latestProgress.progress === 100) {
-            handleAnalysisCompletion(true);
-          } else if (latestProgress.status === 'error') {
-            handleAnalysisCompletion(false);
+            // Handle completion with proper checks
+            if ((latestProgress.status === 'completed' || latestProgress.progress === 100) && !completionHandledRef.current) {
+              console.log('Analysis completed successfully');
+              handleAnalysisCompletion(true);
+            } else if (latestProgress.status === 'error' && !completionHandledRef.current) {
+              console.log('Analysis failed with error');
+              handleAnalysisCompletion(false);
+            }
           }
         }
       )
       .subscribe((status) => {
         console.log(`File analysis subscription status for ${channelName}:`, status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to progress updates');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Subscription error, retrying...');
+          // Retry subscription after a delay
+          setTimeout(() => {
+            if (!completionHandledRef.current) {
+              setupRealtimeSubscription(jobId);
+            }
+          }, 2000);
+        }
       });
       
     setSubscription(channel);
@@ -142,38 +195,61 @@ const Step3Process = () => {
   };
 
   const handleAnalysisCompletion = async (isSuccess: boolean) => {
-    if (hasRefreshedRef.current) return;
+    if (completionHandledRef.current) {
+      console.log('Completion already handled, skipping');
+      return;
+    }
     
-    hasRefreshedRef.current = true;
+    completionHandledRef.current = true;
     console.log('Analysis completion handler executed, success:', isSuccess);
     
+    // Clean up subscriptions
     cleanupSubscriptions();
     
     if (isSuccess) {
+      setMessage('Analysis completed successfully');
+      setProgress(100);
+      setProcessingStatus('completed');
       await completeProcessing();
     } else {
       setProcessingStatus('error');
       setMessage('Analysis failed. Please try again.');
+      setProgress(0);
     }
   };
 
   const completeProcessing = async () => {
-    await fetchFileCounts();
-    setProcessingComplete(true);
-    setProcessingStatus('completed');
-    setProgress(100);
-    setMessage('All files have been successfully processed');
-    
-    // Auto-proceed to next step after a brief delay
-    setTimeout(() => {
-      handleNext();
-    }, 2000);
+    try {
+      console.log('Completing processing and fetching final counts...');
+      await fetchFileCounts();
+      setProcessingComplete(true);
+      setProcessingStatus('completed');
+      setProgress(100);
+      setMessage('All files have been successfully processed');
+      
+      // Auto-proceed to next step after a delay, with safety check
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+      
+      navigationTimeoutRef.current = setTimeout(() => {
+        console.log('Auto-navigating to next step...');
+        handleNext();
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error completing processing:', error);
+      setProcessingStatus('error');
+      setMessage('Failed to complete processing. Please try again.');
+    }
   };
 
   const fetchFileCounts = async () => {
     if (!projectId) return;
     
     try {
+      console.log('Fetching file counts for project:', projectId);
+      
       const { data: textDocs, error: textError } = await supabase
         .from('files')
         .select('id')
@@ -194,42 +270,30 @@ const Step3Process = () => {
         setImageCount(images?.length || 0);
       }
       
-      const { data, error: notesError } = await supabase
+      const { data: notes, error: notesError } = await supabase
         .from('v_project_notes_excluding_template')
         .select('id')
         .eq('project_id', projectId);
         
-      if (!notesError && data) {
-        setNotesCount(data.length);
+      if (!notesError && notes) {
+        setNotesCount(notes.length);
       }
+      
+      console.log(`File counts - Text: ${textDocs?.length || 0}, Images: ${images?.length || 0}, Notes: ${notes?.length || 0}`);
     } catch (error) {
       console.error('Error fetching file counts:', error);
     }
   };
-
-  const fetchAnalyzedFiles = async () => {
-    if (!projectId) return;
-    
-    try {
-      const { data: unprocessedFiles, error: unprocessedError } = await supabase
-        .from('v_files_not_processed')
-        .select('id')
-        .eq('project_id', projectId);
-        
-      if (unprocessedError) {
-        console.error('Error fetching unprocessed files:', unprocessedError);
-        return;
-      }
-      
-      if (!unprocessedFiles || unprocessedFiles.length === 0) {
-        await completeProcessing();
-      }
-    } catch (error) {
-      console.error('Error in fetchAnalyzedFiles:', error);
-    }
-  };
   
   const handleBack = () => {
+    // Clear any pending navigation
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+      navigationTimeoutRef.current = null;
+    }
+    
+    cleanupSubscriptions();
+    
     if (projectId) {
       updateWorkflowState(projectId, 2)
         .then(() => {
@@ -244,6 +308,14 @@ const Step3Process = () => {
   };
   
   const handleNext = () => {
+    // Clear any pending navigation
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+      navigationTimeoutRef.current = null;
+    }
+    
+    cleanupSubscriptions();
+    
     if (projectId) {
       updateWorkflowState(projectId, 4)
         .then(() => {
@@ -258,6 +330,14 @@ const Step3Process = () => {
   };
   
   const handleBannerClick = () => {
+    // Clear any pending navigation
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+      navigationTimeoutRef.current = null;
+    }
+    
+    cleanupSubscriptions();
+    
     if (projectId) {
       updateWorkflowState(projectId, 2)
         .then(() => {
@@ -269,10 +349,13 @@ const Step3Process = () => {
     }
   };
 
-  // Clean up subscriptions on unmount
+  // Clean up subscriptions and timeouts on unmount
   useEffect(() => {
     return () => {
       cleanupSubscriptions();
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
     };
   }, []);
   
@@ -309,6 +392,26 @@ const Step3Process = () => {
                   <li>Analyzed {imageCount} images with AI vision</li>
                   <li>Generated key insights from content</li>
                 </ul>
+              </div>
+            )}
+            
+            {processingStatus === 'error' && (
+              <div className="bg-red-50 border border-red-200 p-4 rounded-md w-full mt-4">
+                <h4 className="font-medium text-red-800 mb-2">Processing Error</h4>
+                <p className="text-red-700 text-sm mb-3">{message}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setAnalysisStarted(false);
+                    completionHandledRef.current = false;
+                    setProcessingStatus('idle');
+                    setProgress(0);
+                    setMessage('Starting analysis...');
+                  }}
+                >
+                  Retry Analysis
+                </Button>
               </div>
             )}
           </CardContent>

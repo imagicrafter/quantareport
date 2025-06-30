@@ -30,6 +30,7 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       const hasFiles = data && data.length > 0;
       setHasUnprocessedFiles(hasFiles);
       setUnprocessedFileCount(data?.length || 0);
+      console.log(`Unprocessed files check: ${data?.length || 0} files found`);
       return hasFiles;
     } catch (error) {
       console.error('Error in checkUnprocessedFiles:', error);
@@ -90,13 +91,17 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       
       if (progressError) {
         console.error('Error creating initial progress record:', progressError);
+      } else {
+        console.log('Created initial progress record for job:', jobId);
       }
 
-      // Setup real-time subscription if callback provided
+      // Setup real-time subscription BEFORE making the webhook call
       if (onProgressSetup) {
+        console.log('Setting up progress callback for job:', jobId);
         onProgressSetup(jobId);
       }
       
+      console.log('Invoking n8n-webhook-proxy for file analysis...');
       const { data, error } = await supabase.functions.invoke('n8n-webhook-proxy/proxy', {
         body: {
           project_id: projectId,
@@ -125,18 +130,25 @@ export const useImageAnalysis = (projectId?: string, projectName?: string) => {
       console.log('File analysis response:', data);
       
       if (data.success) {
+        console.log('File analysis started successfully');
         toast.success('File analysis started');
         return jobId;
       } else {
+        console.error('File analysis failed:', data.message);
         toast.error(data.message || 'Failed to start file analysis');
+        setIsAnalyzing(false);
+        setAnalysisInProgress(false);
         return null;
       }
     } catch (error) {
       console.error('Error analyzing files:', error);
       toast.error('An error occurred while analyzing files');
+      setIsAnalyzing(false);
+      setAnalysisInProgress(false);
       return null;
     } finally {
       setIsAnalyzing(false);
+      // Keep analysis in progress flag for a bit longer to show completion state
       setTimeout(() => {
         setAnalysisInProgress(false);
       }, 5000);
