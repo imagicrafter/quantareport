@@ -8,11 +8,14 @@ import SignUpContainer from '../components/auth/SignUpContainer';
 import SignUpStep1Form from '../components/auth/SignUpStep1Form';
 import SignUpStep2Form from '../components/auth/SignUpStep2Form';
 import { validateSignupCode, markSignupCodeAsUsed } from '@/services/signupCodeService';
-import { getAppSettings } from '@/services/configurationService';
+import { validateSignupPrerequisites } from '@/services/authValidationService';
+import { checkRegistrationStatus, createUserSubscription } from '@/services/userService';
+import { getSubscriptionPlans, SubscriptionPlan } from '@/services/subscriptionService';
+
+const OAUTH_SIGNUP_SESSION_KEY = 'oauth_signup_info';
 
 const SignUp = () => {
   const [searchParams] = useSearchParams();
-  const planFromUrl = searchParams.get('plan') || 'free';
   const codeFromUrl = searchParams.get('code') || '';
   const emailFromUrl = searchParams.get('email') || '';
   const navigate = useNavigate();
@@ -24,66 +27,155 @@ const SignUp = () => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [industry, setIndustry] = useState('');
-  const [plan, setPlan] = useState(planFromUrl);
+  const [plan, setPlan] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [requiresSignupCode, setRequiresSignupCode] = useState<boolean | null>(null);
+  const [isOAuthCompletion, setIsOAuthCompletion] = useState(false);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionPlan[]>([]);
+  const [isLoadingSubscriptions, setIsLoadingSubscriptions] = useState(true);
   
   const { 
     handleGoogleSignUp, 
     handleFacebookSignUp, 
     isOAuthLoading,
-    requiresSignupCode: oauthRequiresSignupCode,
+    requiresSignupCode,
     isCheckingSettings,
     oAuthError,
     setOAuthError
   } = useOAuth();
   
-  // Check if signup codes are required
   useEffect(() => {
-    const checkSignupRequirements = async () => {
-      try {
-        // MITIGATION: Always set to false
-        setRequiresSignupCode(false);
-        console.log('MITIGATION ACTIVE: Signup codes not required');
-      } catch (err) {
-        console.error('Error checking signup requirements:', err);
-        // Default to NOT requiring signup codes
-        setRequiresSignupCode(false);
+    const handleSessionState = async () => {
+      // Wait for settings to load before proceeding
+      if (isCheckingSettings) {
+        console.log('Waiting for app settings to load...');
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Not logged in. Do nothing.
+        return;
+      }
+
+      const user = session.user;
+
+      // Check if user is already fully registered first.
+      const { isRegistered } = await checkRegistrationStatus(user.email!);
+      if(isRegistered) {
+        console.log('User is already registered and subscribed. Cleaning up and redirecting to dashboard.');
+        sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
+        navigate('/dashboard');
+        return;
+      }
+
+      // If not registered, check if this is a completion flow.
+      const signupInfoRaw = sessionStorage.getItem(OAUTH_SIGNUP_SESSION_KEY);
+
+      if (signupInfoRaw) {
+        // We are in an OAuth signup flow that was initiated from the /signup page.
+        console.log('Detected OAuth profile completion flow.');
+        const signupInfo = JSON.parse(signupInfoRaw);
+        
+        // Security check: if codes are required, ensure one was validated and stored.
+        if (requiresSignupCode && !signupInfo.code) {
+          console.log('OAuth signup requires a code, but none was provided. Redirecting to early access.');
+          toast.error('A valid signup code is required to create an account. Please use an invite link.');
+          sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
+          await supabase.auth.signOut();
+          window.location.href = 'https://quantareport.com/#early-access';
+          return;
+        }
+
+        setIsOAuthCompletion(true);
+        setEmail(user.email || signupInfo.email || '');
+        setName(user.user_metadata.full_name || user.user_metadata.name || ''); 
+        setSignUpCode(signupInfo.code || '');
+        setStep(2);
+
+      } else {
+        // This is a user who is logged in but not yet registered.
+        // Can be from an email verification link OR an OAuth flow started from /signin.
+
+        const isOAuthUser = user.app_metadata.provider === 'google' || user.app_metadata.provider === 'facebook';
+        const signupCode = user.user_metadata?.signup_code;
+        
+        // Security check: This prevents bypassing the code requirement by using OAuth on the signin page.
+        if (requiresSignupCode && isOAuthUser && !signupCode) {
+          console.log('OAuth user without signup code detected, but code is required. Redirecting to early access.');
+          toast.error('A valid signup code is required to create an account. Please use an invite link.');
+          await supabase.auth.signOut();
+          window.location.href = 'https://quantareport.com/#early-access';
+          return;
+        }
+        
+        console.log('Logged-in user needs to complete profile. Proceeding to Step 2.');
+        setIsOAuthCompletion(true); // Re-using this to show Step 2 with "Complete Your Profile" title.
+        setEmail(user.email || '');
+        setName(user.user_metadata.full_name || '');
+        setPhone(user.user_metadata.phone || '');
+        setIndustry(user.user_metadata.industry || '');
+        setSignUpCode(signupCode || '');
+        setStep(2);
       }
     };
-    
-    checkSignupRequirements();
-  }, []);
 
-  // Check URL parameters on load
+    handleSessionState();
+  }, [navigate, isCheckingSettings, requiresSignupCode]);
+
   useEffect(() => {
-    console.log('URL parameters:', { code: codeFromUrl, email: emailFromUrl });
-    
-    if (codeFromUrl && emailFromUrl) {
-      // Pre-validate the signup code
+    const fetchSubscriptions = async () => {
+      try {
+        setIsLoadingSubscriptions(true);
+        const fetchedSubscriptions = await getSubscriptionPlans();
+        setSubscriptions(fetchedSubscriptions);
+
+        if (fetchedSubscriptions.length > 0) {
+          const planKeyFromUrl = searchParams.get('plan') || 'free';
+          const defaultPlan =
+            fetchedSubscriptions.find(s => s.name.toLowerCase() === planKeyFromUrl.toLowerCase()) ||
+            fetchedSubscriptions.find(s => s.name.toLowerCase() === 'free') ||
+            fetchedSubscriptions[0];
+
+          if (defaultPlan) {
+            setPlan(defaultPlan.id);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch subscription plans", err);
+        setError("Could not load subscription plans. Please try again later.");
+      } finally {
+        setIsLoadingSubscriptions(false);
+      }
+    };
+    fetchSubscriptions();
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (codeFromUrl && emailFromUrl && !isOAuthCompletion) {
       const validateCodeFromUrl = async () => {
-        if (requiresSignupCode === null) return; // Wait until we know if codes are required
+        if (requiresSignupCode === null) return;
+        if (!requiresSignupCode) return;
         
         try {
           setIsLoading(true);
-          // MITIGATION: Skip actual validation, just log attempt
-          console.log('MITIGATION ACTIVE: Skipping code validation from URL');
+          const { valid, message } = await validateSignupCode(codeFromUrl, emailFromUrl);
+          if (!valid) {
+            setError(message);
+          }
         } catch (err) {
           console.error('Error validating code from URL:', err);
+          setError('Error validating signup code');
         } finally {
           setIsLoading(false);
         }
       };
-      
       validateCodeFromUrl();
     }
-  }, [codeFromUrl, emailFromUrl, requiresSignupCode]);
+  }, [codeFromUrl, emailFromUrl, requiresSignupCode, isOAuthCompletion]);
   
-  // Combine loading states
-  const isSubmitting = isLoading || isOAuthLoading || isCheckingSettings;
+  const isSubmitting = isLoading || isOAuthLoading || isCheckingSettings || isLoadingSubscriptions;
   
-  // Combine error states
   useEffect(() => {
     if (oAuthError && !error) {
       setError(oAuthError);
@@ -93,25 +185,39 @@ const SignUp = () => {
   const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (step === 1) {
-      // Validate first step
       if (!email || !password) {
         setError('Please fill in all required fields');
         return;
       }
-      
-      // Validate password length
       if (password.length < 8) {
         setError('Password must be at least 8 characters');
         return;
       }
-      
-      // MITIGATION: Skip code validation, always proceed to step 2
-      console.log('MITIGATION ACTIVE: Proceeding to step 2 without code validation');
-      setStep(2);
+      if (requiresSignupCode && !signUpCode) {
+        setError('Signup code is required');
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const validation = await validateSignupPrerequisites(email, signUpCode);
+        if (validation.status === 'VALIDATION_PASSED') {
+          // All checks passed for a new user, move to next step
+          setStep(2);
+        } else {
+          // This will catch ALREADY_REGISTERED, VALIDATION_FAILED, and SYSTEM_ERROR
+          // The message from the service is user-friendly.
+          setError(validation.message);
+        }
+      } catch (err: any) {
+        console.error('Error during signup step 1 validation:', err);
+        setError(err.message || 'An error occurred during validation.');
+      } finally {
+        setIsLoading(false);
+      }
     } else if (step === 2) {
-      // Validate second step and submit
       if (!name || !phone || !industry) {
         setError('Please fill in all required fields');
         return;
@@ -119,27 +225,62 @@ const SignUp = () => {
       handleSubmit();
     }
   };
-  
-  const handleSubmit = async () => {
+
+  const handleProfileUpdate = async () => {
     setIsLoading(true);
     setError('');
-    
     try {
-      // MITIGATION: Skip validation completely
-      
-      // Build user metadata
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Could not get user. Please sign in again.");
+
       const metadata: Record<string, any> = {
         full_name: name,
         phone,
         industry,
-        plan
+        plan,
+        signup_code: signUpCode || undefined
       };
       
-      // Include signup code in metadata if provided
-      if (signUpCode) {
-        metadata.signup_code = signUpCode;
+      console.log('Updating user metadata for profile completion:', metadata);
+      const { error: updateError } = await supabase.auth.updateUser({ data: metadata });
+      if (updateError) {
+        console.error('Error updating user metadata:', updateError);
+        throw updateError;
       }
+      console.log('User metadata updated successfully. Trigger should handle signup code.');
       
+      const { error: subError } = await createUserSubscription(user.id, plan);
+      if (subError) throw new Error(subError);
+      
+      // The client-side call to markSignupCodeAsUsed is removed as per the plan.
+      // The DB trigger `handle_profile_change_signup_code` is now responsible for this.
+
+      sessionStorage.removeItem(OAUTH_SIGNUP_SESSION_KEY);
+      toast.success('Profile completed successfully!');
+      navigate('/dashboard');
+
+    } catch (err: any) {
+      console.error('Profile update error:', err);
+      setError(err.message || 'An error occurred during profile update.');
+      toast.error(err.message || 'Failed to update profile.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleEmailSignUp = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const metadata: Record<string, any> = {
+        full_name: name,
+        phone,
+        industry,
+        plan,
+        signup_code: signUpCode || undefined
+      };
+      
+      console.log('Initiating email signup with metadata:', metadata);
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -151,23 +292,28 @@ const SignUp = () => {
       
       if (signUpError) throw signUpError;
       
-      // Try to mark the signup code as used if provided, but don't block on failure
-      if (signUpCode) {
-        try {
-          await markSignupCodeAsUsed(signUpCode, email);
-          console.log('Signup code marked as used');
-        } catch (codeError) {
-          console.error('Failed to mark signup code as used:', codeError);
-          // Don't block registration if this fails
-        }
+      console.log('Sign up process initiated. DB trigger will handle signup code usage.');
+
+      if (data.user && !data.session) {
+        // This case occurs when email confirmation is required.
+        // The trigger on profile creation will handle marking the signup code as used.
+        console.log('Account created, verification email will be sent.');
+        toast.success('Account created! Please check your email for a verification link to complete your registration.');
+        // Stay on page. The DashboardLayout/SignUp logic will handle completion flow upon next login.
+      } else if (data.user && data.session) {
+        // This case occurs when email confirmation is NOT required.
+        const { error: subError } = await createUserSubscription(data.user.id, plan);
+        if (subError) throw subError;
+
+        // The trigger on profile creation has already handled the signup code.
+        
+        console.log('Account created and user logged in (email confirmation disabled).');
+        toast.success('Account created successfully!');
+        navigate('/dashboard');
+      } else {
+        // Fallback for unexpected response from Supabase.
+        throw new Error('An unexpected issue occurred during signup. Please try again.');
       }
-      
-      toast.success('Account created successfully!');
-      console.log('Signed up successfully:', data);
-      
-      // In a real app, you might want to redirect the user to a verification page
-      // or directly to the dashboard if email verification is not required
-      navigate('/dashboard');
       
     } catch (err: any) {
       console.error('Sign up error:', err);
@@ -178,9 +324,21 @@ const SignUp = () => {
     }
   };
 
+  const handleSubmit = async () => {
+    if (isOAuthCompletion) {
+      await handleProfileUpdate();
+    } else {
+      await handleEmailSignUp();
+    }
+  };
+
   return (
-    <SignUpContainer error={error} step={step}>
-      {step === 1 ? (
+    <SignUpContainer error={error} step={step} isOAuthCompletion={isOAuthCompletion}>
+      {isCheckingSettings ? (
+        <div className="flex items-center justify-center p-8">
+          <p>Loading settings...</p>
+        </div>
+      ) : step === 1 ? (
         <SignUpStep1Form
           email={email}
           setEmail={setEmail}
@@ -209,6 +367,7 @@ const SignUp = () => {
           setStep={setStep}
           isLoading={isSubmitting}
           industries={industries}
+          subscriptions={subscriptions}
         />
       )}
     </SignUpContainer>

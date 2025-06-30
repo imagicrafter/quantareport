@@ -13,6 +13,7 @@ import ReportEditor from './pages/ReportEditor';
 import Images from './pages/Images';
 import Notes from './pages/Notes';
 import Admin from './pages/Admin';
+import CustomReportViewer from './components/reports/CustomReportViewer';
 import './App.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
@@ -33,6 +34,9 @@ function App() {
         <Route path="/" element={<Index />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
+        
+        {/* Public route for custom reports */}
+        <Route path="/reports/:token" element={<CustomReportViewer />} />
         
         {/* Dashboard and protected routes */}
         <Route path="/dashboard" element={<DashboardLayout />}>

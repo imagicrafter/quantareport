@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import Button from '../ui-elements/Button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ReportStatus } from '../reports/ReportService';
+import DeleteReportDialog from './DeleteReportDialog';
 
 // Extended report interface for admin view with display properties
 interface AdminReport {
@@ -73,6 +74,17 @@ const AdminReportsTab = () => {
   // Available filter options
   const [owners, setOwners] = useState<Profile[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
+  
+  // Delete dialog state
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    reportId: string;
+    reportTitle: string;
+  }>({
+    isOpen: false,
+    reportId: '',
+    reportTitle: ''
+  });
   
   const navigate = useNavigate();
 
@@ -191,6 +203,27 @@ const AdminReportsTab = () => {
   
   const handleViewReport = (reportId: string) => {
     navigate(`/dashboard/reports/editor/${reportId}`);
+  };
+  
+  const handleDeleteReport = (reportId: string, reportTitle: string) => {
+    setDeleteDialog({
+      isOpen: true,
+      reportId,
+      reportTitle
+    });
+  };
+
+  const handleDeleteDialogClose = () => {
+    setDeleteDialog({
+      isOpen: false,
+      reportId: '',
+      reportTitle: ''
+    });
+  };
+
+  const handleReportDeleted = () => {
+    // Refresh the reports list
+    fetchReports();
   };
   
   // Calculate paginated reports
@@ -341,13 +374,23 @@ const AdminReportsTab = () => {
                       </span>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleViewReport(report.id)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" /> View
-                      </Button>
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleViewReport(report.id)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" /> View
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeleteReport(report.id, report.title)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" /> Delete
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -421,6 +464,15 @@ const AdminReportsTab = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Report Dialog */}
+      <DeleteReportDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={handleDeleteDialogClose}
+        reportId={deleteDialog.reportId}
+        reportTitle={deleteDialog.reportTitle}
+        onReportDeleted={handleReportDeleted}
+      />
     </>
   );
 };

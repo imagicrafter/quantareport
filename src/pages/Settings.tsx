@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +19,7 @@ import ProfileSection from '@/components/settings/ProfileSection';
 import SecuritySection from '@/components/settings/SecuritySection';
 import NotificationsSection from '@/components/settings/NotificationsSection';
 import BillingSection from '@/components/settings/BillingSection';
+import { getUserSubscription, UserSubscriptionDetails } from '@/services/subscriptionService';
 
 interface ProfileData {
   id: string;
@@ -28,12 +28,8 @@ interface ProfileData {
   email: string;
   phone: string | null;
   domain: string | null;
-  plan: string;
   domain_id?: string | null;
   role?: string;
-  stripe_customer_id?: string;
-  stripe_subscription_id?: string;
-  subscription_status?: string;
   updated_at?: string;
 }
 
@@ -47,6 +43,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [subscription, setSubscription] = useState<UserSubscriptionDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
   const [domains, setDomains] = useState<DomainData[]>([]);
@@ -76,6 +73,10 @@ const Settings = () => {
           throw profileError;
         }
         
+        // Fetch subscription data
+        const subscriptionData = await getUserSubscription(user.id);
+        setSubscription(subscriptionData);
+
         // Fetch domains for dropdown
         const { data: domainsData, error: domainsError } = await supabase
           .from('domains')
@@ -96,13 +97,9 @@ const Settings = () => {
             avatar_url: profileData.avatar_url,
             email: profileData.email || '',
             phone: profileData.phone || '',
-            domain: profileData.domain_id ? null : null, // We'll set this after fetching domain info
-            plan: profileData.subscription_status === 'active' ? 'premium' : 'free',
+            domain: null, // We'll set this after fetching domain info
             domain_id: profileData.domain_id,
             role: profileData.role,
-            stripe_customer_id: profileData.stripe_customer_id,
-            stripe_subscription_id: profileData.stripe_subscription_id,
-            subscription_status: profileData.subscription_status,
             updated_at: profileData.updated_at
           };
           
@@ -172,6 +169,7 @@ const Settings = () => {
             <TabsContent value="profile">
               <ProfileSection 
                 profile={profile} 
+                subscription={subscription}
                 domains={domains} 
                 setProfile={setProfile} 
               />
@@ -186,7 +184,7 @@ const Settings = () => {
             </TabsContent>
             
             <TabsContent value="billing">
-              <BillingSection profile={profile} />
+              <BillingSection profile={profile} subscription={subscription} isLoading={loading} />
             </TabsContent>
           </>
         )}

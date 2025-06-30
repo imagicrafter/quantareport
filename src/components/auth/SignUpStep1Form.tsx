@@ -1,5 +1,6 @@
 
 import { Dispatch, FormEvent, SetStateAction } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../ui-elements/Button';
 
 interface SignUpStep1FormProps {
@@ -29,8 +30,10 @@ const SignUpStep1Form = ({
   isLoading,
   handleGoogleSignUp,
   handleFacebookSignUp,
-  requiresSignupCode = true
+  requiresSignupCode,
 }: SignUpStep1FormProps) => {
+  const showSignupCode = requiresSignupCode === true;
+
   return (
     <form onSubmit={handleNextStep} className="space-y-6">
       <div className="space-y-2">
@@ -64,10 +67,10 @@ const SignUpStep1Form = ({
         </p>
       </div>
       
-      {requiresSignupCode !== false && (
+      {showSignupCode && (
         <div className="space-y-2">
           <label htmlFor="signUpCode" className="text-sm font-medium">
-            Sign-up Code {requiresSignupCode === null ? "(Optional)" : ""}
+            Sign-up Code
           </label>
           <input
             id="signUpCode"
@@ -75,15 +78,18 @@ const SignUpStep1Form = ({
             value={signUpCode}
             onChange={(e) => setSignUpCode(e.target.value)}
             className="w-full p-2 rounded-md border border-input bg-background"
-            required={requiresSignupCode === true}
-            placeholder={requiresSignupCode === true 
-              ? "Enter your sign-up code" 
-              : "Enter sign-up code if you have one"}
+            required={showSignupCode}
+            placeholder="Enter your sign-up code"
           />
           <p className="text-xs text-muted-foreground">
-            {requiresSignupCode === true 
-              ? "A sign-up code is required to register" 
-              : "Enter sign-up code if you have one"}
+            A sign-up code is required to register
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Interested in joining our Alpha program? Let us know{' '}
+            <Link to="/#early-access" className="text-primary hover:underline">
+              here
+            </Link>
+            .
           </p>
         </div>
       )}

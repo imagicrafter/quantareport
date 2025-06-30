@@ -42,6 +42,57 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_reports: {
+        Row: {
+          access_count: number
+          created_at: string
+          description: string | null
+          file_path: string
+          id: string
+          is_active: boolean
+          last_accessed_at: string | null
+          original_filename: string
+          pre_authorized_url: string | null
+          title: string | null
+          token: string
+          updated_at: string
+          uploaded_by: string | null
+          url_expires_at: string | null
+        }
+        Insert: {
+          access_count?: number
+          created_at?: string
+          description?: string | null
+          file_path: string
+          id?: string
+          is_active?: boolean
+          last_accessed_at?: string | null
+          original_filename: string
+          pre_authorized_url?: string | null
+          title?: string | null
+          token: string
+          updated_at?: string
+          uploaded_by?: string | null
+          url_expires_at?: string | null
+        }
+        Update: {
+          access_count?: number
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          id?: string
+          is_active?: boolean
+          last_accessed_at?: string | null
+          original_filename?: string
+          pre_authorized_url?: string | null
+          title?: string | null
+          token?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          url_expires_at?: string | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           content: string | null
@@ -385,9 +436,7 @@ export type Database = {
           id: string
           phone: string | null
           role: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
-          subscription_status: string | null
+          subscribed: boolean
           updated_at: string | null
         }
         Insert: {
@@ -400,9 +449,7 @@ export type Database = {
           id: string
           phone?: string | null
           role?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_status?: string | null
+          subscribed?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -415,9 +462,7 @@ export type Database = {
           id?: string
           phone?: string | null
           role?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_status?: string | null
+          subscribed?: boolean
           updated_at?: string | null
         }
         Relationships: []
@@ -579,6 +624,51 @@ export type Database = {
           },
         ]
       }
+      prospects: {
+        Row: {
+          company: string | null
+          created_at: string
+          domain_id: string | null
+          email: string
+          followed_up_at: string | null
+          id: string
+          interest_area: string | null
+          name: string | null
+          notes: string | null
+          source: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          domain_id?: string | null
+          email: string
+          followed_up_at?: string | null
+          id?: string
+          interest_area?: string | null
+          name?: string | null
+          notes?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          domain_id?: string | null
+          email?: string
+          followed_up_at?: string | null
+          id?: string
+          interest_area?: string | null
+          name?: string | null
+          notes?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       report_progress: {
         Row: {
           created_at: string
@@ -724,6 +814,30 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          stripe_price_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          stripe_price_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          stripe_price_id?: string | null
+        }
+        Relationships: []
+      }
       template_notes: {
         Row: {
           created_at: string
@@ -821,6 +935,69 @@ export type Database = {
           },
           {
             foreignKeyName: "templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_subscriptions: {
+        Row: {
+          canceled_at: string | null
+          created_at: string
+          current_period_end_at: string | null
+          current_period_start_at: string | null
+          id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_id: string
+          trial_end_at: string | null
+          trial_start_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end_at?: string | null
+          current_period_start_at?: string | null
+          id?: string
+          status: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_id: string
+          trial_end_at?: string | null
+          trial_start_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end_at?: string | null
+          current_period_start_at?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_id?: string
+          trial_end_at?: string | null
+          trial_start_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_subscriptions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1268,6 +1445,10 @@ export type Database = {
         Args: { "": string } | { "": unknown }
         Returns: unknown
       }
+      check_user_role: {
+        Args: { p_role: string }
+        Returns: boolean
+      }
       halfvec_avg: {
         Args: { "": number[] }
         Returns: unknown
@@ -1319,6 +1500,10 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
+      }
+      send_custom_email: {
+        Args: { payload: Json }
+        Returns: Json
       }
       sparsevec_out: {
         Args: { "": unknown }
