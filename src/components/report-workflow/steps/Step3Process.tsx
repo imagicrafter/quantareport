@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -152,16 +151,24 @@ const Step3Process = () => {
           console.log('Received progress update for file analysis:', payload);
           const latestProgress = payload.new;
           
-          if (latestProgress) {
-            setMessage(latestProgress.message || 'Processing files...');
-            setProgress(latestProgress.progress || 0);
-            setProcessingStatus(latestProgress.status as any);
+          if (latestProgress && typeof latestProgress === 'object') {
+            const progressData = latestProgress as Record<string, any>;
+            
+            if (progressData.message && typeof progressData.message === 'string') {
+              setMessage(progressData.message);
+            }
+            if (typeof progressData.progress === 'number') {
+              setProgress(progressData.progress);
+            }
+            if (progressData.status && typeof progressData.status === 'string') {
+              setProcessingStatus(progressData.status as 'idle' | 'generating' | 'completed' | 'error');
+            }
 
             // Handle completion with proper checks
-            if ((latestProgress.status === 'completed' || latestProgress.progress === 100) && !completionHandledRef.current) {
+            if ((progressData.status === 'completed' || progressData.progress === 100) && !completionHandledRef.current) {
               console.log('Analysis completed successfully');
               handleAnalysisCompletion(true);
-            } else if (latestProgress.status === 'error' && !completionHandledRef.current) {
+            } else if (progressData.status === 'error' && !completionHandledRef.current) {
               console.log('Analysis failed with error');
               handleAnalysisCompletion(false);
             }
