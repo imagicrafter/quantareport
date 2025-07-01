@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, ChevronDown, ChevronRight, Wand2, LayoutDashboard } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ReportsSubMenuProps {
@@ -15,8 +15,7 @@ const ReportsSubMenu = ({ sidebarOpen, toggleSidebar }: ReportsSubMenuProps) => 
 
   const isReportsActive = () => {
     return location.pathname.includes('/reports') || 
-           location.pathname.includes('/report-wizard') ||
-           location.pathname.includes('/dashboard/projects');
+           location.pathname.includes('/report-wizard');
   };
 
   const isActive = (path: string) => {
@@ -90,18 +89,6 @@ const ReportsSubMenu = ({ sidebarOpen, toggleSidebar }: ReportsSubMenuProps) => 
           >
             <FileText size={16} className="mr-2" />
             <span>View Reports</span>
-          </Link>
-          <Link
-            to="/dashboard/projects"
-            className={cn(
-              "flex items-center rounded-md py-2 px-3 text-sm font-medium transition-colors",
-              isActive('/dashboard/projects')
-                ? "bg-accent text-quanta-blue"
-                : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
-            )}
-          >
-            <LayoutDashboard size={16} className="mr-2" />
-            <span>View Projects</span>
           </Link>
         </div>
       )}
