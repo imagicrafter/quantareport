@@ -25,7 +25,6 @@ interface SidebarProps {
 
 const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarProps) => {
   const location = useLocation();
-  const [reportsExpanded, setReportsExpanded] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   
   const isActive = (path: string) => {
@@ -37,6 +36,9 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
            location.pathname.includes('/report-wizard') ||
            location.pathname.includes('/dashboard/projects');
   };
+
+  // Keep Reports sub-menu expanded when any Reports route is active
+  const reportsExpanded = isReportsActive();
 
   useEffect(() => {
     const checkAdminRole = async () => {
@@ -61,13 +63,10 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
   
   const handleReportsClick = () => {
     if (!sidebarOpen) {
-      // If sidebar is collapsed, expand it first and then expand reports
+      // If sidebar is collapsed, expand it first
       toggleSidebar();
-      setReportsExpanded(true);
-    } else {
-      // If sidebar is open, just toggle reports expansion
-      setReportsExpanded(!reportsExpanded);
     }
+    // Don't manually toggle reportsExpanded since it's now based on route
   };
   
   return (
