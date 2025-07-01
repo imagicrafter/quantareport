@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { User } from '@supabase/supabase-js';
@@ -41,12 +42,16 @@ interface DomainData {
 
 const Settings = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [subscription, setSubscription] = useState<UserSubscriptionDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('profile');
   const [domains, setDomains] = useState<DomainData[]>([]);
+  
+  // Get initial tab from URL parameter, default to 'profile'
+  const initialTab = searchParams.get('tab') || 'profile';
+  const [activeTab, setActiveTab] = useState(initialTab);
   
   // Fetch user data on component mount
   useEffect(() => {
@@ -135,6 +140,12 @@ const Settings = () => {
       authListener.subscription.unsubscribe();
     };
   }, [navigate]);
+
+  // Update active tab when URL parameter changes
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab') || 'profile';
+    setActiveTab(tabFromUrl);
+  }, [searchParams]);
   
   if (loading) {
     return (

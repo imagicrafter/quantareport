@@ -5,7 +5,6 @@ import {
   FileText, 
   Image, 
   FileEdit, 
-  Settings, 
   Users, 
   Menu,
   ChevronDown,
@@ -229,22 +228,6 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
               className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
             />
             {sidebarOpen && <span>Notes</span>}
-          </Link>
-          
-          <Link
-            to="/dashboard/settings"
-            className={cn(
-              "flex items-center rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
-              isActive('/dashboard/settings')
-                ? "bg-quanta-blue text-white"
-                : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
-            )}
-          >
-            <Settings 
-              size={20} 
-              className={cn("flex-shrink-0", sidebarOpen ? "mr-2" : "mx-auto")} 
-            />
-            {sidebarOpen && <span>Settings</span>}
           </Link>
           
           {isAdmin && (
