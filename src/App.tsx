@@ -17,6 +17,7 @@ import Projects from './pages/Projects';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import PublishedReport from './pages/PublishedReport';
+import DashboardLayout from './components/layout/DashboardLayout';
 
 const queryClient = new QueryClient();
 
@@ -30,14 +31,16 @@ function App() {
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/reports/:token" element={<PublishedReport />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/templates" element={<Templates />} />
-            <Route path="/dashboard/admin" element={<Admin />} />
-            <Route path="/dashboard/report-wizard/*" element={<ReportWizard />} />
-            <Route path="/dashboard/reports" element={<Reports />} />
-            <Route path="/dashboard/reports/editor/:id" element={<ReportEditor />} />
-            <Route path="/dashboard/projects" element={<Projects />} />
-            <Route path="/dashboard/settings" element={<Settings />} />
+            <Route path="/dashboard" element={<DashboardLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="templates" element={<Templates />} />
+              <Route path="admin" element={<Admin />} />
+              <Route path="report-wizard/*" element={<ReportWizard />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="reports/editor/:id" element={<ReportEditor />} />
+              <Route path="projects" element={<Projects />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
