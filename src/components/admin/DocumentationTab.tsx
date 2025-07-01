@@ -200,7 +200,7 @@ const DocumentationTab = () => {
               <tr className="hover:bg-gray-50">
                 <td className="border border-gray-300 px-4 py-3 font-medium">Component Size</td>
                 <td className="border border-gray-300 px-4 py-3"><span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">Needs Attention</span></td>
-                <td className="border border-gray-300 px-4 py-3">Several files >200 lines, refactoring recommended</td>
+                <td className="border border-gray-300 px-4 py-3">Several files {'>'}200 lines, refactoring recommended</td>
               </tr>
               <tr className="hover:bg-gray-50">
                 <td className="border border-gray-300 px-4 py-3 font-medium">Code Organization</td>
@@ -793,7 +793,7 @@ const DocumentationTab = () => {
             <h4 className="text-lg font-semibold text-red-700 mb-3">🚨 Immediate Attention Required</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h5 className="font-semibold text-gray-800 mb-2">Large Components (>200 lines)</h5>
+                <h5 className="font-semibold text-gray-800 mb-2">Large Components ({'>'}200 lines)</h5>
                 <ul className="text-sm text-gray-700 space-y-1">
                   <li><strong>DocumentationTab.tsx</strong> - 363 lines</li>
                   <li><strong>BulkUploadDialog.tsx</strong> - 240 lines</li>
