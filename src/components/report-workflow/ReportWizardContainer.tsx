@@ -7,6 +7,7 @@ import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNaviga
 import { useProjectDetails } from '@/hooks/report-workflow/useProjectDetails';
 import ExitWorkflowDialog from './ExitWorkflowDialog';
 import WorkflowLoading from './WorkflowLoading';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
 const ReportWizardContainer = () => {
   const { step } = useParams();
@@ -14,6 +15,7 @@ const ReportWizardContainer = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentWorkflowState, setCurrentWorkflowState] = useState<number | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const initializationComplete = useRef(false);
   
   const getCurrentStepIndex = () => {
@@ -35,6 +37,10 @@ const ReportWizardContainer = () => {
   } = useWorkflowNavigation();
   
   const { projectName, getPageTitle } = useProjectDetails(projectId);
+  
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
   
   useEffect(() => {
     if (initializationComplete.current) return;
@@ -177,29 +183,32 @@ const ReportWizardContainer = () => {
   const currentStepIndex = getStepIndexFromPath(step);
   
   return (
-    <div className="container mx-auto px-4 pt-16 pb-12">
-      <h1 className="text-2xl font-semibold mb-6 text-center">
-        {getPageTitle(currentStepIndex)}
-      </h1>
+    <div className="min-h-screen bg-background">
+      <DashboardHeader 
+        toggleSidebar={toggleSidebar}
+        title={getPageTitle(currentStepIndex)}
+      />
       
-      <div className="mb-8">
-        <StepIndicator 
-          currentStep={currentWorkflowState || 1}
-          totalSteps={workflowSteps.length}
-          onStepClick={(step) => handleStepClick(step - 1, currentWorkflowState, projectId)}
-          steps={workflowSteps}
+      <div className="container mx-auto px-4 pt-8 pb-12">
+        <div className="mb-8">
+          <StepIndicator 
+            currentStep={currentWorkflowState || 1}
+            totalSteps={workflowSteps.length}
+            onStepClick={(step) => handleStepClick(step - 1, currentWorkflowState, projectId)}
+            steps={workflowSteps}
+          />
+        </div>
+        
+        <Outlet />
+        
+        <ExitWorkflowDialog
+          isOpen={showExitDialog}
+          setIsOpen={setShowExitDialog}
+          projectId={projectId}
+          projectName={projectName}
+          targetPath={exitTarget}
         />
       </div>
-      
-      <Outlet />
-      
-      <ExitWorkflowDialog
-        isOpen={showExitDialog}
-        setIsOpen={setShowExitDialog}
-        projectId={projectId}
-        projectName={projectName}
-        targetPath={exitTarget}
-      />
     </div>
   );
 };
