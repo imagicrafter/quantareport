@@ -22,8 +22,8 @@ const DashboardHeader = ({ toggleSidebar, title }: DashboardHeaderProps) => {
         <div className="flex items-center gap-4">
           <button 
             onClick={toggleSidebar}
-            className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            aria-label="Toggle sidebar"
+            className="p-2 rounded-md text-muted-foreground hover:text-foreground md:hidden"
+            aria-label="Open sidebar"
           >
             <Menu size={20} />
           </button>
