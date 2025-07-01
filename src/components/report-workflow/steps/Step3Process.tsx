@@ -1,43 +1,43 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import InstructionsPanel from '../start-report/InstructionsPanel';
 import StepBanner from '../StepBanner';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileSearch, CheckCircle, AlertCircle } from 'lucide-react';
 import { useWorkflowNavigation } from '@/hooks/report-workflow/useWorkflowNavigation';
 import { useImageAnalysis } from '@/components/dashboard/files/hooks/useImageAnalysis';
 import { supabase } from '@/integrations/supabase/client';
-import FileAnalysisProgressModal from '@/components/dashboard/files/FileAnalysisProgressModal';
+import FileAnalysisProgress from '../FileAnalysisProgress';
 
 const Step3Process = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string>('');
   const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState('Initializing...');
   const [processingComplete, setProcessingComplete] = useState(false);
-  const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'complete' | 'error'>('idle');
+  const [processingStatus, setProcessingStatus] = useState<'idle' | 'generating' | 'completed' | 'error'>('idle');
   const [textDocumentCount, setTextDocumentCount] = useState(0);
   const [imageCount, setImageCount] = useState(0);
   const [notesCount, setNotesCount] = useState(0);
+  const [subscription, setSubscription] = useState<any>(null);
+  const [analysisStarted, setAnalysisStarted] = useState(false);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [fileCheckComplete, setFileCheckComplete] = useState(false);
   const { fetchCurrentWorkflow, updateWorkflowState } = useWorkflowNavigation();
+  const completionHandledRef = useRef(false);
   
   const {
-    isAnalyzing,
-    analysisJobId,
     hasUnprocessedFiles,
     unprocessedFileCount,
-    isProgressModalOpen,
     checkUnprocessedFiles,
-    analyzeFiles,
-    closeProgressModal,
-    handleAnalysisComplete
+    analyzeFiles
   } = useImageAnalysis(projectId, projectName);
 
+  // Initialize workflow and project data
   useEffect(() => {
-    const getWorkflowData = async () => {
+    const initializeWorkflow = async () => {
       try {
         const { workflowState, projectId: currentProjectId } = await fetchCurrentWorkflow();
         
@@ -67,158 +67,250 @@ const Step3Process = () => {
           navigate(`/dashboard/report-wizard/${steps[workflowState - 1] || 'start'}`);
         }
       } catch (error) {
-        console.error('Error fetching workflow data:', error);
+        console.error('Error initializing workflow:', error);
+        setProcessingStatus('error');
+        setMessage('Failed to load workflow data. Please try again.');
       }
     };
     
-    getWorkflowData();
+    initializeWorkflow();
   }, [fetchCurrentWorkflow, navigate, updateWorkflowState]);
 
+  // Check for unprocessed files when project is loaded
   useEffect(() => {
-    if (projectId) {
-      checkUnprocessedFiles();
-      fetchAnalyzedFiles();
-    }
-  }, [projectId, checkUnprocessedFiles]);
-
-  useEffect(() => {
-    if (!projectId) return;
-    
-    const startProcessing = async () => {
-      setProcessingStatus('processing');
+    const performFileCheck = async () => {
+      if (!projectId || fileCheckComplete) return;
       
-      if (hasUnprocessedFiles) {
-        console.log('Unprocessed files found, starting analysis...');
-        await analyzeFiles();
-      } else {
-        console.log('No unprocessed files found, skipping analysis');
-        const interval = setInterval(() => {
-          setProgress(prev => {
-            if (prev >= 100) {
-              clearInterval(interval);
-              setProcessingComplete(true);
-              setProcessingStatus('complete');
-              return 100;
-            }
-            return prev + 10;
-          });
-        }, 200);
+      try {
+        setMessage('Checking files for processing...');
+        setProgress(5);
+        
+        await checkUnprocessedFiles();
+        await fetchFileCounts();
+        
+        setFileCheckComplete(true);
+        setMessage('File check complete. Ready to process.');
+        setProgress(10);
+        
+        console.log(`File check results - Unprocessed: ${unprocessedFileCount}, Has files: ${hasUnprocessedFiles}`);
+      } catch (error) {
+        console.error('Error during file check:', error);
+        setProcessingStatus('error');
+        setMessage('Error checking files. Please try again.');
       }
     };
     
-    startProcessing();
-  }, [projectId, hasUnprocessedFiles, analyzeFiles]);
+    performFileCheck();
+  }, [projectId, checkUnprocessedFiles, hasUnprocessedFiles, unprocessedFileCount, fileCheckComplete]);
+
+  // Start analysis only after file check is complete and user hasn't started analysis yet
+  useEffect(() => {
+    const startAnalysis = async () => {
+      if (!fileCheckComplete || analysisStarted || !projectId) return;
+      
+      try {
+        setAnalysisStarted(true);
+        setProcessingStatus('generating');
+        
+        if (hasUnprocessedFiles && unprocessedFileCount > 0) {
+          console.log(`Starting analysis of ${unprocessedFileCount} unprocessed files`);
+          setMessage(`Analyzing ${unprocessedFileCount} files...`);
+          setProgress(15);
+          
+          const jobId = await analyzeFiles((jobId: string) => {
+            console.log('Setting up real-time subscription for job:', jobId);
+            setCurrentJobId(jobId);
+            setupRealtimeSubscription(jobId);
+          });
+          
+          if (!jobId) {
+            throw new Error('Failed to start file analysis');
+          }
+        } else {
+          console.log('No unprocessed files found, marking as complete');
+          handleNoFilesToProcess();
+        }
+      } catch (error) {
+        console.error('Error starting analysis:', error);
+        setProcessingStatus('error');
+        setMessage('Failed to start file analysis. Please check the files and try again.');
+        setAnalysisStarted(false);
+      }
+    };
+    
+    startAnalysis();
+  }, [fileCheckComplete, analysisStarted, projectId, hasUnprocessedFiles, unprocessedFileCount, analyzeFiles]);
+
+  const setupRealtimeSubscription = (jobId: string) => {
+    if (!jobId) {
+      console.error('Cannot setup subscription without job ID');
+      setProcessingStatus('error');
+      setMessage('Failed to setup progress tracking');
+      return;
+    }
+    
+    // Clean up existing subscription
+    cleanupSubscriptions();
+    
+    const channelName = `file-analysis-progress-${jobId}`;
+    console.log(`Setting up subscription for job: ${jobId}`);
+    
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'report_progress',
+          filter: `job=eq.${jobId}`
+        },
+        (payload) => {
+          console.log('Progress update received:', payload);
+          handleProgressUpdate(payload);
+        }
+      )
+      .subscribe((status) => {
+        console.log(`Subscription status: ${status}`);
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Subscription failed, will rely on polling fallback');
+          setMessage('Progress tracking may be delayed');
+        }
+      });
+      
+    setSubscription(channel);
+  };
+
+  const handleProgressUpdate = (payload: any) => {
+    const progressData = payload.new;
+    
+    if (!progressData || completionHandledRef.current) return;
+    
+    if (progressData.message) {
+      setMessage(progressData.message);
+    }
+    if (typeof progressData.progress === 'number') {
+      setProgress(progressData.progress);
+    }
+    if (progressData.status) {
+      setProcessingStatus(progressData.status);
+    }
+
+    // Handle completion
+    if (progressData.status === 'completed' || progressData.progress === 100) {
+      handleAnalysisCompletion(true);
+    } else if (progressData.status === 'error') {
+      handleAnalysisCompletion(false);
+    }
+  };
+
+  const handleAnalysisCompletion = (isSuccess: boolean) => {
+    if (completionHandledRef.current) return;
+    
+    completionHandledRef.current = true;
+    console.log('Analysis completion:', isSuccess ? 'success' : 'failure');
+    
+    cleanupSubscriptions();
+    
+    if (isSuccess) {
+      setMessage('Analysis completed successfully!');
+      setProgress(100);
+      setProcessingStatus('completed');
+      setProcessingComplete(true);
+      fetchFileCounts(); // Update final counts
+    } else {
+      setProcessingStatus('error');
+      setMessage('Analysis failed. Please check your files and try again.');
+      setProgress(0);
+    }
+  };
+
+  const handleNoFilesToProcess = () => {
+    console.log('No files to process, marking as complete');
+    setProcessingStatus('completed');
+    setProgress(100);
+    setMessage('No files require processing. All files are up to date.');
+    setProcessingComplete(true);
+  };
+
+  const cleanupSubscriptions = () => {
+    if (subscription) {
+      console.log('Cleaning up subscription');
+      supabase.removeChannel(subscription);
+      setSubscription(null);
+    }
+  };
 
   const fetchFileCounts = async () => {
     if (!projectId) return;
     
     try {
-      const { data: textDocs, error: textError } = await supabase
-        .from('files')
-        .select('id')
-        .eq('project_id', projectId)
-        .neq('type', 'image');
-        
-      if (!textError) {
-        setTextDocumentCount(textDocs?.length || 0);
-      }
+      const [textResult, imageResult, notesResult] = await Promise.all([
+        supabase.from('files').select('id').eq('project_id', projectId).neq('type', 'image'),
+        supabase.from('files').select('id').eq('project_id', projectId).eq('type', 'image'),
+        supabase.from('v_project_notes_excluding_template').select('id').eq('project_id', projectId)
+      ]);
       
-      const { data: images, error: imageError } = await supabase
-        .from('files')
-        .select('id')
-        .eq('project_id', projectId)
-        .eq('type', 'image');
-        
-      if (!imageError) {
-        setImageCount(images?.length || 0);
-      }
-      
-      const { data, error: notesError } = await supabase
-        .from('v_project_notes_excluding_template')
-        .select('id')
-        .eq('project_id', projectId);
-        
-      if (!notesError && data) {
-        setNotesCount(data.length);
-      }
+      setTextDocumentCount(textResult.data?.length || 0);
+      setImageCount(imageResult.data?.length || 0);
+      setNotesCount(notesResult.data?.length || 0);
     } catch (error) {
       console.error('Error fetching file counts:', error);
     }
   };
 
-  const fetchAnalyzedFiles = async () => {
-    if (!projectId) return;
-    
-    try {
-      const { data: unprocessedFiles, error: unprocessedError } = await supabase
-        .from('v_files_not_processed')
-        .select('id')
-        .eq('project_id', projectId);
-        
-      if (unprocessedError) {
-        console.error('Error fetching unprocessed files:', unprocessedError);
-        return;
-      }
-      
-      if (!unprocessedFiles || unprocessedFiles.length === 0) {
-        await fetchFileCounts();
-        setProcessingComplete(true);
-        setProcessingStatus('complete');
-        setProgress(100);
-      }
-      
-    } catch (error) {
-      console.error('Error in fetchAnalyzedFiles:', error);
-    }
-  };
-
-  const onAnalysisComplete = () => {
-    setProcessingComplete(true);
-    setProcessingStatus('complete');
-    setProgress(100);
-    fetchFileCounts();
-    handleAnalysisComplete();
+  const handleRetry = () => {
+    console.log('Retrying analysis');
+    setAnalysisStarted(false);
+    setFileCheckComplete(false);
+    completionHandledRef.current = false;
+    setProcessingStatus('idle');
+    setProgress(0);
+    setMessage('Initializing...');
+    setProcessingComplete(false);
+    cleanupSubscriptions();
   };
   
   const handleBack = () => {
+    cleanupSubscriptions();
+    
     if (projectId) {
       updateWorkflowState(projectId, 2)
-        .then(() => {
-          navigate('/dashboard/report-wizard/files');
-        })
-        .catch(error => {
-          console.error('Error updating workflow state:', error);
-        });
+        .then(() => navigate('/dashboard/report-wizard/files'))
+        .catch(error => console.error('Error updating workflow state:', error));
     } else {
       navigate('/dashboard/report-wizard/files');
     }
   };
   
   const handleNext = () => {
+    cleanupSubscriptions();
+    
     if (projectId) {
       updateWorkflowState(projectId, 4)
-        .then(() => {
-          navigate('/dashboard/report-wizard/notes');
-        })
-        .catch(error => {
-          console.error('Error updating workflow state:', error);
-        });
+        .then(() => navigate('/dashboard/report-wizard/notes'))
+        .catch(error => console.error('Error updating workflow state:', error));
     } else {
       navigate('/dashboard/report-wizard/notes');
     }
   };
   
   const handleBannerClick = () => {
+    cleanupSubscriptions();
+    
     if (projectId) {
       updateWorkflowState(projectId, 2)
-        .then(() => {
-          navigate('/dashboard/report-wizard/files');
-        })
-        .catch(error => {
-          console.error('Error updating workflow state:', error);
-        });
+        .then(() => navigate('/dashboard/report-wizard/files'))
+        .catch(error => console.error('Error updating workflow state:', error));
     }
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupSubscriptions();
+    };
+  }, []);
   
   return (
     <div className="container mx-auto px-4 pt-8 pb-12">
@@ -238,45 +330,40 @@ const Step3Process = () => {
       <div className="max-w-3xl mx-auto mb-8">
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col items-center py-4">
-              {processingStatus === 'processing' && (
-                <FileSearch className="h-16 w-16 text-primary mb-4 animate-pulse" />
-              )}
-              
-              {processingStatus === 'complete' && (
-                <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
-              )}
-              
-              {processingStatus === 'error' && (
-                <AlertCircle className="h-16 w-16 text-red-500 mb-4" />
-              )}
-              
-              <h3 className="text-lg font-medium mb-2">
-                {processingStatus === 'processing' && 'Processing Files'}
-                {processingStatus === 'complete' && 'Processing Complete'}
-                {processingStatus === 'error' && 'Processing Error'}
-              </h3>
-              
-              <div className="w-full max-w-md mb-4">
-                <Progress value={progress} className="h-2" />
-                <p className="text-sm text-muted-foreground text-center mt-2">
-                  {processingStatus === 'processing' && `Analyzing content... ${progress}%`}
-                  {processingStatus === 'complete' && 'All files have been successfully processed'}
-                  {processingStatus === 'error' && 'An error occurred during processing'}
+            <FileAnalysisProgress
+              progress={progress}
+              message={message}
+              status={processingStatus}
+              fileCount={unprocessedFileCount}
+            />
+            
+            {processingStatus === 'completed' && (
+              <div className="bg-green-50 border border-green-200 p-4 rounded-md w-full mt-4">
+                <h4 className="font-medium text-green-800 mb-2">Processing Complete!</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-green-700">
+                  <li>Processed {textDocumentCount} document{textDocumentCount !== 1 ? 's' : ''}</li>
+                  <li>Analyzed {imageCount} image{imageCount !== 1 ? 's' : ''}</li>
+                  <li>Generated {notesCount} note{notesCount !== 1 ? 's' : ''}</li>
+                </ul>
+                <p className="text-sm text-green-600 mt-2 font-medium">
+                  Ready to proceed to the next step.
                 </p>
               </div>
-              
-              {processingStatus === 'complete' && (
-                <div className="bg-muted p-4 rounded-md w-full mt-4">
-                  <h4 className="font-medium mb-2">Processing Results:</h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Identified {notesCount} notes from {textDocumentCount} document{textDocumentCount !== 1 ? 's' : ''}</li>
-                    <li>Analyzed {imageCount} images with AI vision</li>
-                    <li>Generated key insights from content</li>
-                  </ul>
-                </div>
-              )}
-            </div>
+            )}
+            
+            {processingStatus === 'error' && (
+              <div className="bg-red-50 border border-red-200 p-4 rounded-md w-full mt-4">
+                <h4 className="font-medium text-red-800 mb-2">Processing Error</h4>
+                <p className="text-red-700 text-sm mb-3">{message}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleRetry}
+                >
+                  Retry Analysis
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -293,15 +380,6 @@ const Step3Process = () => {
           Next: Edit Notes
         </Button>
       </div>
-
-      <FileAnalysisProgressModal
-        isOpen={isProgressModalOpen}
-        onClose={closeProgressModal}
-        jobId={analysisJobId}
-        projectId={projectId}
-        fileCount={unprocessedFileCount}
-        onAnalysisComplete={onAnalysisComplete}
-      />
     </div>
   );
 };
