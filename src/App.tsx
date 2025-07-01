@@ -15,6 +15,8 @@ import Reports from './pages/Reports';
 import ReportEditor from './pages/ReportEditor';
 import Projects from './pages/Projects';
 import Settings from './pages/Settings';
+import Images from './pages/Images';
+import Notes from './pages/Notes';
 import NotFound from './pages/NotFound';
 import PublishedReport from './pages/PublishedReport';
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -39,6 +41,8 @@ function App() {
               <Route path="reports" element={<Reports />} />
               <Route path="reports/editor/:id" element={<ReportEditor />} />
               <Route path="projects" element={<Projects />} />
+              <Route path="images" element={<Images />} />
+              <Route path="notes" element={<Notes />} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
