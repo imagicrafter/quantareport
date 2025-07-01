@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from '../dashboard/Sidebar';
+import DashboardHeader from '../dashboard/DashboardHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { checkRegistrationStatus } from '@/services/userService';
@@ -92,14 +94,20 @@ const DashboardLayout: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 w-full">
       <Sidebar 
         sidebarOpen={sidebarOpen} 
         toggleSidebar={toggleSidebar} 
         setShowCreateProject={setShowCreateProject} 
       />
-      <main className="flex-1 overflow-auto">
-        <Outlet context={[showCreateProject, setShowCreateProject]} />
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <DashboardHeader 
+          toggleSidebar={toggleSidebar}
+          title="Dashboard"
+        />
+        <div className="flex-1 overflow-auto">
+          <Outlet context={[showCreateProject, setShowCreateProject]} />
+        </div>
       </main>
     </div>
   );
