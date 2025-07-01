@@ -59,6 +59,17 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
     checkAdminRole();
   }, []);
   
+  const handleReportsClick = () => {
+    if (!sidebarOpen) {
+      // If sidebar is collapsed, expand it first and then expand reports
+      toggleSidebar();
+      setReportsExpanded(true);
+    } else {
+      // If sidebar is open, just toggle reports expansion
+      setReportsExpanded(!reportsExpanded);
+    }
+  };
+  
   return (
     <aside 
       className={cn(
@@ -77,14 +88,14 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
         </Link>
       </div>
       
-      {/* Toggle Section - New dedicated area */}
-      <div className="px-4 py-2 border-b border-gray-100">
+      {/* Toggle Section - Removed borders and made separator transparent */}
+      <div className="px-4 py-2 border-b border-transparent">
         <button 
           onClick={toggleSidebar}
           className={cn(
             "w-full flex items-center p-2 rounded-md transition-all duration-200",
             "text-gray-500 hover:text-gray-700 hover:bg-gray-50",
-            "focus:outline-none focus:ring-2 focus:ring-quanta-blue focus:ring-opacity-20",
+            "focus:outline-none",
             sidebarOpen ? "justify-end" : "justify-center"
           )}
           aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
@@ -102,9 +113,10 @@ const Sidebar = ({ sidebarOpen, toggleSidebar, setShowCreateProject }: SidebarPr
         <div className="px-4 space-y-1">
           <div>
             <button
-              onClick={() => setReportsExpanded(!reportsExpanded)}
+              onClick={handleReportsClick}
               className={cn(
                 "w-full flex items-center justify-between rounded-md py-2.5 px-3 text-sm font-medium transition-colors",
+                "focus:outline-none",
                 isReportsActive()
                   ? "bg-quanta-blue text-white"
                   : "text-gray-700 hover:bg-accent/50 hover:text-quanta-blue"
