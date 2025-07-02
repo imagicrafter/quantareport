@@ -215,7 +215,7 @@ export type Database = {
       }
       image_descriptions: {
         Row: {
-          component_type: string | null
+          component: string | null
           created_at: string
           embedding: string | null
           file_id: string | null
@@ -223,7 +223,7 @@ export type Database = {
           image_description: Json | null
         }
         Insert: {
-          component_type?: string | null
+          component?: string | null
           created_at?: string
           embedding?: string | null
           file_id?: string | null
@@ -231,7 +231,7 @@ export type Database = {
           image_description?: Json | null
         }
         Update: {
-          component_type?: string | null
+          component?: string | null
           created_at?: string
           embedding?: string | null
           file_id?: string | null
