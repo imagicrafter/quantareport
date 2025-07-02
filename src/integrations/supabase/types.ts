@@ -215,19 +215,25 @@ export type Database = {
       }
       image_descriptions: {
         Row: {
+          component_type: string | null
           created_at: string
+          embedding: string | null
           file_id: string | null
           id: string
           image_description: Json | null
         }
         Insert: {
+          component_type?: string | null
           created_at?: string
+          embedding?: string | null
           file_id?: string | null
           id?: string
           image_description?: Json | null
         }
         Update: {
+          component_type?: string | null
           created_at?: string
+          embedding?: string | null
           file_id?: string | null
           id?: string
           image_description?: Json | null
@@ -363,6 +369,7 @@ export type Database = {
           analysis: string | null
           content: string | null
           created_at: string | null
+          embedding: string | null
           files_relationships_is_locked: boolean | null
           id: string
           last_edited_at: string | null
@@ -377,6 +384,7 @@ export type Database = {
           analysis?: string | null
           content?: string | null
           created_at?: string | null
+          embedding?: string | null
           files_relationships_is_locked?: boolean | null
           id?: string
           last_edited_at?: string | null
@@ -391,6 +399,7 @@ export type Database = {
           analysis?: string | null
           content?: string | null
           created_at?: string | null
+          embedding?: string | null
           files_relationships_is_locked?: boolean | null
           id?: string
           last_edited_at?: string | null
@@ -1562,6 +1571,14 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
+      }
+      match_images_to_notes: {
+        Args: { p_note_id: string; p_limit?: number }
+        Returns: {
+          file_id: string
+          similarity: number
+          component_match: boolean
+        }[]
       }
       send_custom_email: {
         Args: { payload: Json }
