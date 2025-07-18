@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,6 +35,7 @@ const BulkUploadDialog = ({
 }: BulkUploadDialogProps) => {
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
+  // NOTE: Temporarily commented out Google Drive functionality - keep for future re-enabling
   const [driveLink, setDriveLink] = useState('');
   const [activeTab, setActiveTab] = useState('upload');
 
@@ -58,7 +58,9 @@ const BulkUploadDialog = ({
       
       await onUploadFiles(files);
       setFiles([]);
-    } else {
+    } 
+    // NOTE: Google Drive upload functionality temporarily disabled - uncomment below to re-enable
+    /* else {
       if (!driveLink.trim()) {
         toast({
           title: 'No link provided',
@@ -70,7 +72,7 @@ const BulkUploadDialog = ({
       
       await onUploadFromLink(driveLink);
       setDriveLink('');
-    }
+    } */
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -112,10 +114,13 @@ const BulkUploadDialog = ({
           </DialogDescription>
         </DialogHeader>
         
+        {/* NOTE: Temporarily showing only Upload Files tab - Google Drive tab commented out for future re-enabling */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-1">
             <TabsTrigger value="upload">Upload Files</TabsTrigger>
+            {/* NOTE: Google Drive tab temporarily disabled - uncomment to re-enable
             <TabsTrigger value="drive">Google Drive</TabsTrigger>
+            */}
           </TabsList>
           
           <TabsContent value="upload" className="py-4">
@@ -170,6 +175,7 @@ const BulkUploadDialog = ({
             )}
           </TabsContent>
           
+          {/* NOTE: Google Drive tab content temporarily disabled - uncomment entire section below to re-enable
           <TabsContent value="drive" className="py-4">
             <div className="space-y-4">
               <div>
@@ -202,6 +208,7 @@ const BulkUploadDialog = ({
               </div>
             </div>
           </TabsContent>
+          */}
         </Tabs>
         
         <DialogFooter className="mt-4">
@@ -217,7 +224,11 @@ const BulkUploadDialog = ({
             onClick={handleUpload}
             isLoading={uploading}
           >
+            {/* NOTE: Button text simplified since Google Drive option is temporarily disabled */}
+            Upload Files
+            {/* NOTE: Original dynamic text commented out - uncomment to restore:
             {activeTab === 'upload' ? 'Upload Files' : 'Import from Drive'}
+            */}
           </CustomButton>
         </DialogFooter>
       </DialogContent>

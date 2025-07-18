@@ -215,19 +215,25 @@ export type Database = {
       }
       image_descriptions: {
         Row: {
+          component: string | null
           created_at: string
+          embedding: string | null
           file_id: string | null
           id: string
           image_description: Json | null
         }
         Insert: {
+          component?: string | null
           created_at?: string
+          embedding?: string | null
           file_id?: string | null
           id?: string
           image_description?: Json | null
         }
         Update: {
+          component?: string | null
           created_at?: string
+          embedding?: string | null
           file_id?: string | null
           id?: string
           image_description?: Json | null
@@ -363,6 +369,7 @@ export type Database = {
           analysis: string | null
           content: string | null
           created_at: string | null
+          embedding: string | null
           files_relationships_is_locked: boolean | null
           id: string
           last_edited_at: string | null
@@ -377,6 +384,7 @@ export type Database = {
           analysis?: string | null
           content?: string | null
           created_at?: string | null
+          embedding?: string | null
           files_relationships_is_locked?: boolean | null
           id?: string
           last_edited_at?: string | null
@@ -391,6 +399,7 @@ export type Database = {
           analysis?: string | null
           content?: string | null
           created_at?: string | null
+          embedding?: string | null
           files_relationships_is_locked?: boolean | null
           id?: string
           last_edited_at?: string | null
@@ -668,6 +677,68 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      published_reports: {
+        Row: {
+          access_count: number
+          created_at: string
+          description: string | null
+          file_path: string
+          id: string
+          is_active: boolean
+          last_accessed_at: string | null
+          original_title: string
+          pre_authorized_url: string | null
+          published_by: string | null
+          report_id: string
+          title: string | null
+          token: string
+          updated_at: string
+          url_expires_at: string | null
+        }
+        Insert: {
+          access_count?: number
+          created_at?: string
+          description?: string | null
+          file_path: string
+          id?: string
+          is_active?: boolean
+          last_accessed_at?: string | null
+          original_title: string
+          pre_authorized_url?: string | null
+          published_by?: string | null
+          report_id: string
+          title?: string | null
+          token: string
+          updated_at?: string
+          url_expires_at?: string | null
+        }
+        Update: {
+          access_count?: number
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          id?: string
+          is_active?: boolean
+          last_accessed_at?: string | null
+          original_title?: string
+          pre_authorized_url?: string | null
+          published_by?: string | null
+          report_id?: string
+          title?: string | null
+          token?: string
+          updated_at?: string
+          url_expires_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "published_reports_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_progress: {
         Row: {
@@ -1500,6 +1571,14 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
+      }
+      match_images_to_notes: {
+        Args: { p_note_id: string; p_limit?: number }
+        Returns: {
+          file_id: string
+          similarity: number
+          component_match: boolean
+        }[]
       }
       send_custom_email: {
         Args: { payload: Json }
