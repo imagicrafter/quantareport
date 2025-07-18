@@ -19,6 +19,7 @@ import Images from './pages/Images';
 import Notes from './pages/Notes';
 import NotFound from './pages/NotFound';
 import PublishedReport from './pages/PublishedReport';
+import CustomReportViewer from './components/reports/CustomReportViewer';
 import DashboardLayout from './components/layout/DashboardLayout';
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ function App() {
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/reports/:token" element={<PublishedReport />} />
+            <Route path="/report/:token" element={<CustomReportViewer />} />
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="templates" element={<Templates />} />
