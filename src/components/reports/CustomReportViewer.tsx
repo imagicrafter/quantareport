@@ -46,7 +46,9 @@ const CustomReportViewer = () => {
           return;
         }
 
-        setHtmlContent(content);
+        // Inject OpenAI proxy client script into the HTML content
+        const injectedContent = injectOpenAIProxy(content);
+        setHtmlContent(injectedContent);
       } catch (err) {
         console.error('Error loading custom report:', err);
         setError('An error occurred while loading the report');
@@ -57,6 +59,114 @@ const CustomReportViewer = () => {
 
     loadReport();
   }, [token]);
+
+  const injectOpenAIProxy = (htmlContent: string): string => {
+    const openAIProxyScript = `
+    <script>
+      // OpenAI Proxy Client for Custom Reports
+      class OpenAIProxyClient {
+        constructor() {
+          this.baseUrl = '${window.location.origin}/functions/v1/openai-proxy';
+        }
+
+        async request({ endpoint, method = 'POST', body, headers = {} }) {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...headers
+              },
+              body: JSON.stringify({
+                endpoint,
+                method,
+                body,
+                headers
+              })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              return {
+                success: false,
+                error: data.error || 'Request failed'
+              };
+            }
+
+            return {
+              success: true,
+              data
+            };
+          } catch (error) {
+            return {
+              success: false,
+              error: error.message || 'Unknown error'
+            };
+          }
+        }
+
+        async chatCompletions(messages, options = {}) {
+          return this.request({
+            endpoint: 'chat/completions',
+            body: {
+              model: 'gpt-4o-mini',
+              messages,
+              ...options
+            }
+          });
+        }
+
+        async generateImage(prompt, options = {}) {
+          return this.request({
+            endpoint: 'images/generations',
+            body: {
+              model: 'gpt-image-1',
+              prompt,
+              n: 1,
+              size: '1024x1024',
+              ...options
+            }
+          });
+        }
+
+        async getEmbeddings(input, options = {}) {
+          return this.request({
+            endpoint: 'embeddings',
+            body: {
+              model: 'text-embedding-3-small',
+              input,
+              ...options
+            }
+          });
+        }
+
+        async moderate(input) {
+          return this.request({
+            endpoint: 'moderations',
+            body: { input }
+          });
+        }
+      }
+
+      // Make OpenAI proxy available globally
+      window.OpenAI = new OpenAIProxyClient();
+      window.OpenAIProxyClient = OpenAIProxyClient;
+
+      console.log('OpenAI Proxy Client loaded successfully');
+    </script>
+    `;
+
+    // Inject the script before the closing head tag, or at the beginning of body if no head exists
+    if (htmlContent.includes('</head>')) {
+      return htmlContent.replace('</head>', `${openAIProxyScript}\n</head>`);
+    } else if (htmlContent.includes('<body>')) {
+      return htmlContent.replace('<body>', `<body>\n${openAIProxyScript}`);
+    } else {
+      // If no proper HTML structure, prepend the script
+      return openAIProxyScript + '\n' + htmlContent;
+    }
+  };
 
   if (loading) {
     return (

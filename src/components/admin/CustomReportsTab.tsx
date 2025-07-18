@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,13 +127,13 @@ const CustomReportsTab = () => {
   };
 
   const copyReportUrl = (token: string) => {
-    const url = `${window.location.origin}/reports/${token}`;
+    const url = `${window.location.origin}/report/${token}`;
     navigator.clipboard.writeText(url);
     toast.success('Report URL copied to clipboard');
   };
 
   const openReport = (token: string) => {
-    const url = `${window.location.origin}/reports/${token}`;
+    const url = `${window.location.origin}/report/${token}`;
     window.open(url, '_blank');
   };
 
@@ -179,7 +178,7 @@ const CustomReportsTab = () => {
         <div>
           <h2 className="text-2xl font-bold">Custom Reports</h2>
           <p className="text-muted-foreground">
-            Upload and manage custom HTML reports with secure access URLs
+            Upload and manage custom HTML reports with secure access URLs and OpenAI integration
           </p>
         </div>
         <div className="flex gap-2">
@@ -194,11 +193,11 @@ const CustomReportsTab = () => {
                 Upload Report
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Upload Custom HTML Report</DialogTitle>
                 <DialogDescription>
-                  Upload an HTML file to create a publicly accessible custom report with secure 30-day access URLs
+                  Upload an HTML file to create a publicly accessible custom report with secure 30-day access URLs and OpenAI API integration
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -231,6 +230,27 @@ const CustomReportsTab = () => {
                     placeholder="Report description (optional)"
                     rows={3}
                   />
+                </div>
+
+                {/* OpenAI Integration Documentation */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-blue-800 mb-2">OpenAI Integration Available</h4>
+                  <p className="text-sm text-blue-700 mb-2">
+                    Your custom reports can now access OpenAI API through a secure proxy. Use the following in your HTML:
+                  </p>
+                  <div className="bg-blue-100 p-2 rounded text-xs font-mono text-blue-800">
+                    {`// Available globally in your custom reports
+// Chat completions
+const response = await window.OpenAI.chatCompletions([
+  { role: 'user', content: 'Hello!' }
+]);
+
+// Generate images
+const image = await window.OpenAI.generateImage('A beautiful sunset');
+
+// Get embeddings
+const embeddings = await window.OpenAI.getEmbeddings('Text to embed');`}
+                  </div>
                 </div>
                 
                 <div className="flex justify-end space-x-2">
@@ -467,7 +487,7 @@ const CustomReportsTab = () => {
                 <Label>Public URL</Label>
                 <div className="flex space-x-2">
                   <Input
-                    value={`${window.location.origin}/reports/${selectedReport.token}`}
+                    value={`${window.location.origin}/report/${selectedReport.token}`}
                     readOnly
                     className="bg-gray-50"
                   />
