@@ -127,13 +127,13 @@ const CustomReportsTab = () => {
   };
 
   const copyReportUrl = (token: string) => {
-    const url = `${window.location.origin}/reports/${token}`;
+    const url = `${window.location.origin}/report/${token}`;
     navigator.clipboard.writeText(url);
     toast.success('Report URL copied to clipboard');
   };
 
   const openReport = (token: string) => {
-    const url = `${window.location.origin}/reports/${token}`;
+    const url = `${window.location.origin}/report/${token}`;
     window.open(url, '_blank');
   };
 
@@ -487,7 +487,7 @@ const embeddings = await window.OpenAI.getEmbeddings('Text to embed');`}
                 <Label>Public URL</Label>
                 <div className="flex space-x-2">
                   <Input
-                    value={`${window.location.origin}/reports/${selectedReport.token}`}
+                    value={`${window.location.origin}/report/${selectedReport.token}`}
                     readOnly
                     className="bg-gray-50"
                   />
