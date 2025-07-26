@@ -1,0 +1,3858 @@
+{
+  "name": "image-FILE-description-generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "61250fb7-dff8-4e7a-a430-9e7dfc919f75",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1420,
+        620
+      ],
+      "id": "5cc4a756-185f-4d4b-90d8-032e49337950",
+      "name": "Webhook",
+      "webhookId": "61250fb7-dff8-4e7a-a430-9e7dfc919f75"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-1.5-flash-latest",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "e811aa5f-6f88-47b2-8b1d-3c03fc61aed6",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "position": [
+        420,
+        820
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "lWWWrFnboZJqWB3D",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -420,
+        560
+      ],
+      "id": "981ed8e6-079d-47e3-b3b8-599f7d225f68",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "templates",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.template_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        620
+      ],
+      "id": "e608b1de-bd55-4403-b311-46e1cbb9bfa5",
+      "name": "Query template ID",
+      "credentials": {
+        "supabaseApi": {
+          "id": "rc2WhTQmeWvbrxgl",
+          "name": "Inovy Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        960
+      ],
+      "id": "f04be69d-f6b7-40ca-9eb7-7b8b049f7625",
+      "name": "OpenAI Chat Model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "wADMvyH4rrgOilPP",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "prompt": "Instructions:\n--------------\nThe output must be as a json object\n----------\nCompletion:\n--------------\nThe output must be a binary json object that can be directly inserted into a Supabase jsonb column.\n--------------\n\nAbove, the Completion did not satisfy the constraints given in the Instructions.\nError:\n--------------\n{error}\n--------------\n\nPlease try again. Please only respond with an answer that satisfies the constraints laid out in the Instructions:"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+      "typeVersion": 1,
+      "position": [
+        620,
+        820
+      ],
+      "id": "8f1f5b01-31e4-4e05-b47c-a79ec1994ee8",
+      "name": "Auto-fixing json object output parser"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2b0f24fd-d8e8-47c2-abc4-dd378c30927f",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "1804e203-bb0e-4a49-a475-6802255670fe",
+              "name": "name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "308a646c-7d78-45bf-9016-2643330a781d",
+              "name": "type",
+              "value": "={{ $json.type }}",
+              "type": "string"
+            },
+            {
+              "id": "2de3dac6-825b-4c25-a01e-ac242aa5b375",
+              "name": "file_path",
+              "value": "={{ $json.file_path }}",
+              "type": "string"
+            },
+            {
+              "id": "40b8408e-6d70-4dbc-a760-4a84962df06e",
+              "name": "file_count",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -580,
+        560
+      ],
+      "id": "88d0a175-25a2-4722-bc4a-41ecf6e4d728",
+      "name": "Get File IDs"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "v_files_not_processed",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "project_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Webhook').item.json.body.project_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -740,
+        600
+      ],
+      "id": "874c5369-c3fe-4669-8d55-e92f5f385b45",
+      "name": "Get All Files Not Processed for Project",
+      "alwaysOutputData": true,
+      "notesInFlow": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "rc2WhTQmeWvbrxgl",
+          "name": "Inovy Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "4",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Preparing Images for Analysis",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "generating",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').item.json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}",
+              "type": "string"
+            },
+            {
+              "id": "31a0e1f5-c0e6-4491-ba0c-2ae11b78fba7",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -400,
+        260
+      ],
+      "id": "65c7a733-0637-4425-8f14-a3cf91ff2480",
+      "name": "Status: Preparing Images for Analysis",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/file-analysis",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -220,
+        260
+      ],
+      "id": "7c8de412-dc10-4b2e-9292-4643856b011e",
+      "name": "Pre Analysis Status Post",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "55",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Image Processing Completed",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "generating",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').item.json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            },
+            {
+              "id": "3b627b8b-06ec-46d9-9e99-f3f087d2ac12",
+              "name": "project_id",
+              "value": "={{ $('Webhook').item.json.body.project_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3060,
+        1560
+      ],
+      "id": "9691859f-8718-4682-9ca2-e0e892d48c6e",
+      "name": "Status: Preparing Images for Analysis1",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/file-analysis",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3280,
+        1560
+      ],
+      "id": "4588b3d8-e27e-4830-9a07-a6a2ca6aad48",
+      "name": "Post Analysis Status Post",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "={{ Math.min(50, Math.ceil((50 / $('Check if Image Text or Audio').item.json.file_count)) * ($runIndex+1)) }}",
+              "type": "number"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "={{ $('Loop Over Items').item.json.name }} Successfully Analyzed",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "generating",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').item.json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}",
+              "type": "string"
+            },
+            {
+              "id": "2abef250-9b98-4db7-b5ea-5c44972f45a8",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2180,
+        620
+      ],
+      "id": "0572ed8b-7229-4a53-bc1a-e2afe02f5292",
+      "name": "Status: Preparing Images for Analysis2",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/file-analysis",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2380,
+        620
+      ],
+      "id": "9e7fb8a4-e156-43a1-992e-5f94b227ef83",
+      "name": "Pre Analysis Status Post1",
+      "retryOnFail": true,
+      "executeOnce": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        260
+      ],
+      "id": "13d119cd-6cea-49b6-b474-b85aa0ac40fe",
+      "name": "No Operation, do nothing3"
+    },
+    {
+      "parameters": {
+        "content": "## Get files for project\nQueries files_not_processed view to determine which files do not have descriptions",
+        "height": 600,
+        "width": 1460
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1440,
+        500
+      ],
+      "id": "af54dccb-6a3c-4798-ac94-1c0526ece8b4",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Log completion of all image processing\n",
+        "height": 260,
+        "width": 640,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        1480
+      ],
+      "id": "7a9ebfb7-33b6-4ec5-a739-d63f68190f63",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Log start of image processing",
+        "height": 260,
+        "width": 600,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        200
+      ],
+      "id": "1b27d6dc-01ae-4aa1-9674-8e0b27973122",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Log File processing error\n ",
+        "height": 260,
+        "width": 620,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2820,
+        1180
+      ],
+      "id": "a9d829ed-dc4a-426c-88c2-0aced5a5b57d",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Log persisting of description to database successful ",
+        "height": 260,
+        "width": 640,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2120,
+        540
+      ],
+      "id": "4110a6eb-fee0-4951-a7f6-bfd9d6d70cf0",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Image description generation\n",
+        "height": 600,
+        "width": 1080
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        500
+      ],
+      "id": "5c2cbb42-3584-4663-88a5-600ff2e47709",
+      "name": "Sticky Note5",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/file-analysis",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -860,
+        260
+      ],
+      "id": "3472b39e-de93-4b46-9586-e5c8cbb4ddcf",
+      "name": "Pre Analysis Status Post3",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        260
+      ],
+      "id": "3c997dd7-57d1-4f9c-aaa1-b3e82eedeb7f",
+      "name": "No Operation, do nothing4"
+    },
+    {
+      "parameters": {
+        "content": "Log start of image processing",
+        "height": 260,
+        "width": 600,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1100,
+        200
+      ],
+      "id": "0633bc69-197a-4702-93d8-e8baef148d62",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "2",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Starting Image Analysis",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "generating",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').item.json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "project_id",
+              "value": "={{ $('Webhook').item.json.body.project_id }}",
+              "type": "string"
+            },
+            {
+              "id": "5996549c-319a-4261-ae57-d4d6b2100ff4",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1040,
+        260
+      ],
+      "id": "c66fae42-98f5-482d-a8f3-07059898973b",
+      "name": "Status: Initialize logging",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "var uuid      = require('crypto')\n\nreturn {\n  uuid: uuid.randomUUID()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        620
+      ],
+      "id": "4e4fb55a-ed02-4166-9fed-9455f8828d88",
+      "name": "Generate Job UUID"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1160,
+        820
+      ],
+      "id": "4758f9d2-b183-4412-8dfd-cf11a013326b",
+      "name": "Wait",
+      "webhookId": "6965bb5a-3995-4259-8c60-c622d58930f6"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/file-analysis",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3060,
+        1260
+      ],
+      "id": "9a705bdf-b5d7-4fce-b15b-4432d158722c",
+      "name": "Pre Analysis Status Post2",
+      "retryOnFail": true,
+      "executeOnce": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "# Image Processing Workflow \n\n## Unlimted Images\n## One transcript",
+        "height": 2060,
+        "width": 5020,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1480,
+        0
+      ],
+      "id": "aff981da-3cdf-406c-a24a-4d4ac981f697",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "Log all images have been processed",
+        "height": 260,
+        "width": 640,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        400,
+        1740
+      ],
+      "id": "a89b35c1-7fee-43ef-bff9-3ab7bda18543",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/file-analysis",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        1820
+      ],
+      "id": "35b2898a-a65b-4138-add4-ea0dde0af56b",
+      "name": "Post Image Analysis Status Post",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dc971fbe-a140-4c72-a419-c5a10e2f36c0",
+              "name": "currentProgress",
+              "value": "55",
+              "type": "string"
+            },
+            {
+              "id": "8196260c-036d-4cde-8fc1-048d67c392fb",
+              "name": "message",
+              "value": "No images found unprocessed",
+              "type": "string"
+            },
+            {
+              "id": "513206de-6f53-4317-b307-6c7c5676d55e",
+              "name": "status",
+              "value": "generating",
+              "type": "string"
+            },
+            {
+              "id": "01376999-c182-4b88-acf9-3b634ea911b5",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').item.json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "1a7a264c-2aa6-4f17-b242-84b327dc2745",
+              "name": "report_id",
+              "value": "={{ $('Webhook').item.json.body.report_id }}",
+              "type": "string"
+            },
+            {
+              "id": "5504b665-bb3f-4259-a735-97d232424e2b",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        460,
+        1820
+      ],
+      "id": "0b66c8ee-b67d-40db-9a1f-aa289e7a7bb7",
+      "name": "Status: All Images Processed1",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "tableId": "image_descriptions",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "file_id",
+              "fieldValue": "={{ $('Loop Over Items').item.json.id }}"
+            },
+            {
+              "fieldId": "image_description",
+              "fieldValue": "={{ $json.output }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        940,
+        600
+      ],
+      "id": "4ad5fa86-2664-4150-9ccb-6ed4f62d7bac",
+      "name": "Insert Image Description to Db",
+      "retryOnFail": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "rc2WhTQmeWvbrxgl",
+          "name": "Inovy Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        1260
+      ],
+      "id": "1fea55f9-c484-40b7-ba4a-073fc9844e1c",
+      "name": "No Operation, do nothing2"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n   \"components\": [],    \n   \"findings\": [],\n   \"recommendedActions\": []\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        780,
+        960
+      ],
+      "id": "aafc21f8-f08c-44a4-9ea4-4ef29d178261",
+      "name": "Structured Output Parser for Image Description"
+    },
+    {
+      "parameters": {
+        "content": "## Narrative from text\n",
+        "height": 540,
+        "width": 1160
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        1120
+      ],
+      "id": "7fa1040b-6dde-4bb3-ac75-47cb6ba2c3d4",
+      "name": "Sticky Note10",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4da8f1e2-ba26-4d5c-a447-395e576c65f9",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -620,
+        920
+      ],
+      "id": "340cf019-a945-4fe8-995c-b11adca89559",
+      "name": "Check if Project Files exist",
+      "executeOnce": true,
+      "alwaysOutputData": false,
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.file_path }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": false,
+              "responseFormat": "text",
+              "outputPropertyName": "=data"
+            }
+          },
+          "pagination": {}
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        1220
+      ],
+      "id": "656d8339-54ee-431c-9300-90d9878b9adb",
+      "name": "Get Text File",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.file_path }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        600
+      ],
+      "id": "789db217-7695-4e32-beb1-794e114b450e",
+      "name": "Get Image File"
+    },
+    {
+      "parameters": {
+        "tableId": "project_transcript_insights",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "file_id",
+              "fieldValue": "={{ $('Loop Over Items').item.json.id }}"
+            },
+            {
+              "fieldId": "insights",
+              "fieldValue": "={{ $json.output }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        1120
+      ],
+      "id": "d9cb494a-0ac5-4341-84ae-3d1c3ab695dc",
+      "name": "Load Insights to project_transcript_insights",
+      "retryOnFail": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "rc2WhTQmeWvbrxgl",
+          "name": "Inovy Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        860,
+        1820
+      ],
+      "id": "8f264a48-9680-4b68-b8de-c93e2325cf44",
+      "name": "No Operation, do nothing5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "={{ Math.min(50, Math.ceil((50 / $('Check if Image Text or Audio').item.json.file_count)) * ($runIndex+1)) }}",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Error in processing {{ $('Loop Over Items').item.json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}",
+              "type": "string"
+            },
+            {
+              "id": "6573e721-1fa7-4abb-a5cd-5454939b0834",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2860,
+        1260
+      ],
+      "id": "9cdbfcfe-6f90-48c8-b169-a5529b7fc201",
+      "name": "Status: Prep Failed Analysis Msg",
+      "alwaysOutputData": false,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "image"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "26a85acd-7f44-4226-a17f-faeb141127f3",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "31425448-c126-4ddd-aa50-757b7be36b19",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "audio"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -180,
+        600
+      ],
+      "id": "0fa00dac-21f9-43fd-aa03-74cc1ca5e691",
+      "name": "Check if Image Text or Audio",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "content": "## Add Notes for Insights\n",
+        "height": 580,
+        "width": 1540,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        1420
+      ],
+      "id": "1b09365d-6dce-4580-84f3-1b563cf4dbb4",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "options": {
+          "prompt": "Instructions:\n--------------\nThe output must be as a binary json object\n----------\nCompletion:\n--------------\nThe output must be a binary json object that can be directly inserted into a Supabase jsonb column.\n--------------\n\nAbove, the Completion did not satisfy the constraints given in the Instructions.\nError:\n--------------\n{error}\n--------------\n\nPlease try again. Please only respond with an answer that satisfies the constraints laid out in the Instructions:"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+      "typeVersion": 1,
+      "position": [
+        480,
+        1420
+      ],
+      "id": "1016e187-a1c2-44d2-8482-c34fe9042541",
+      "name": "Auto-fixing json object output parser1"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n   \"components\": [],    \n   \"findings\": [],\n   \"recommendedActions\": []\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        680,
+        1540
+      ],
+      "id": "8d85a7df-93b1-4b86-a491-8ca554db8a8a",
+      "name": "Structured Output Parser for Image Description1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        440,
+        1540
+      ],
+      "id": "d4aea87a-fd08-4c73-b9a5-0fb3d83eb0e7",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "wADMvyH4rrgOilPP",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this input:{{ $json.data }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# ROLE\nYou are an expert in the analysis of notes from {{ $('Query template ID').item.json.description }}\n\n# TASK:\nAnalyze the INPUT to extract the key attributes following the output format provided below with the results as a JSON object with absolutely no code fences or delimiters.\n\n# OUTPUT FORMAT\n{{JSON.stringify($('Query template ID').item.json.report_module.outputFormat)}}\n\n# EXAMPLE\n{{JSON.stringify($('Query template ID').item.json.report_module.exampleOutput)}}\n\n\n# SPECIFICS\n- The output will go into a json objects and must in a format that can be directly inserted into a jsonb column within a postgresql database\n- Do not include new line characters.  There should never be any \\n in the output provided.\n- Change informal terms to formal terms when it enables standardized output.\n\n# NOTES\n- The OUPUT FORMAT is critical and the ouptput must be in the specified order. \n- Your insights will directly impact the company's decision-making process, so please be thorough and accurate in your analysis\n- Do not include the process step name or number in the output.\n- IMPORTANT: \n--Output a valid JSON objects.\n-- The output should be a JSON object, not a string.\n-- Format the output as a JSON object.\n-- Ensure the output is directly parsable as JSON."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        440,
+        1220
+      ],
+      "id": "15c5bedc-866d-4287-9c44-21a9679a3fb7",
+      "name": "Transcript Analysis",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract the transactions from the image to a binary json object",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=# ROLE\nYou are an expert in the analysis of {{ $('Query template ID').item.json.description }}\n\n# TASK:\nYou will receive a binary file representing an image (the binary data). Your task is to follow the process described below to output the results in JSON with absolutely no code fences or delimiters.\n\n# PROCESS\n{{JSON.stringify($('Query template ID').first().json.image_module.analysisSteps)}} \n\n# OUTPUT FORMAT: \n- Always output in the following order:\n{{JSON.stringify($('Query template ID').item.json.image_module.outputFormat[0])}}\n\n# EXAMPLE\n{{JSON.stringify($('Query template ID').item.json.image_module.exampleOutput[0])}}\n\n# SPECIFICS\n-The output will go into a single json object and must in a format that can be directly inserted into a jsonb column within a postgresql database\n-Do not include new line characters.  There should neve be any \\n in the output provided.\n\n# NOTES\n- The OUPUT FORMAT is critical and the ouptput must be in the specified order. \n- Your insights will directly impact the company's decision-making process, so please be thorough and accurate in your analysis\n- Do not include the process step name or number in the output.\n- It is crucial that the output does not include any code block markers at the beginning or end of the ouput in order to correctly insert the output directly into a jsonb database column.\n- IMPORTANT: Format all JSON arrays with proper syntax. Each array should look like [element1, element2, element3] with commas only between elements and no trailing comma before the closing bracket. Invalid: [element1, element2, element3,]. This is critical to avoid parsing errors in the JSON output."
+            },
+            {
+              "type": "HumanMessagePromptTemplate",
+              "messageType": "imageBinary"
+            }
+          ]
+        }
+      },
+      "id": "65717a9c-1817-4381-a78c-f5bc1b67c17f",
+      "name": "Image Analysis",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "position": [
+        500,
+        600
+      ],
+      "typeVersion": 1.4,
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT i.file_id, i.image_description\nFROM public.image_descriptions i\nLEFT JOIN public.files f ON f.id = i.file_id\nWHERE f.project_id = '{{ $('Webhook').first().json.body.project_id }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.5,
+      "position": [
+        4340,
+        880
+      ],
+      "id": "a3babfea-0d63-44e3-a59c-d3dfba5a1213",
+      "name": "get-project-image-descriptions",
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        4160,
+        880
+      ],
+      "id": "ecc152bf-ae2e-4e3d-99bf-b1925ac963e5",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "wADMvyH4rrgOilPP",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT n.id as note_id, n.title, n.content, n.metadata, n.files_relationships_is_locked\nFROM public.notes n\nLEFT JOIN public.template_notes tn ON n.name = tn.name\nLEFT JOIN public.projects p ON tn.template_id = p.id\nWHERE n.project_id = '{{ $('Webhook').item.json.body.project_id }}' \nAND tn.id IS NULL;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3680,
+        720
+      ],
+      "id": "1c838608-c732-484d-99ea-ddddd5101f0b",
+      "name": "Get Project Insights",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "[\n  {\n    \"output\": {\n      \"file_id\": \"68576e8f-a637-4073-ba75-59426cd018e1\",\n      \"note_id\": \"10b72cb9-3292-4d95-afcd-884d783a1619\",\n      \"component\": \"Interior Finishes\",\n      \"note_title\": \"Flooring\",\n      \"match_score\": 0.83\n    }\n  },\n  {\n    \"output\": {\n      \"file_id\": \"e9814d86-7ed5-42f1-bb38-0bb5f9f64d35\",\n      \"note_id\": \"10b72cb9-3292-4d95-afcd-884d783a1619\",\n      \"component\": \"Interior Finishes\",\n      \"note_title\": \"Flooring\",\n      \"match_score\": 0.73\n    }\n  },\n  {\n    \"output\": {\n      \"file_id\": \"a2b475e5-4647-43b9-97a4-58c969159c7a\",\n      \"note_id\": \"10b72cb9-3292-4d95-afcd-884d783a1619\",\n      \"component\": \"Interior Finishes\",\n      \"note_title\": \"Flooring\",\n      \"match_score\": 0.92\n    }\n  }\n]"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        4740,
+        960
+      ],
+      "id": "4c82c4f5-1d8a-4d48-a274-e6cda3695227",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.note_file_relationships (note_id, file_id, match_score)\nVALUES ('{{ $json.output.output.note_id }}', '{{ $json.output.output.file_id }}', '{{ $json.output.output.match_score }}' )\nON CONFLICT (note_id, file_id) DO NOTHING;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        4960,
+        920
+      ],
+      "id": "540dba2e-fbe3-4e19-af2a-c7f9482173ce",
+      "name": "Insert note-file-relationship",
+      "retryOnFail": true,
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        4940,
+        640
+      ],
+      "id": "3170c3f4-6ead-437e-893e-0883dda984e4",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "options": {
+          "prompt": "Instructions:\n--------------\nThe output must be as a json object\n----------\nCompletion:\n--------------\nThe output must be a json object that can be directly inserted into database column.\n--------------\n\nAbove, the Completion did not satisfy the constraints given in the Instructions.\nError:\n--------------\n{error}\n--------------\n\nPlease try again. Please only respond with an answer that satisfies the constraints laid out in the Instructions:"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+      "typeVersion": 1,
+      "position": [
+        4540,
+        840
+      ],
+      "id": "2e10f1b1-88a7-49ce-ad7d-51df6e52811c",
+      "name": "Auto-fixing json object output parser2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        4520,
+        980
+      ],
+      "id": "c911c793-3f8c-42e4-9b67-8bf4304359c5",
+      "name": "OpenAI Chat Model3",
+      "credentials": {
+        "openAiApi": {
+          "id": "wADMvyH4rrgOilPP",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Update Note to Image Relationships\n",
+        "height": 780,
+        "width": 1540,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        380
+      ],
+      "id": "62a161f1-f3ad-41b4-80f4-74d157938f8d",
+      "name": "Sticky Note13"
+    },
+    {
+      "parameters": {
+        "content": "# Note Insight to Image Description Matching\n",
+        "height": 2060,
+        "width": 1620,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3560,
+        0
+      ],
+      "id": "932a439e-65dd-41e7-a544-023bdb3e5016",
+      "name": "Sticky Note14"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4039292f-0f08-4839-b348-438773bb7eda",
+              "leftValue": "={{ $json.files_relationships_is_locked }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4180,
+        640
+      ],
+      "id": "cd5e69dc-a93b-4a3e-b56e-0ec20d542d48",
+      "name": "Check if files relationships is locked"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        4020,
+        580
+      ],
+      "id": "a407e09e-be4c-4bb2-b4c0-c00d3096af70",
+      "name": "Loop Over Components",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT template_id\nFROM projects \nWHERE projects.id = '{{ $('Webhook').item.json.body.project_id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -1040,
+        620
+      ],
+      "id": "f539fe04-8e5d-4657-b2ee-a6fb95d3b01f",
+      "name": "Get Template ID",
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-3.5-turbo",
+          "mode": "list",
+          "cachedResultName": "GPT-3.5-TURBO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Summarize the contents of this input:  {{JSON.stringify($('Image Analysis').item.json.output)}}"
+            },
+            {
+              "content": "# ROLE\nYou are an expert at summarizing.\n\n# TASK\nFrom the provided input generate a two JSON object outputs.  The first will be the **title** that will be the component or subject from the input.  The second will be the **summary** that will be two or three sentences that is clear, concise and human readable.\n\n\n# SPECIFICS\n- There will be two JSON object outputs only. Title and Summary.\n- The Title will be one or two words. Keep it specific to the single component or subject.\n- Do not include new line characters.  There should never be any \\n in the output provided.\n\n# NOTES\n- The Title and Summary will directly impact the company's decision-making process, so please be thorough and accurate in your analysis\n- Do not use `inspection findings` or `analysis` in the Title\n\n",
+              "role": "system"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1440,
+        580
+      ],
+      "id": "aa17e877-4d1d-454d-988f-0a636a9b0bfe",
+      "name": "Summarize Image Description",
+      "retryOnFail": true,
+      "credentials": {
+        "openAiApi": {
+          "id": "wADMvyH4rrgOilPP",
+          "name": "OpenAi account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "files",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Insert Image Description to Db').item.json.file_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.message.content.Title }}"
+            },
+            {
+              "fieldId": "description",
+              "fieldValue": "={{ $json.message.content.Summary }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        580
+      ],
+      "id": "9039fb10-96ac-490f-b305-98c049312d90",
+      "name": "Insert Image Description Summary to Db",
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "rc2WhTQmeWvbrxgl",
+          "name": "Inovy Supabase account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "# Add Image Title and Description summary",
+        "height": 300,
+        "width": 800
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        520
+      ],
+      "id": "d89b49f2-cf83-4037-bef8-a9f028841e14",
+      "name": "Sticky Note15"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4160,
+        160
+      ],
+      "id": "26b414fc-765f-405b-8ed8-ca9d4bcac4ef",
+      "name": "No Operation, do nothing6"
+    },
+    {
+      "parameters": {
+        "content": "## Log Starting Images to Note Matching",
+        "height": 260,
+        "width": 560,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3740,
+        60
+      ],
+      "id": "94cbb597-1dd0-4d5a-9ca0-036bfad775f0",
+      "name": "Sticky Note16"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4760,
+        1520
+      ],
+      "id": "23862510-f93d-4865-8675-55306bfff7b4",
+      "name": "No Operation, do nothing7"
+    },
+    {
+      "parameters": {
+        "content": "## Log Starting Adding Notes from Transcript",
+        "height": 260,
+        "width": 640,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4300,
+        1440
+      ],
+      "id": "83b9bffc-c33a-42af-84c1-cd947875b5ac",
+      "name": "Sticky Note18"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "75",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Generating Notes",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "generating",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4360,
+        1520
+      ],
+      "id": "1a3626d7-fdfb-45c0-8e7b-09c043ce73f0",
+      "name": "Status: Initiating Notes Creation",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/file-analysis",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4560,
+        1520
+      ],
+      "id": "b4c48881-9616-4a63-9189-b9740098d540",
+      "name": "Post  Initiating Notes Creation",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "85",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Matching notes to images",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "generating",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Generate Job UUID').first().json.uuid }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3800,
+        160
+      ],
+      "id": "6db2c4a1-48aa-4d3a-9081-f92976c4f5de",
+      "name": "Status: Initiating Notes to Images Matching",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/file-analysis",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "report_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4000,
+        160
+      ],
+      "id": "6cd7a257-e63d-4fbe-a0e6-efed80ae971d",
+      "name": "Post Status: Initiating Notes to Images Matching",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d6868ab2-2fa3-4f6b-b455-8e3291e8c053",
+              "leftValue": "={{ $json.output && $json.output.length === 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4740,
+        620
+      ],
+      "id": "bb1c7278-2c39-48f7-914e-d108ccef0976",
+      "name": "If No Match Found",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    f.project_id,\n    f.user_id,\n    component_info->>'component' AS component,\n    component_info->>'type' AS component_type,\n    findings->>'finding' AS finding,\n    findings->>'details' AS details,\n    findings->>'severity' AS severity\nFROM \n    project_transcript_insights pi\nJOIN \n    files f ON pi.file_id = f.id\nCROSS JOIN LATERAL \n    jsonb_array_elements(pi.insights->'Components') AS component_info\nJOIN LATERAL \n    jsonb_array_elements(pi.insights->'Findings') AS findings ON findings->>'component' = component_info->>'component'\nWHERE\n    f.project_id = '{{ $('Webhook').item.json.body.project_id }}';\n    ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3720,
+        1620
+      ],
+      "id": "4ae25800-9eb6-4948-908e-7a49cffbc078",
+      "name": "Get Findings1",
+      "retryOnFail": true,
+      "executeOnce": false,
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    f.project_id,\n    f.user_id,\n    component_info->>'component' AS component,\n    component_info->>'type' AS component_type,\n    recommendations->>'recommendation' AS recommendation,\n    recommendations->>'recomendationTimeline' AS recomendation_timeline,\n    recommendations->>'professionalService' AS professional_service\nFROM \n    project_transcript_insights pi\nJOIN \n    files f ON pi.file_id = f.id\nCROSS JOIN LATERAL \n    jsonb_array_elements(pi.insights->'Components') AS component_info\nJOIN LATERAL \n    jsonb_array_elements(pi.insights->'Recommendations') AS recommendations ON recommendations->>'component' = component_info->>'component'\nWHERE\n    f.project_id = '{{ $('Webhook').item.json.body.project_id }}';\n    ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3720,
+        1800
+      ],
+      "id": "e6076227-1819-45a8-95ab-9f352425b03f",
+      "name": "Get Recommendations1",
+      "retryOnFail": true,
+      "executeOnce": false,
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "component",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        3960,
+        1720
+      ],
+      "id": "10056fa5-4b6f-4657-8959-fe88a00b5553",
+      "name": "Merge1",
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e5275ac4-4bd2-429e-931a-58da4f5df127",
+              "leftValue": "={{ $json.matched_title }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4780,
+        1760
+      ],
+      "id": "f65cdb07-7ada-401d-9c25-e5da093c28d3",
+      "name": "Note Does Not Exist2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        4160,
+        1760
+      ],
+      "id": "b876b89c-3337-47b5-98eb-3fff7ddfabb1",
+      "name": "Loop Over Findings1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    COALESCE(\n        (SELECT title \n          FROM notes \n          WHERE project_id = '{{ $('Webhook').item.json.body.project_id }}' AND title ILIKE '%' || '{{ $json.message.content }}' || '%' LIMIT 1),\n        NULL\n    ) AS matched_title",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        4640,
+        1760
+      ],
+      "id": "cb7b235e-9eb0-4bf0-9de2-89b8095b4479",
+      "name": "Find Existing Note2",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "notes",
+          "mode": "list",
+          "cachedResultName": "notes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "={{ $('Generate Note Title1').item.json.message.content }}",
+            "content": "={{ $('Loop Over Findings1').item.json.details }}",
+            "user_id": "={{ $('Webhook').item.json.body.user_id }}",
+            "project_id": "={{ $('Webhook').item.json.body.project_id }}",
+            "name": "={{ $('Generate Note Title1').item.json.message.content.toLowerCase().replace(/\\s+/g, '-')}}",
+            "metadata": "={\"component\":\"{{ $('Loop Over Findings1').item.json.component }}\",\"component_type\":\"{{ $('Loop Over Findings1').item.json.component_type }}\",\"finding\":\"{{ $('Loop Over Findings1').item.json.finding }}\",\"details\":\"{{ $('Loop Over Findings1').item.json.details }}\",\"severity\":\"{{ $('Loop Over Findings1').item.json.severity }}\",\"recommendation\":\"{{ $('Loop Over Findings1').item.json.recommendation }}\",\"repairTimeline\":\"{{ $('Loop Over Findings1').item.json.timeline }}\",\"professionalService\":\"{{ $('Loop Over Findings1').item.json.professional_service }}\"} "
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "project_id",
+              "displayName": "project_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "position",
+              "displayName": "position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "analysis",
+              "displayName": "analysis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "files_relationships_is_locked",
+              "displayName": "files_relationships_is_locked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "metadata",
+              "displayName": "metadata",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        4980,
+        1820
+      ],
+      "id": "c9d4e19c-abed-4435-a625-2d1b92d03f43",
+      "name": "Insert Finding to Notes1",
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=# TASK:\nSummarize this sentence into two or three words: {{ $json.finding }}\n\n# NOTES:\n- Capitalize the first word\n- Do not add any punctuation\n- Do not add your own message"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        4340,
+        1760
+      ],
+      "id": "e5ccf201-c55e-4d4d-95d0-7c7929889cdb",
+      "name": "Generate Note Title1",
+      "credentials": {
+        "openAiApi": {
+          "id": "wADMvyH4rrgOilPP",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        360,
+        1420
+      ],
+      "id": "1be06ba6-3ebf-4aa5-962d-26646625afdf",
+      "name": "OpenAI Chat Model4",
+      "credentials": {
+        "openAiApi": {
+          "id": "wADMvyH4rrgOilPP",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "394d35b2-748a-427f-88ea-e910a7cafecb",
+              "leftValue": "={{ $json.output.Findings }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        840,
+        1140
+      ],
+      "id": "813c2189-920a-4447-9e00-b770f0dbbbf8",
+      "name": "Findings Is Not Empty"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7e769cae-d774-4be0-81ac-2acc86a52e1a",
+              "leftValue": "={{ $json.note_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4020,
+        440
+      ],
+      "id": "775e18c9-6ac8-4a3c-8b81-aca4e986315b",
+      "name": "Project Notes Empty?",
+      "executeOnce": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        5020,
+        160
+      ],
+      "id": "36f3eec4-9426-4fdf-b239-1913d014e78a",
+      "name": "No Operation, do nothing9"
+    },
+    {
+      "parameters": {
+        "content": "## Inform User to Load Project Notes",
+        "height": 260,
+        "width": 860,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4320,
+        60
+      ],
+      "id": "87d8bf90-cca9-40c1-9474-ecd0de75937f",
+      "name": "Sticky Note19"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "95",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Please Upload Project Notes Then Restart Report Builder",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "generating",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "project_id",
+              "value": "={{ $json.project_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Generate Job UUID').first().json.uuid }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4360,
+        160
+      ],
+      "id": "136c8919-b5cd-4197-933b-14734abe10aa",
+      "name": "Status: Initiating Notes Empty Message",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/file-analysis",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "project_id",
+              "value": "={{ $json.project_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4540,
+        160
+      ],
+      "id": "13ee942b-79c9-4c39-b8e7-07ec9a2fa9b4",
+      "name": "Post Status: Notes Required Message",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/file-analysis",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "=error"
+            },
+            {
+              "name": "message",
+              "value": "=No Notes For Project"
+            },
+            {
+              "name": "progress",
+              "value": "=100"
+            },
+            {
+              "name": "project_id",
+              "value": "={{ $('Webhook').item.json.body.project_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4860,
+        160
+      ],
+      "id": "b0f9c830-e3af-4379-bb1f-f98c0d22fc4b",
+      "name": "Post Status: Notes Required Message1",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        4700,
+        160
+      ],
+      "id": "86468e54-b85f-4e62-afc5-f9ac0156043a",
+      "name": "Pause: Read Msg",
+      "webhookId": "376d99eb-ecf5-4a96-8ef4-56f9debebb09"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        5720,
+        480
+      ],
+      "id": "2662ba50-2dfd-4207-b994-46366b954ca9",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "content": "## Log File Analysis Complete",
+        "height": 260,
+        "width": 640,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        5260,
+        400
+      ],
+      "id": "36331712-b5dc-4c7e-92c2-421f59ffb4d3",
+      "name": "Sticky Note20"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "100",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Files Processed",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "completed",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "project_id",
+              "value": "={{ $('Webhook').first().json.body.project_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Generate Job UUID').first().json.uuid }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5320,
+        480
+      ],
+      "id": "0b9e553f-691c-4d30-a99d-c93c096de73b",
+      "name": "Status: Initiating Notes Creation1",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/file-analysis",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "project_id",
+              "value": "={{ $json.project_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5520,
+        480
+      ],
+      "id": "64a4bacd-2ca9-43b1-a4bb-8f492f19c0dd",
+      "name": "Post  Initiating Notes Creation1",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select i.insights from project_transcript_insights i\njoin files f ON i.file_id = f.id\nwhere f.project_id = '{{ $('Webhook').item.json.body.project_id }}' ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2460,
+        1540
+      ],
+      "id": "df63aee9-e833-457e-8e93-0bea05ef934b",
+      "name": "Get Project Insights1",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7e769cae-d774-4be0-81ac-2acc86a52e1a",
+              "leftValue": "={{ $json.insights }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2660,
+        1540
+      ],
+      "id": "e6f826c7-d31a-46ff-bc6f-c12a16164def",
+      "name": "Project Notes Empty?1",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Find all image descriptions that are related to:\nnote_id: {{ $json.note_id }}\nnote_title: {{ $json.title }}\nand\nnote_description: {{ $json.metadata }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an AI assistant that analyzes note information and image descriptions to find relevant connections and assess the strength of that connection.\n\n**Instructions:**\n\n1.  **Note Input:** You will be provided with a `note_id`,`note_title` and `note_description`.\n2.  **Tool Usage:** You have access to a tool called `get-project-image-descriptions`. This tool provides a JSON array of image descriptions.\n3.  **Relevance Analysis:** Your task is to analyze the `note_title`, `note_description`, and the components within each object of the `image_description` array to determine their relevance.\n4.  **Match Scoring:** For each relevant image description found, you must also assign a `match_score` between 0.0 and 1.0 (inclusive), representing your confidence in the relevance of the image description to the note. A higher score indicates a stronger match. Consider factors like keyword overlap, semantic similarity, and the specificity of the image description to the note.\n5.  **Output:**\n    * If you find one or more components within the `image_descriptions` that are relevant to the `note_title` and `note_description`, return a JSON array containing objects with the `file_id`, `note_id`, `component`, `note_title`, and the calculated `match_score`. The `component` and `file_id` should be from the same row in the table as the related `image_description` objects.\n    * If no relevant image description objects are found, return an empty JSON array `[]`.\n    * **Crucially, do not include any additional text or explanation in your output. Only return the JSON array.**\n\n**Examples:\n\n**Example Input:**\n\n`note_id`:'c40d3e85-2dac-4732-bd40-dadca9701f9f'\n`title`:'Roof'\n`content`:'The roof is halfway through its life with moderate wear, typical for its age.'\n\n`get-project-image-descriptions`:\n[\n  {\n    \"file_id\": \"ce1a65f9-8268-4f34-9d3c-eb06f92b4fd4\",\n    \"image_description\": {\n      \"findings\": [\n        {\n          \"finding\": \"Moisture & Water Issues\",\n          \"severity\": \"Moderate\",\n          \"component\": \"Foundation Walls\",\n          \"description\": \"Significant water staining and efflorescence visible on foundation walls, indicating potential water intrusion.\"\n        }\n      ],\n      \"components\": [\n        {\n          \"components\": [\n            \"Foundation Walls\"\n          ],\n          \"componentType\": \"Foundation & Structure\"\n        }\n      ],\n      \"recommendedActions\": [\n        {\n          \"action\": \"Inspect for water intrusion sources (e.g., cracks, leaks). Recommend waterproofing solutions such as exterior drainage improvements or interior sealing.\",\n          \"finding\": \"Moisture & Water Issues\",\n          \"component\": \"Foundation Walls\",\n          \"repairTimeframe\": \"Within 30 Days\",\n          \"professionalService\": \"Foundation Specialist\"\n        }\n      ]\n    }\n  },\n  {\n    \"file_id\": \"ff641299-c472-4872-becc-5f5bf91432ba\",\n    \"image_description\": {\n      \"findings\": [\n        {\n          \"finding\": \"Material Deterioration\",\n          \"severity\": \"Moderate\",\n          \"component\": \"Chimney\",\n          \"description\": \"Caulk at the chimney flashing is deteriorated and cracked, allowing for potential water intrusion.\"\n        }\n      ],\n      \"components\": [\n        {\n          \"components\": [\n            \"Chimney\"\n          ],\n          \"componentType\": \"Roofing\"\n        }\n      ],\n      \"recommendedActions\": [\n        {\n          \"action\": \"Remove and replace deteriorated caulk around chimney flashing.  Inspect for any existing water damage and address as needed.\",\n          \"finding\": \"Material Deterioration\",\n          \"component\": \"Chimney\",\n          \"repairTimeframe\": \"Within 30 Days\",\n          \"professionalService\": \"Roofer\"\n        }\n      ]\n    }\n  },\n  {\n    \"file_id\": \"f570ec32-9b24-4501-b1e4-ea39ee028670\",\n    \"image_description\": {\n      \"findings\": [\n        {\n          \"finding\": \"Cracking & Structural Issues\",\n          \"severity\": \"Minor\",\n          \"component\": \"Foundation Walls\",\n          \"description\": \"Hairline cracks are visible in several blocks of the foundation wall.  The cracks appear to be minor and not significantly impacting the structural integrity.\"\n        }\n      ],\n      \"components\": [\n        {\n          \"components\": [\n            \"Foundation Walls\"\n          ],\n          \"componentType\": \"Foundation & Structure\"\n        }\n      ],\n      \"recommendedActions\": [\n        {\n          \"action\": \"Inspect foundation walls for any signs of settling or further cracking.  Consider preventative measures such as waterproofing or crack sealing if necessary.\",\n          \"finding\": \"Cracking & Structural Issues\",\n          \"component\": \"Foundation Walls\",\n          \"repairTimeframe\": \"Within 3-6 Months\",\n          \"professionalService\": \"Foundation Specialist\"\n        }\n      ]\n    }\n  },\n  {\n    \"file_id\": \"77b4988e-3a5c-4727-b0c4-9f1e1323c40c\",\n    \"image_description\": {\n      \"findings\": [\n        {\n          \"finding\": \"Moisture & Water Issues\",\n          \"severity\": \"Moderate\",\n          \"component\": \"Foundation Walls\",\n          \"description\": \"Significant water staining and mold growth visible on basement foundation walls.  Indicates potential water intrusion.\"\n        },\n        {\n          \"finding\": \"Mold/Mildew\",\n          \"severity\": \"Moderate\",\n          \"component\": \"Foundation Walls\",\n          \"description\": \"Visible mold growth on basement foundation walls.  Requires professional assessment and remediation.\"\n        }\n      ],\n      \"components\": [\n        {\n          \"components\": [\n            \"Foundation Walls\",\n            \"Basement\"\n          ],\n          \"componentType\": \"Foundation & Structure\"\n        }\n      ],\n      \"recommendedActions\": [\n        {\n          \"action\": \"Assess extent of mold growth and recommend appropriate remediation plan. Address source of moisture intrusion.\",\n          \"finding\": \"Mold/Mildew\",\n          \"component\": \"Foundation Walls\",\n          \"repairTimeframe\": \"Within 30 Days\",\n          \"professionalService\": \"Mold Remediation Specialist\"\n        },\n        {\n          \"action\": \"Inspect and repair any cracks or gaps in foundation walls to prevent further water intrusion.  Improve drainage around the foundation.\",\n          \"finding\": \"Moisture & Water Issues\",\n          \"component\": \"Foundation Walls\",\n          \"repairTimeframe\": \"Within 30 Days\",\n          \"professionalService\": \"General Contractor\"\n        }\n      ]\n    }\n  },\n  {\n    \"file_id\": \"ea035a67-22e2-491b-8981-080fafd887c0\",\n    \"image_description\": {\n      \"findings\": [\n        {\n          \"finding\": \"Material Deterioration\",\n          \"severity\": \"Major\",\n          \"component\": \"Oil Tank\",\n          \"description\": \"Significant rust and corrosion visible on the oil tank.  The tank appears old and may be leaking.\"\n        },\n        {\n          \"finding\": \"Moisture & Water Issues\",\n          \"severity\": \"Moderate\",\n          \"component\": \"Foundation Walls\",\n          \"description\": \"Water stains and dampness are visible on the basement walls and floor, suggesting potential water intrusion.\"\n        }\n      ],\n      \"components\": [\n        {\n          \"components\": [\n            \"Basement\",\n            \"Foundation Walls\"\n          ],\n          \"componentType\": \"Foundation & Structure\"\n        },\n        {\n          \"components\": [\n            \"Oil Tank\"\n          ],\n          \"componentType\": \"Plumbing System\"\n        }\n      ],\n      \"recommendedActions\": [\n        {\n          \"action\": \"Inspect the oil tank for leaks and assess its structural integrity.  If leaks are present or the tank is deemed unsafe, immediate removal and proper disposal are necessary.\",\n          \"finding\": \"Material Deterioration\",\n          \"component\": \"Oil Tank\",\n          \"repairTimeframe\": \"Immediately\",\n          \"professionalService\": \"Plumber\"\n        },\n        {\n          \"action\": \"Investigate the source of water intrusion in the basement.  This may involve inspecting gutters, downspouts, grading, and foundation walls for cracks or other defects.  Necessary repairs should be made to prevent further water damage.\",\n          \"finding\": \"Moisture & Water Issues\",\n          \"component\": \"Foundation Walls\",\n          \"repairTimeframe\": \"Within 30 Days\",\n          \"professionalService\": \"General Contractor\"\n        }\n      ]\n    }\n  },\n  {\n    \"file_id\": \"a85d72b7-dc14-4c6d-8ff9-61ca185c9a88\",\n    \"image_description\": {\n      \"findings\": [\n        {\n          \"finding\": \"Material Deterioration\",\n          \"severity\": \"Moderate\",\n          \"component\": \"Wooden Support Beams\",\n          \"description\": \"Visible water stains and dirt accumulation on the floor and lower support beams.  Possible signs of moisture damage.\"\n        },\n        {\n          \"finding\": \"Material Deterioration\",\n          \"severity\": \"Moderate\",\n          \"component\": \"HVAC System\",\n          \"description\": \"Significant dirt and dust accumulation on the furnace and ductwork, suggesting a lack of regular maintenance.\"\n        },\n        {\n          \"finding\": \"Material Deterioration\",\n          \"severity\": \"Moderate\",\n          \"component\": \"Water Heater\",\n          \"description\": \"The water heater shows signs of age and potential corrosion.  Inspect for leaks and rust.\"\n        }\n      ],\n      \"components\": [\n        {\n          \"components\": [\n            \"Furnace/Boiler\",\n            \"Air Conditioner/Heat Pump\",\n            \"Ductwork\"\n          ],\n          \"componentType\": \"HVAC System\"\n        },\n        {\n          \"components\": [\n            \"Water Heater\"\n          ],\n          \"componentType\": \"Plumbing System\"\n        },\n        {\n          \"components\": [\n            \"Wooden Support Beams\"\n          ],\n          \"componentType\": \"Foundation & Structure\"\n        }\n      ],\n      \"recommendedActions\": [\n        {\n          \"action\": \"Schedule a professional HVAC inspection and cleaning to address dirt and dust accumulation.  Check for any potential issues with the furnace and air conditioner.\",\n          \"finding\": \"Material Deterioration\",\n          \"component\": \"HVAC System\",\n          \"repairTimeframe\": \"Within 3-6 Months\",\n          \"professionalService\": \"HVAC Specialist\"\n        },\n        {\n          \"action\": \"Inspect wooden support beams for structural integrity and moisture damage.  Address any rot or decay immediately.\",\n          \"finding\": \"Material Deterioration\",\n          \"component\": \"Wooden Support Beams\",\n          \"repairTimeframe\": \"Within 30 Days\",\n          \"professionalService\": \"General Contractor\"\n        },\n        {\n          \"action\": \"Inspect the water heater for leaks, rust, and overall condition.  Consider replacement if necessary.\",\n          \"finding\": \"Material Deterioration\",\n          \"component\": \"Water Heater\",\n          \"repairTimeframe\": \"Within 3-6 Months\",\n          \"professionalService\": \"Plumber\"\n        }\n      ]\n    }\n  }\n]\n\n**Example Output**\n[\n  {\n    \"output\": {\n      \"file_id\": \"68576e8f-a637-4073-ba75-59426cd018e1\",\n      \"note_id\": \"10b72cb9-3292-4d95-afcd-884d783a1619\",\n      \"component\": \"Foundation Walls\",\n      \"note_title\": \"Foundation Settling\",\n      \"match_score\": 0.75\n    }\n  },\n  {\n    \"output\": {\n      \"file_id\": \"e9814d86-7ed5-42f1-bb38-0bb5f9f64d35\",\n      \"note_id\": \"10b72cb9-3292-4d95-afcd-884d783a1619\",\n      \"component\": \"Foundation Walls\",\n      \"note_title\": \"Foundation Settling\",\n      \"match_score\": 0.95\n    }\n  },\n  {\n    \"output\": {\n      \"file_id\": \"a2b475e5-4647-43b9-97a4-58c969159c7a\",\n      \"note_id\": \"10b72cb9-3292-4d95-afcd-884d783a1619\",\n      \"component\": \"Foundation Walls\",\n      \"note_title\": \"Foundation Settling\",\n      \"match_score\": 0.85\n    }\n  }\n]\n\n**Specifics**\n- Return a JSON array where each element is an object with a single key named 'output'. \n- The value of each 'output' key should be an object containing the keys 'file_id', 'note_id', 'component', 'note_title', and 'match_score'.\n- Do not nest the 'output' objects within another array. Do not include any additional keys or values. \n- Do not place the json inside of a string. Return only the json array.\n- **Important** Do not place the json inside of a string. If a note_id is not available, include it as null. Return only the json array."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        4400,
+        600
+      ],
+      "id": "437e8a55-37de-4e19-80ff-d491332d11c8",
+      "name": "note-image-matching-analysis",
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n-01.imagicrafterai.com",
+            "user-agent": "Deno/1.45.2 (variant; SupabaseEdgeRuntime/1.67.4)",
+            "content-length": "166",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "accept-language": "*",
+            "content-type": "application/json",
+            "via": "2.0 Caddy",
+            "x-forwarded-for": "184.73.127.98",
+            "x-forwarded-host": "n8n-01.imagicrafterai.com",
+            "x-forwarded-proto": "https"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "project_id": "87acf9f6-5855-41e2-a1ff-62d5fde6964e",
+            "user_id": "8c786797-6c10-4c8c-9b21-6b635a28c34d",
+            "isTestMode": false,
+            "job": "1bcdbb49-59a6-4faf-b9f9-1e82211f87f6"
+          },
+          "webhookUrl": "https://n8n-01.imagicrafterai.com/webhook/61250fb7-dff8-4e7a-a430-9e7dfc919f75",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Generate Job UUID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Image Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Get Project Insights1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check if Image Text or Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query template ID": {
+      "main": [
+        [
+          {
+            "node": "Get All Files Not Processed for Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Auto-fixing json object output parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto-fixing json object output parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Image Analysis",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get File IDs": {
+      "main": [
+        [
+          {
+            "node": "Status: Preparing Images for Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Files Not Processed for Project": {
+      "main": [
+        [
+          {
+            "node": "Check if Project Files exist",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get File IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Preparing Images for Analysis": {
+      "main": [
+        [
+          {
+            "node": "Pre Analysis Status Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pre Analysis Status Post": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Preparing Images for Analysis1": {
+      "main": [
+        [
+          {
+            "node": "Post Analysis Status Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Analysis Status Post": {
+      "main": [
+        [
+          {
+            "node": "Get Findings1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Recommendations1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Preparing Images for Analysis2": {
+      "main": [
+        [
+          {
+            "node": "Pre Analysis Status Post1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pre Analysis Status Post1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pre Analysis Status Post3": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Initialize logging": {
+      "main": [
+        [
+          {
+            "node": "Pre Analysis Status Post3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Job UUID": {
+      "main": [
+        [
+          {
+            "node": "Status: Initialize logging",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get Template ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pre Analysis Status Post2": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Image Analysis Status Post": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: All Images Processed1": {
+      "main": [
+        [
+          {
+            "node": "Post Image Analysis Status Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Image Description to Db": {
+      "main": [
+        [
+          {
+            "node": "Summarize Image Description",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser for Image Description": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Auto-fixing json object output parser",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Project Files exist": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Status: All Images Processed1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Text File": {
+      "main": [
+        [
+          {
+            "node": "Transcript Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Image File": {
+      "main": [
+        [
+          {
+            "node": "Image Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Insights to project_transcript_insights": {
+      "main": [
+        [
+          {
+            "node": "Status: Preparing Images for Analysis2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing5": {
+      "main": [
+        [
+          {
+            "node": "Get Project Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Prep Failed Analysis Msg": {
+      "main": [
+        [
+          {
+            "node": "Pre Analysis Status Post2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Image Text or Audio": {
+      "main": [
+        [
+          {
+            "node": "Get Image File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Text File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto-fixing json object output parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Transcript Analysis",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser for Image Description1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Auto-fixing json object output parser1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Auto-fixing json object output parser1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcript Analysis": {
+      "main": [
+        [
+          {
+            "node": "Findings Is Not Empty",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Status: Prep Failed Analysis Msg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Analysis": {
+      "main": [
+        [
+          {
+            "node": "Insert Image Description to Db",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Status: Prep Failed Analysis Msg",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get All Files Not Processed for Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-project-image-descriptions": {
+      "ai_tool": [
+        [
+          {
+            "node": "note-image-matching-analysis",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "note-image-matching-analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Project Insights": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Components",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Status: Initiating Notes to Images Matching",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Project Notes Empty?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Auto-fixing json object output parser2",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert note-file-relationship": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Components",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Insert note-file-relationship",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto-fixing json object output parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "note-image-matching-analysis",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Auto-fixing json object output parser2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if files relationships is locked": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Components",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "note-image-matching-analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Components": {
+      "main": [
+        [
+          {
+            "node": "Status: Initiating Notes Creation1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check if files relationships is locked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Template ID": {
+      "main": [
+        [
+          {
+            "node": "Query template ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Image Description": {
+      "main": [
+        [
+          {
+            "node": "Insert Image Description Summary to Db",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Image Description Summary to Db": {
+      "main": [
+        [
+          {
+            "node": "Status: Preparing Images for Analysis2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Initiating Notes Creation": {
+      "main": [
+        [
+          {
+            "node": "Post  Initiating Notes Creation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post  Initiating Notes Creation": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Initiating Notes to Images Matching": {
+      "main": [
+        [
+          {
+            "node": "Post Status: Initiating Notes to Images Matching",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Status: Initiating Notes to Images Matching": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If No Match Found": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Components",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Findings1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Recommendations1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Findings1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Status: Initiating Notes Creation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Note Does Not Exist2": {
+      "main": [
+        [
+          {
+            "node": "Insert Finding to Notes1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Findings1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Findings1": {
+      "main": [
+        [
+          {
+            "node": "Get Project Insights",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Note Title1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Existing Note2": {
+      "main": [
+        [
+          {
+            "node": "Note Does Not Exist2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Finding to Notes1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Findings1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Note Title1": {
+      "main": [
+        [
+          {
+            "node": "Find Existing Note2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Transcript Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Findings Is Not Empty": {
+      "main": [
+        [
+          {
+            "node": "Load Insights to project_transcript_insights",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Status: Prep Failed Analysis Msg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Project Notes Empty?": {
+      "main": [
+        [
+          {
+            "node": "Status: Initiating Notes Empty Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Initiating Notes Empty Message": {
+      "main": [
+        [
+          {
+            "node": "Post Status: Notes Required Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Status: Notes Required Message": {
+      "main": [
+        [
+          {
+            "node": "Pause: Read Msg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Status: Notes Required Message1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pause: Read Msg": {
+      "main": [
+        [
+          {
+            "node": "Post Status: Notes Required Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Initiating Notes Creation1": {
+      "main": [
+        [
+          {
+            "node": "Post  Initiating Notes Creation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post  Initiating Notes Creation1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Project Insights1": {
+      "main": [
+        [
+          {
+            "node": "Project Notes Empty?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Project Notes Empty?1": {
+      "main": [
+        [
+          {
+            "node": "Status: Initiating Notes Empty Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Status: Preparing Images for Analysis1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "note-image-matching-analysis": {
+      "main": [
+        [
+          {
+            "node": "If No Match Found",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "note-image-matching-analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": 900
+  },
+  "versionId": "b1baf853-3800-4758-87e8-78484587c888",
+  "meta": {
+    "instanceId": "d48c7a1a5fc7f1884e673978ef564739cefd9d32727de2b5c381c7d32a7659c1"
+  },
+  "id": "dU3KX4D08QOO56cy",
+  "tags": [
+    {
+      "createdAt": "2025-04-03T20:05:25.022Z",
+      "updatedAt": "2025-04-03T20:07:07.537Z",
+      "id": "PBvf3W6CtHrLXh3f",
+      "name": "FileAnalysis"
+    },
+    {
+      "createdAt": "2025-05-16T21:13:05.899Z",
+      "updatedAt": "2025-05-16T21:13:05.899Z",
+      "id": "m4FtYNXiuYyH3zfU",
+      "name": "prod"
+    }
+  ]
+}

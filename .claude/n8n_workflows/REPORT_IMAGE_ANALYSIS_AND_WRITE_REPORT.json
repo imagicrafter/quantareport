@@ -1,0 +1,1741 @@
+{
+  "name": "REPORT-IMAGE-ANALYSIS-AND-WRITE_REPORT",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "a02726c6-60c7-451a-b7f0-4360823fe21f",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        6100,
+        440
+      ],
+      "id": "b033cef1-50b1-4acf-9fdb-c2f0546bd906",
+      "name": "Webhook",
+      "webhookId": "a02726c6-60c7-451a-b7f0-4360823fe21f"
+    },
+    {
+      "parameters": {
+        "jsCode": "var uuid      = require('crypto')\n\nreturn {\n  //uuid: uuid.randomUUID()\n  uuid: $input.first().json.body.job\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6200,
+        740
+      ],
+      "id": "e275d72b-3846-4f3a-b518-cd29adf9a471",
+      "name": "Generate Job UUID"
+    },
+    {
+      "parameters": {
+        "content": "# Process Report",
+        "height": 1060,
+        "width": 2020,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        8500,
+        0
+      ],
+      "id": "101b2236-ca06-43d8-80a0-d55845518dc4",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "75",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Writing Report",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "generating",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "report_id",
+              "value": "={{ $('Webhook').first().json.body.report_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        8820,
+        120
+      ],
+      "id": "2cdb3cdf-d528-433d-a8e4-f146a508c899",
+      "name": "Status: Initiating Report Processing",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/report-progress",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "report_id",
+              "value": "={{ $json.report_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9000,
+        120
+      ],
+      "id": "57d1da04-f25f-44d8-8845-a5438bf8f073",
+      "name": "Post Report Status Initiating",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/report-progress",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "report_id",
+              "value": "={{ $json.report_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9860,
+        320
+      ],
+      "id": "5e8b8f3b-100f-4f95-abfc-9fb94508673f",
+      "name": "Post Report Processing Completed",
+      "executeOnce": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        9480,
+        320
+      ],
+      "id": "5b6abaca-be3f-4684-9714-008d203f90b6",
+      "name": "Give Time for Supabase to Complete write",
+      "webhookId": "c84bd075-3880-4023-859a-27e956c06f5b"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "95",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Saving Report",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "completed",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "report_id",
+              "value": "={{ $('Webhook').first().json.body.report_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        9680,
+        120
+      ],
+      "id": "b904b784-658e-4dbe-8821-7bde53e40cc5",
+      "name": "Status: Saving Report",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/report-progress",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "report_id",
+              "value": "={{ $json.report_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9860,
+        120
+      ],
+      "id": "53549687-43a3-4352-9dd7-6c9344c6409f",
+      "name": "Post Report Processing Saving Report",
+      "executeOnce": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        9180,
+        120
+      ],
+      "id": "2f9f759b-157f-461a-b8d0-768a020e83bb",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a32d43eb-bfde-4449-8f9e-f9e3b0916c79",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 2,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        9820,
+        580
+      ],
+      "id": "4002b64b-c7a9-4261-9628-1a02acb547c3",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "job_report_error_count",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "job",
+              "keyValue": "={{ $('Generate Job UUID').first().json.uuid }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        9640,
+        580
+      ],
+      "id": "87fdaea5-42bb-495c-ada3-b53edf0c4645",
+      "name": "Get Report Error Count for Job",
+      "credentials": {
+        "supabaseApi": {
+          "id": "rc2WhTQmeWvbrxgl",
+          "name": "Inovy Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "95",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Error while generating report",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "report_id",
+              "value": "={{ $('Webhook').first().json.body.report_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        9300,
+        580
+      ],
+      "id": "978ac1d2-164b-4288-aac7-27fc080bf30a",
+      "name": "Status: Error during report processing",
+      "executeOnce": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        10040,
+        320
+      ],
+      "id": "39e30833-bffd-469a-81b2-9865a34e2ad5",
+      "name": "Operation Completed: Report Processing Successful"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "95",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Report generation failed",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "report_id",
+              "value": "={{ $('Webhook').first().json.body.report_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        10020,
+        560
+      ],
+      "id": "7a817a7f-0763-4203-8014-c0da0c9ce7b3",
+      "name": "Status: Report processing failed",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/report-progress",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "report_id",
+              "value": "={{ $json.report_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        10200,
+        560
+      ],
+      "id": "68681b16-4ad1-4663-9fc5-cf2d3f574cf0",
+      "name": "Post Report Processing Failed",
+      "executeOnce": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "100",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Report Processing Completed for {{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "completed",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "report_id",
+              "value": "={{ $('Webhook').first().json.body.report_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        9680,
+        320
+      ],
+      "id": "485d4191-c8b0-4a1d-98eb-ad16b05d12cc",
+      "name": "Post Report Processing Completed2",
+      "executeOnce": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        10040,
+        120
+      ],
+      "id": "ac4d734a-6a49-4f17-8859-6238be339824",
+      "name": "Operation Completed: Report Status updated"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        10360,
+        560
+      ],
+      "id": "9c0ca873-50d6-45f9-bb71-cff64acb2291",
+      "name": "Operation Completed: Report Failed"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/report-progress",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "report_id",
+              "value": "={{ $json.report_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9480,
+        580
+      ],
+      "id": "c13cac25-b650-4131-b69a-836894b43b3f",
+      "name": "Post Report Processing Error",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "v_notes_with_image_relationships",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "project_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Webhook').first().json.body.project_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        6700,
+        440
+      ],
+      "id": "9dbd15ac-fc35-491d-ba10-a6d180742769",
+      "name": "Query Notes with Image Descriptions",
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "rc2WhTQmeWvbrxgl",
+          "name": "Inovy Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "get the image descriptions",
+        "operation": "getAll",
+        "tableId": "image_descriptions_related_to_note",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "note_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.note_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        8060,
+        580
+      ],
+      "id": "4efc8316-b642-4be9-ac29-f67aa2863e7b",
+      "name": "get-image-descriptions",
+      "credentials": {
+        "supabaseApi": {
+          "id": "rc2WhTQmeWvbrxgl",
+          "name": "Inovy Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "notes",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Loop Over Notes').item.json.note_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "analysis",
+              "fieldValue": "={{ $json.message.content }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        8260,
+        380
+      ],
+      "id": "912e9026-96a9-4767-b7f7-faac958ac1ee",
+      "name": "Update Notes Analysis",
+      "credentials": {
+        "supabaseApi": {
+          "id": "rc2WhTQmeWvbrxgl",
+          "name": "Inovy Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "08ce56ff-a3e5-49a8-a131-4b7e4b8ba214",
+              "leftValue": "={{ $json.analysis }}",
+              "rightValue": "null",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "624939aa-86d2-4c80-89d1-326102e09b68",
+              "leftValue": "={{ $json.analysis }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        7560,
+        540
+      ],
+      "id": "c3115572-8efc-4561-8910-9c5dfb7b08ba",
+      "name": "If Note Analysis Empty"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=# Role\nYou are an expert in the analysis of notes and related image descriptions.\n\n# Task\nGenerate a human-readable summary analysis based on the collective information from the get-image-descriptions tool.\n\n# Tools\n- The get-image-descriptions tool provides detailed observations from the related image descriptions.\n\n# Specifics\n- Thoroughly analyze all image descriptions.\n- Identify high-priority issues and specifically reference the issue and related high-priority image by its name in the narrative.\n- One narrative summary will be output based on the overall analysis of all image descriptions.\n- Do not output a narrative for each image description. Produce a single analysis summary from the combination of the image descriptions.\n- The narrative will be saved to a database column, format the output as text.\n- **When referring to the generated summary, do so indirectly or by describing its content (e.g., \"the findings indicate...\", \"the observations suggest...\", \"the combined information reveals...\"). Do not explicitly label it as \"the analysis\" or \"this analysis\" within the narrative itself.**\n- Reference images only by their name provided from the get-image-descriptions tool in the narrative.\n- The narrative must be human-readable.\n\n# Notes\n- The response will be specific and concise. - Do not overly express urgency or alarm. \n- Do not use technical jaron. Use common terms and be friendly and helpful at all times.\n- The image name may be directly referenced as an observation. Do not refer to 'image description' as the source.\n- **Do not include any introductory or concluding phrases that explicitly label the output as \"the analysis\" or \"this analysis\". Focus solely on presenting the analyzed information.**\n- Do not conflict with this first-person observation:{{ $json.content }}\n- Do not infer certainty and make appropriate use of hedging terms. If a recommended action is to follow up with a professional service mention the qualified professional that should be contacted to make the certain action assessment. \n\n\n\n\n\n",
+              "role": "system"
+            }
+          ]
+        },
+        "options": {
+          "n": 1,
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        7920,
+        400
+      ],
+      "id": "bdda8691-9bb6-4644-ac24-ff641c6924ed",
+      "name": "Summarize Grouped Files with Note",
+      "executeOnce": false,
+      "credentials": {
+        "openAiApi": {
+          "id": "wADMvyH4rrgOilPP",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# Grouped Image analysis\n",
+        "height": 1060,
+        "width": 2480,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        5980,
+        0
+      ],
+      "id": "6abcdf42-1704-40a3-b254-fa95b560d321",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "reports",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Webhook').first().json.body.report_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ $json.message.content }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        9300,
+        320
+      ],
+      "id": "50df42a3-ffee-4193-80a7-38495220b031",
+      "name": "Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "rc2WhTQmeWvbrxgl",
+          "name": "Inovy Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Report name: {{ $('Webhook').first().json.body.project_name }}\n\nContent to edit:\n {{JSON.stringify($json.data)}}\n\nProvide polished output in html format.  "
+            },
+            {
+              "content": "=# Role: \nYou are an expert Report Editor specializing in refining and polishing content to ensure it meets the highest quality standards. \n\n# Task:\nGenerate one comprehensive report using your tools and the provided structured data.\nSummarize and synthesize the findings from all group_name entries into a cohesive report. Ensure the report flows logically by grouping related topics.\n\n# Tools:\n- get-project-details tool will provide specific information to include in the report according to the schema provided in the specifics.\n\n# Specifics:\n{{JSON.stringify($('get-project-template').first().json.layout_module)}}\n\n# Example:\n{{JSON.stringify($('get-project-template').first().json.html_module)}}\n\n# Notes:\n- Follow the html formatting as shown in the Example.\n- The group_name should be used as provided for the findings section names.\n- Every <img> must include the following inline style attribute: style=\"max-width: 150px; height: auto; margin: 5px; with the name at the bottom of the image.\n  Example image tag: <div style=\"display: inline-block; text-align: center; margin: 5px;\">\n  <img src=\"https://vtaufnxworztolfdwlll.supabase.co/storage/v1/object/public/pub_images/e75b09fa-5948-4b20-af71-0319042b8af4/j3c39aq661s.png\" alt=\"foundation-1\" style=\"max-width: 150px; height: auto; margin: 5px;\">\n  <div style=\"font-size: 12px; color: #555;\">foundation-1</div>\n</div>style=\"max-width: 150px; height: auto; margin: 5px;\"> \n- Always include all images in the ouput regardless of how many are in the example. Do not exclude any images.\n- **IMPORTANT** Use the link exactly as provided. Do not replace the image link under any circumstance.\n- Do not add your own message.",
+              "role": "system"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        8940,
+        380
+      ],
+      "id": "ef17bd07-249f-4785-9d0c-6068b0eea51c",
+      "name": "Generate Report",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "credentials": {
+        "openAiApi": {
+          "id": "wADMvyH4rrgOilPP",
+          "name": "OpenAi account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT a.title,\n       a.name,\n       a.content,\n       a.metadata\nFROM notes a\nLEFT JOIN image_descriptions_related_to_note b ON b.note_id = a.id\nWHERE a.project_id = '{{ $('Webhook').first().json.body.project_id }}'\n  AND b.note_id IS NULL;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.5,
+      "position": [
+        9000,
+        620
+      ],
+      "id": "35326b10-9f03-4a93-9d3d-25a29d32819a",
+      "name": "get-project-details",
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Log Grouped Image and Note Analysis",
+        "height": 260,
+        "width": 480,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        6800,
+        100
+      ],
+      "id": "aed5d5cb-27ef-41c4-9c69-a277725cbd0e",
+      "name": "Sticky Note17"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "8",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "=Preparing to analyze notes with images",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "generating",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "report_id",
+              "value": "={{ $('Webhook').first().json.body.report_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        6860,
+        180
+      ],
+      "id": "8ae60838-f092-4c25-8393-701e1e03b74b",
+      "name": "Status: Initiating Notes/Images Group Analysis",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/report-progress",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "report_id",
+              "value": "={{ $json.report_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7060,
+        180
+      ],
+      "id": "93394a64-8680-44b6-b661-e305444f7147",
+      "name": "Post Status: Initiating  Notes/Images Group Analysi",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT json_agg(\n    json_build_object(\n        'group_name', subquery.group_name,\n        'analysis', subquery.analysis,\n        'images', subquery.images\n    )\n) AS data\nFROM (\n    SELECT \n        a.group_name,\n        a.analysis,\n        json_agg(\n            json_build_object(\n                'name', b.name,\n                'link', b.file_path\n            )\n        ) AS images\n    FROM v_notes_with_image_relationships a\n    JOIN image_descriptions_related_to_note b \n        ON b.note_id = a.note_id\n    WHERE a.project_id = '{{ $('Webhook').first().json.body.project_id }}'\n    GROUP BY a.group_name, a.analysis\n) AS subquery;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        8580,
+        120
+      ],
+      "id": "ae05351b-45ca-4f4b-a1b9-bfac46724404",
+      "name": "get-grouped-image-descriptions",
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT template_id\nFROM projects \nWHERE projects.id = '{{ $('Webhook').item.json.body.project_id }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        6320,
+        440
+      ],
+      "id": "2d9cc0fe-fce1-45b5-8599-af9275039517",
+      "name": "get-template-id",
+      "credentials": {
+        "postgres": {
+          "id": "z8zgjMMAudsEmvFx",
+          "name": "Inovy Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "templates",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.template_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        6480,
+        440
+      ],
+      "id": "39fa7fb6-ed20-424e-8cbc-bd0d192cacd4",
+      "name": "get-project-template",
+      "credentials": {
+        "supabaseApi": {
+          "id": "rc2WhTQmeWvbrxgl",
+          "name": "Inovy Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Log Note being Analyzed",
+        "height": 260,
+        "width": 540,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        7880,
+        720
+      ],
+      "id": "9acb3ae3-2f7a-455a-8d56-99c4d15c6ff0",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        7480,
+        380
+      ],
+      "id": "f89fb9e9-a9b6-4a71-872b-a6fadd043bba",
+      "name": "Loop Over Notes",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0965691a-bace-47af-af8e-3dc1c9e048fb",
+              "name": "currentProgress",
+              "value": "={{ Math.min(65, Math.ceil((65 / $('Loop Over Notes').item.json.note_count)) * ($runIndex+1)) }}",
+              "type": "string"
+            },
+            {
+              "id": "485651bb-ad92-4b34-84cd-fc24a44d70cc",
+              "name": "message",
+              "value": "={{ $json.title }} analyzed with pictures",
+              "type": "string"
+            },
+            {
+              "id": "16602972-3fe4-4ffb-aef7-1019602d1939",
+              "name": "status",
+              "value": "generating",
+              "type": "string"
+            },
+            {
+              "id": "12b886ce-cd78-4cb4-9cd6-b1faa353f81c",
+              "name": "callback_url",
+              "value": "={{ $('Webhook').first().json.body.callback_url }}",
+              "type": "string"
+            },
+            {
+              "id": "8d08f157-e919-4475-90cb-a78a30afcfbe",
+              "name": "report_id",
+              "value": "={{ $('Webhook').first().json.body.report_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c7e352de-f2b2-43fe-b20c-a64543745b11",
+              "name": "job",
+              "value": "={{ $('Webhook').item.json.body.job }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        7960,
+        800
+      ],
+      "id": "76c073dd-948e-415e-9a98-279e1609ca57",
+      "name": "Status: Log Note Analysis success",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://vtaufnxworztolfdwlll.supabase.co/functions/v1/report-progress",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"apikey\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Authorization\": \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0YXVmbnh3b3J6dG9sZmR3bGxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4ODIwMjUsImV4cCI6MjA1NjQ1ODAyNX0.O_Xg5cLp8x5FMQIYJKQKBCY8FC37AeJ5ffOhyEZ_yqg\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "progress",
+              "value": "={{ $json.currentProgress }}"
+            },
+            {
+              "name": "report_id",
+              "value": "={{ $json.report_id }}"
+            },
+            {
+              "name": "job",
+              "value": "={{ $json.job }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8220,
+        800
+      ],
+      "id": "7d5e2ab1-e58b-4eaf-bdb5-e8f5b3a0950e",
+      "name": "Post Status: Initiating  Notes analysis success",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d87b5e1f-7135-4a6d-830f-0ceb4d321328",
+              "name": "note_id",
+              "value": "={{ $json.note_id }}",
+              "type": "string"
+            },
+            {
+              "id": "fbb401d6-2048-4cfc-918a-66fd97521052",
+              "name": "group_name",
+              "value": "={{ $json.group_name }}",
+              "type": "string"
+            },
+            {
+              "id": "295dfc99-9c2a-40b0-b3f3-1b9ac4b72d37",
+              "name": "content",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "b55273c3-0b7c-40ef-b32a-9e7c11a46dd5",
+              "name": "analysis",
+              "value": "={{ $json.analysis }}",
+              "type": "string"
+            },
+            {
+              "id": "a7e0ba8b-7f0b-4afb-9ca2-4764d3a6d7f9",
+              "name": "project_id",
+              "value": "={{ $json.project_id }}",
+              "type": "string"
+            },
+            {
+              "id": "1580525c-af7d-4d8b-a3b9-275a89346e4a",
+              "name": "note_count",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        7260,
+        440
+      ],
+      "id": "754a1149-769b-4e8c-9b09-61dee969e254",
+      "name": "Get Note Count"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "get-template-id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Job UUID": {
+      "main": [
+        []
+      ]
+    },
+    "Status: Initiating Report Processing": {
+      "main": [
+        [
+          {
+            "node": "Post Report Status Initiating",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Report Processing Completed": {
+      "main": [
+        [
+          {
+            "node": "Operation Completed: Report Processing Successful",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Give Time for Supabase to Complete write": {
+      "main": [
+        [
+          {
+            "node": "Post Report Processing Completed2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Saving Report": {
+      "main": [
+        [
+          {
+            "node": "Post Report Processing Saving Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Report Processing Saving Report": {
+      "main": [
+        [
+          {
+            "node": "Operation Completed: Report Status updated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Report Status Initiating": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Report Error Count for Job": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Status: Report processing failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Status: Error during report processing": {
+      "main": [
+        [
+          {
+            "node": "Post Report Processing Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Report processing failed": {
+      "main": [
+        [
+          {
+            "node": "Post Report Processing Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Report Processing Failed": {
+      "main": [
+        [
+          {
+            "node": "Operation Completed: Report Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Report Processing Completed2": {
+      "main": [
+        [
+          {
+            "node": "Post Report Processing Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Report Processing Error": {
+      "main": [
+        [
+          {
+            "node": "Get Report Error Count for Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Notes with Image Descriptions": {
+      "main": [
+        [
+          {
+            "node": "Status: Initiating Notes/Images Group Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Note Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        []
+      ]
+    },
+    "get-image-descriptions": {
+      "ai_tool": [
+        [
+          {
+            "node": "Summarize Grouped Files with Note",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Notes Analysis": {
+      "main": [
+        [
+          {
+            "node": "Status: Log Note Analysis success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Note Analysis Empty": {
+      "main": [
+        [],
+        []
+      ]
+    },
+    "Summarize Grouped Files with Note": {
+      "main": [
+        [
+          {
+            "node": "Update Notes Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase": {
+      "main": [
+        [
+          {
+            "node": "Status: Saving Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Give Time for Supabase to Complete write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report": {
+      "main": [
+        [
+          {
+            "node": "Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Status: Error during report processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-project-details": {
+      "ai_tool": [
+        [
+          {
+            "node": "Generate Report",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Initiating Notes/Images Group Analysis": {
+      "main": [
+        [
+          {
+            "node": "Post Status: Initiating  Notes/Images Group Analysi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Status: Initiating  Notes/Images Group Analysi": {
+      "main": [
+        []
+      ]
+    },
+    "get-grouped-image-descriptions": {
+      "main": [
+        [
+          {
+            "node": "Status: Initiating Report Processing",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-template-id": {
+      "main": [
+        [
+          {
+            "node": "get-project-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-project-template": {
+      "main": [
+        [
+          {
+            "node": "Query Notes with Image Descriptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Notes": {
+      "main": [
+        [
+          {
+            "node": "get-grouped-image-descriptions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Summarize Grouped Files with Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status: Log Note Analysis success": {
+      "main": [
+        [
+          {
+            "node": "Post Status: Initiating  Notes analysis success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Status: Initiating  Notes analysis success": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Note Count": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": 900
+  },
+  "versionId": "aa19c9c0-5597-49d4-a213-59c4acc2871c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d48c7a1a5fc7f1884e673978ef564739cefd9d32727de2b5c381c7d32a7659c1"
+  },
+  "id": "HB6Q7ZPbNN3aJrqB",
+  "tags": [
+    {
+      "createdAt": "2025-04-03T20:26:18.930Z",
+      "updatedAt": "2025-04-03T20:26:18.930Z",
+      "id": "zXurjy5IOJNETdii",
+      "name": "report"
+    },
+    {
+      "createdAt": "2025-05-16T21:13:05.899Z",
+      "updatedAt": "2025-05-16T21:13:05.899Z",
+      "id": "m4FtYNXiuYyH3zfU",
+      "name": "prod"
+    }
+  ]
+}
