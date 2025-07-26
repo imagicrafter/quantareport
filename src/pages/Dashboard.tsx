@@ -57,7 +57,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen">
+    <>
       {/* Header */}
       <DashboardHeader title="Projects" toggleSidebar={() => {}} />
 
@@ -74,7 +74,7 @@ const Dashboard = () => {
         setShowCreateProject={setShowCreateProject}
         onProjectCreated={handleProjectCreated}
       />
-    </div>
+    </>
   );
 };
 

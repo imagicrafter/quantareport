@@ -15,25 +15,19 @@ const SignIn = () => {
   const [error, setError] = useState('');
   
   const { 
-    handleGoogleSignUp: handleGoogleSignIn, 
-    handleFacebookSignUp: handleFacebookSignIn,
-    isOAuthLoading
+    handleGoogleSignIn, 
+    handleFacebookSignIn,
+    isOAuthLoading,
+    oAuthError
   } = useOAuth();
   
   const isSubmitting = isLoading || isOAuthLoading;
 
-  // Check if user is already logged in
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        console.log('User already logged in, redirecting to dashboard');
-        navigate('/dashboard');
-      }
-    };
-    
-    checkSession();
-  }, [navigate]);
+    if (oAuthError) {
+      setError(oAuthError);
+    }
+  }, [oAuthError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,14 +64,14 @@ const SignIn = () => {
   const handleGoogleButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log('Google sign-in button clicked, initiating OAuth flow');
-    // For sign in, we don't need to validate signup codes
+    sessionStorage.removeItem('oauth_signup_info');
     handleGoogleSignIn();
   };
 
   const handleFacebookButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log('Facebook sign-in button clicked, initiating OAuth flow');
-    // For sign in, we don't need to validate signup codes
+    sessionStorage.removeItem('oauth_signup_info');
     handleFacebookSignIn();
   };
 

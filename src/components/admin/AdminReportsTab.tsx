@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -25,6 +24,9 @@ import { Input } from '@/components/ui/input';
 import Button from '../ui-elements/Button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ReportStatus } from '../reports/ReportService';
+import { PublishedReport, fetchPublishedReports } from '@/services/publishedReportsService';
+import DeleteReportDialog from './DeleteReportDialog';
+import PublishActions from '../reports/PublishActions';
 
 // Extended report interface for admin view with display properties
 interface AdminReport {
@@ -58,6 +60,7 @@ const pageSizeOptions = [10, 25, 50, 100];
 const AdminReportsTab = () => {
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [filteredReports, setFilteredReports] = useState<AdminReport[]>([]);
+  const [publishedReports, setPublishedReports] = useState<PublishedReport[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Pagination state
@@ -73,6 +76,17 @@ const AdminReportsTab = () => {
   // Available filter options
   const [owners, setOwners] = useState<Profile[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
+  
+  // Delete dialog state
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    reportId: string;
+    reportTitle: string;
+  }>({
+    isOpen: false,
+    reportId: '',
+    reportTitle: ''
+  });
   
   const navigate = useNavigate();
 
@@ -105,6 +119,10 @@ const AdminReportsTab = () => {
         return;
       }
 
+      // Fetch published reports
+      const published = await fetchPublishedReports();
+      setPublishedReports(published);
+      
       // Transform data for display
       const formattedReports = reportData.map(report => ({
         id: report.id,
@@ -191,6 +209,36 @@ const AdminReportsTab = () => {
   
   const handleViewReport = (reportId: string) => {
     navigate(`/dashboard/reports/editor/${reportId}`);
+  };
+  
+  const handleDeleteReport = (reportId: string, reportTitle: string) => {
+    setDeleteDialog({
+      isOpen: true,
+      reportId,
+      reportTitle
+    });
+  };
+
+  const handleDeleteDialogClose = () => {
+    setDeleteDialog({
+      isOpen: false,
+      reportId: '',
+      reportTitle: ''
+    });
+  };
+
+  const handleReportDeleted = () => {
+    // Refresh the reports list
+    fetchReports();
+  };
+  
+  const getPublishedInfo = (reportId: string) => {
+    const published = publishedReports.find(p => p.report_id === reportId);
+    return published ? { isPublished: true, token: published.token } : { isPublished: false };
+  };
+
+  const handleStatusChange = () => {
+    fetchReports(); // Refresh reports and published reports
   };
   
   // Calculate paginated reports
@@ -283,7 +331,7 @@ const AdminReportsTab = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[30%]">Title</TableHead>
+                <TableHead className="w-[25%]">Title</TableHead>
                 <TableHead>Project</TableHead>
                 <TableHead>Owner</TableHead>
                 <TableHead>Template</TableHead>
@@ -307,50 +355,71 @@ const AdminReportsTab = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedReports.map((report) => (
-                  <TableRow key={report.id} className="border-b border-border hover:bg-secondary/40 transition-colors">
-                    <TableCell>
-                      <div className="font-medium break-words">{report.title}</div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {report.project}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {report.owner}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {report.template}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {format(new Date(report.created_at), 'MMM dd, yyyy')}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {report.last_edited_at ? format(new Date(report.last_edited_at), 'MMM dd, yyyy') : 'N/A'}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        report.status === 'published' 
-                          ? 'bg-green-100 text-green-800' 
-                          : report.status === 'draft' 
-                            ? 'bg-blue-100 text-blue-800'
-                            : report.status === 'archived'
-                              ? 'bg-gray-100 text-gray-800'
-                              : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleViewReport(report.id)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" /> View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                paginatedReports.map((report) => {
+                  const publishedInfo = getPublishedInfo(report.id);
+                  return (
+                    <TableRow key={report.id} className="border-b border-border hover:bg-secondary/40 transition-colors">
+                      <TableCell>
+                        <div className="font-medium break-words">{report.title}</div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {report.project}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {report.owner}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {report.template}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {format(new Date(report.created_at), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {report.last_edited_at ? format(new Date(report.last_edited_at), 'MMM dd, yyyy') : 'N/A'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          report.status === 'published' 
+                            ? 'bg-green-100 text-green-800' 
+                            : report.status === 'draft' 
+                              ? 'bg-blue-100 text-blue-800'
+                              : report.status === 'archived'
+                                ? 'bg-gray-100 text-gray-800'
+                                : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        <div className="flex items-center gap-2 justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleViewReport(report.id)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" /> View
+                          </Button>
+                          <PublishActions
+                            reportId={report.id}
+                            reportTitle={report.title}
+                            reportContent={report.content}
+                            isPublished={publishedInfo.isPublished}
+                            publishedToken={publishedInfo.token}
+                            onStatusChange={handleStatusChange}
+                          />
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDeleteReport(report.id, report.title)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" /> Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -421,6 +490,15 @@ const AdminReportsTab = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Report Dialog */}
+      <DeleteReportDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={handleDeleteDialogClose}
+        reportId={deleteDialog.reportId}
+        reportTitle={deleteDialog.reportTitle}
+        onReportDeleted={handleReportDeleted}
+      />
     </>
   );
 };

@@ -4,6 +4,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from '../dashboard/Sidebar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { checkRegistrationStatus } from '@/services/userService';
 
 const DashboardLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -39,7 +40,7 @@ const DashboardLayout: React.FC = () => {
       }
     );
 
-    // THEN check for existing session
+    // THEN check for existing session and registration status
     const checkSession = async () => {
       setIsLoading(true);
       try {
@@ -49,7 +50,24 @@ const DashboardLayout: React.FC = () => {
           console.log('No active session found, redirecting to sign in');
           navigate('/signin');
         } else {
-          console.log('Active session found, user is logged in');
+          console.log('Active session found, checking registration status...');
+          const { isRegistered, error } = await checkRegistrationStatus(session.user.email!);
+          
+          if (error) {
+            toast.error(error);
+            // Sign out to prevent loop if there's a persistent issue.
+            await supabase.auth.signOut();
+            navigate('/signin');
+            return;
+          }
+          
+          if (!isRegistered) {
+            console.log('User not fully registered. Redirecting to complete profile.');
+            toast.info("Please complete your registration to continue.");
+            navigate('/signup');
+          } else {
+             console.log('User is fully registered and can proceed.');
+          }
         }
       } catch (error) {
         console.error('Error checking session:', error);

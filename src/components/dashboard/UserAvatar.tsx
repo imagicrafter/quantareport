@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, CreditCard, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface UserAvatarProps {
@@ -85,6 +85,14 @@ const UserAvatar = ({ showName = false }: UserAvatarProps) => {
     }
   };
 
+  const handleProfileClick = () => {
+    navigate('/dashboard/settings?tab=profile');
+  };
+
+  const handleBillingClick = () => {
+    navigate('/dashboard/settings?tab=billing');
+  };
+
   // Get initials for avatar fallback
   const getInitials = () => {
     if (userDetails.full_name) {
@@ -124,13 +132,13 @@ const UserAvatar = ({ showName = false }: UserAvatarProps) => {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>
+          <DropdownMenuItem onClick={handleProfileClick}>
             <User className="mr-2 h-4 w-4" />
             Profile
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
+          <DropdownMenuItem onClick={handleBillingClick}>
+            <CreditCard className="mr-2 h-4 w-4" />
+            Billing
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>

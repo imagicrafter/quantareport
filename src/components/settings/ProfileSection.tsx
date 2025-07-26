@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -9,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { UserSubscriptionDetails } from '@/services/subscriptionService';
 
 interface ProfileData {
   id: string;
@@ -17,12 +17,8 @@ interface ProfileData {
   email: string;
   phone: string | null;
   domain: string | null;
-  plan: string;
   domain_id?: string | null;
   role?: string;
-  stripe_customer_id?: string;
-  stripe_subscription_id?: string;
-  subscription_status?: string;
   updated_at?: string;
 }
 
@@ -34,11 +30,12 @@ interface DomainData {
 
 interface ProfileSectionProps {
   profile: ProfileData;
+  subscription: UserSubscriptionDetails | null;
   domains: DomainData[];
   setProfile: (profile: ProfileData) => void;
 }
 
-const ProfileSection = ({ profile, domains, setProfile }: ProfileSectionProps) => {
+const ProfileSection = ({ profile, subscription, domains, setProfile }: ProfileSectionProps) => {
   const [fullName, setFullName] = useState(profile.full_name || '');
   const [email, setEmail] = useState(profile.email || '');
   const [phone, setPhone] = useState(profile.phone || '');
@@ -101,8 +98,8 @@ const ProfileSection = ({ profile, domains, setProfile }: ProfileSectionProps) =
             </Avatar>
             <Button variant="outline" size="sm">Upload Photo</Button>
             <div className="mt-4 w-full">
-              <Badge variant="outline" className="w-full justify-center py-1.5">
-                {profile.plan || 'Free'} Plan
+              <Badge variant="outline" className="w-full justify-center py-1.5 capitalize">
+                {subscription?.planName || 'Free'} Plan
               </Badge>
             </div>
           </div>
